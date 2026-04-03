@@ -52,9 +52,8 @@ export const zhTW = {
     reserveQuote: "報價儲備",
     review: "預覽",
     swapAction: "兌換",
-    native: "原生資產",
+    native: "USDC",
     stock: "ERCS-20",
-    footerNote: "在接入合約前，匯率與儲備僅為示意。",
   },
   ercs20: {
     title: "部署 ERCS-20",

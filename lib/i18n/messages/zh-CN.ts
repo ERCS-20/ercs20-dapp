@@ -52,9 +52,8 @@ export const zhCN = {
     reserveQuote: "报价储备",
     review: "预览",
     swapAction: "兑换",
-    native: "原生资产",
+    native: "USDC",
     stock: "ERCS-20",
-    footerNote: "在接入合约前，汇率与储备仅为示意。",
   },
   ercs20: {
     title: "部署 ERCS-20",

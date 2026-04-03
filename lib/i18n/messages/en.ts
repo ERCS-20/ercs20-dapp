@@ -52,10 +52,8 @@ export const en = {
     reserveQuote: "Quote reserve",
     review: "Review",
     swapAction: "Swap",
-    native: "Native",
+    native: "USDC",
     stock: "ERCS-20",
-    footerNote:
-      "Quotes and reserves are illustrative until the contract is connected.",
   },
   ercs20: {
     title: "Deploy ERCS-20",
