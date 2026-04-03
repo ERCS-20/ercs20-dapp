@@ -26,6 +26,7 @@ function TokenRow({
       <div className="flex items-center gap-3">
         <input
           readOnly
+          suppressHydrationWarning
           className="text-foreground placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-2xl font-medium tracking-tight outline-none sm:text-3xl"
           placeholder={t("swap.enterAmount")}
           aria-label={label}

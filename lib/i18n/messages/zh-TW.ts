@@ -1,7 +1,6 @@
 export const zhTW = {
   brand: "ERCS-20",
   nav: {
-    home: "首頁",
     swap: "兌換",
     spot: "現貨",
     futures: "合約",
@@ -9,6 +8,7 @@ export const zhTW = {
     ercs20: "ERCS-20",
   },
   common: {
+    settings: "設定",
     language: "語言",
     theme: "主題",
     themeLight: "淺色",

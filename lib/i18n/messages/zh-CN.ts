@@ -1,7 +1,6 @@
 export const zhCN = {
   brand: "ERCS-20",
   nav: {
-    home: "首页",
     swap: "兑换",
     spot: "现货",
     futures: "合约",
@@ -9,6 +8,7 @@ export const zhCN = {
     ercs20: "ERCS-20",
   },
   common: {
+    settings: "设置",
     language: "语言",
     theme: "主题",
     themeLight: "浅色",

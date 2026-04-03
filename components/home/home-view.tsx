@@ -8,7 +8,11 @@ import {
   BookOpen,
   ChevronDown,
   CircleDollarSign,
+  Coins,
   Layers,
+  Repeat2,
+  ShieldAlert,
+  Waves,
 } from "lucide-react";
 
 import {
@@ -27,6 +31,7 @@ const protocolRationaleIntro = "mx-auto w-full max-w-[48rem]";
 
 function renderFixSectionBlock(block: HomeBlock, i: number) {
   const key = `${block.type}-${i}`;
+  const problemIcons: LucideIcon[] = [Coins, ShieldAlert, Waves, CircleDollarSign, Repeat2];
   switch (block.type) {
     case "kicker":
       return (
@@ -99,8 +104,14 @@ function renderFixSectionBlock(block: HomeBlock, i: number) {
               key={j}
               className="border-border/50 bg-muted/25 dark:bg-white/[0.04] flex flex-col rounded-2xl border p-5 text-pretty sm:p-6"
             >
-              <span className="text-muted-foreground/70 mb-3 inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/60 text-[13px] font-semibold tabular-nums dark:bg-black/20">
-                {j + 1}
+              <span className="text-muted-foreground/70 mb-3 inline-flex size-10 shrink-0 items-center justify-center self-center rounded-full border border-border/60 bg-background/60 text-[15px] font-semibold tabular-nums dark:bg-black/20 sm:size-11 sm:text-base">
+                {(() => {
+                  const Icon = problemIcons[j];
+                  if (!Icon) return j + 1;
+                  return (
+                    <Icon className="size-[18px] sm:size-5" strokeWidth={1.65} aria-hidden />
+                  );
+                })()}
               </span>
               <span className="text-foreground text-[16px] leading-snug font-semibold tracking-[-0.01em] sm:text-[17px]">
                 {item.title}

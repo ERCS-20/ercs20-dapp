@@ -1,7 +1,6 @@
 export const en = {
   brand: "ERCS-20",
   nav: {
-    home: "Home",
     swap: "Swap",
     spot: "Spot",
     futures: "Futures",
@@ -9,6 +8,7 @@ export const en = {
     ercs20: "ERCS-20",
   },
   common: {
+    settings: "Settings",
     language: "Language",
     theme: "Theme",
     themeLight: "Light",
