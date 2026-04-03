@@ -1,4 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`ercs20-dapp`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Project structure
+
+High-level layout for the App Router frontend and future Web3 (ERCS-20) integration:
+
+```text
+ercs20-dapp/
+├── app/                    # Routes, layouts, and global styles
+│   ├── (app)/              # Authenticated / wallet-focused app shell
+│   │   └── dashboard/      # e.g. /dashboard
+│   ├── (marketing)/        # Optional landing or docs routes (group only)
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── components/
+│   └── ui/                 # shadcn / Radix primitives
+├── hooks/                  # Client hooks (e.g. wallet state)
+├── lib/
+│   ├── utils.ts            # Shared helpers (e.g. cn)
+│   ├── web3/               # Chain IDs, RPC config
+│   └── contracts/          # ABIs, token addresses per chain
+├── providers/              # Top-level React providers (e.g. Web3)
+├── public/                 # Static assets
+└── types/                  # Shared TypeScript types
+```
+
+- **`app/`** — URL-facing files only; keep heavy UI in `components/`.
+- **`components/ui/`** — Design-system components; keep feature UI one level up or in co-located modules.
+- **`lib/web3` & `lib/contracts`** — RPC URLs, chain constants, ABIs, and deployed addresses (use `NEXT_PUBLIC_*` env vars for client-visible config).
+- **`hooks/` & `providers/`** — Client wallet/chain state and context; `Web3Provider` wraps the tree in `app/layout.tsx`.
 
 ## Getting Started
 

@@ -1,0 +1,93 @@
+export const en = {
+  brand: "ERCS-20",
+  nav: {
+    home: "Home",
+    swap: "Swap",
+    spot: "Spot",
+    futures: "Futures",
+    pools: "Pools",
+    ercs20: "ERCS-20",
+  },
+  common: {
+    language: "Language",
+    theme: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
+    roadmap: "Roadmap",
+  },
+  wallet: {
+    connect: "Connect",
+    connectPlaceholder:
+      "WalletConnect will be enabled in the next step. Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID when ready.",
+  },
+  home: {
+    heroBadge: "ERCS-20",
+    heroTitle: "Sovereign liquidity for equity-style tokens.",
+    heroSubtitle:
+      "ERCS-20 mints its full supply into a built-in AMM, prices against a native quote asset, and routes trading fees back to the issuer—without approval traps for buyers and sellers.",
+    learnMore: "Learn more",
+    protocolEyebrow: "Protocol",
+    protocolTitle: "How ERCS-20 works",
+    ctaSwap: "Swap",
+    ctaErcs20: "Deploy",
+    heroFeatureAmm: "Built-in AMM",
+    heroFeatureTrade: "Swap without approvals",
+    heroFeatureFees: "Fees to issuer",
+  },
+  swap: {
+    title: "Swap",
+    sell: "Sell",
+    buy: "Buy",
+    balance: "Balance",
+    selectToken: "Select token",
+    enterAmount: "0",
+    flip: "Flip tokens",
+    settings: "Transaction settings",
+    slippage: "Slippage tolerance",
+    deadline: "Transaction deadline",
+    rate: "Rate",
+    priceImpact: "Price impact",
+    reserveToken: "Token reserve",
+    reserveQuote: "Quote reserve",
+    review: "Review",
+    swapAction: "Swap",
+    native: "Native",
+    stock: "ERCS-20",
+    footerNote:
+      "Quotes and reserves are illustrative until the contract is connected.",
+  },
+  ercs20: {
+    title: "Deploy ERCS-20",
+    subtitle:
+      "Create a new token via the factory (Factory.create). Form layout only in this milestone.",
+    name: "Name",
+    symbol: "Symbol",
+    totalSupply: "Total supply",
+    seedQuote: "Initial quote reserve (seed)",
+    newOwner: "New owner address",
+    submit: "Create token",
+    hint: "Contract calls are not wired yet; styling review only.",
+  },
+  phase2: {
+    spot: {
+      title: "Spot",
+      body: "Spot markets and deeper liquidity are planned for Phase 2.",
+      roadmap:
+        "Planned: unified spot book or router integration, deeper pools, and execution UX aligned with the ERCS-20 roadmap.",
+    },
+    futures: {
+      title: "Futures",
+      body: "Perpetuals and derivatives workflows are out of scope for Phase 1.",
+      roadmap:
+        "Planned: signed orders with on-chain settlement (dYdX-style flow), risk controls, and fee routing.",
+    },
+    pools: {
+      title: "Pools",
+      body: "Standalone pool management UI arrives after the core swap path stabilizes.",
+      roadmap:
+        "Planned: pool overview, analytics, and incentive hooks tied to the broader DEX milestone.",
+    },
+  },
+} as const;
+
