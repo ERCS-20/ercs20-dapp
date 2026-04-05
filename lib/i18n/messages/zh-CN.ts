@@ -37,6 +37,7 @@ export const zhCN = {
   },
   swap: {
     title: "兑换",
+    settingsPlaceholder: "滑点与截止时间将在路由接入后开放。",
     sell: "卖出",
     buy: "买入",
     balance: "余额",

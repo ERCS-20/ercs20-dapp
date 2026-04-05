@@ -37,6 +37,7 @@ export const zhTW = {
   },
   swap: {
     title: "兌換",
+    settingsPlaceholder: "滑點與截止時間將在路由接入後開放。",
     sell: "賣出",
     buy: "買入",
     balance: "餘額",

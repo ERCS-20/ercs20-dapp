@@ -37,6 +37,7 @@ export const en = {
   },
   swap: {
     title: "Swap",
+    settingsPlaceholder: "Slippage and deadline controls will ship with router integration.",
     sell: "Sell",
     buy: "Buy",
     balance: "Balance",

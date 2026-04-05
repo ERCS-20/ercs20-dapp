@@ -20,6 +20,7 @@ import {
   getHomeContractCopy,
 } from "@/lib/content/home-contract";
 import type { HomeBlock } from "@/lib/content/home-contract";
+import { HeroVisual } from "@/components/home/hero-visual";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -102,7 +103,7 @@ function renderFixSectionBlock(block: HomeBlock, i: number) {
           {block.items.map((item, j) => (
             <li
               key={j}
-              className="border-border/50 bg-muted/25 dark:bg-white/[0.04] flex flex-col rounded-2xl border p-5 text-pretty sm:p-6"
+              className="border-border/60 bg-muted/30 dark:bg-white/[0.05] flex flex-col rounded-2xl border p-5 text-pretty shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md sm:p-6"
             >
               <span className="text-muted-foreground/70 mb-3 inline-flex size-10 shrink-0 items-center justify-center self-center rounded-full border border-border/60 bg-background/60 text-[15px] font-semibold tabular-nums dark:bg-black/20 sm:size-11 sm:text-base">
                 {(() => {
@@ -221,7 +222,7 @@ function RationaleChapter({
 
   return (
     <article
-      className="border-border/50 bg-muted/20 dark:bg-white/[0.04] w-full rounded-2xl border px-6 py-7 sm:px-8 sm:py-9"
+      className="border-border/60 bg-muted/25 dark:bg-white/[0.05] w-full rounded-2xl border px-6 py-7 shadow-sm transition-shadow duration-300 ease-out hover:shadow-md sm:px-8 sm:py-9"
     >
       <h3 className="text-foreground text-[1.0625rem] leading-snug font-semibold tracking-[-0.01em] sm:text-lg">
         {head.text}
@@ -317,14 +318,21 @@ function ProtocolDocument({ blocks }: { blocks: HomeBlock[] }) {
 function HomeHeroFeaturePill({
   icon: Icon,
   label,
+  className,
 }: {
   icon: LucideIcon;
   label: string;
+  className?: string;
 }) {
   return (
-    <div className="border-border/55 bg-background/55 text-muted-foreground inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium tracking-[-0.01em] shadow-sm backdrop-blur-md sm:px-4 sm:text-sm dark:border-white/10 dark:bg-black/25">
-      <Icon className="text-foreground/55 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-      <span className="text-foreground/85 text-pretty">{label}</span>
+    <div
+      className={cn(
+        "border-border/60 bg-background/70 text-muted-foreground inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium tracking-[-0.01em] shadow-sm backdrop-blur-md transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md sm:px-4 sm:text-sm dark:border-white/12 dark:bg-black/30",
+        className
+      )}
+    >
+      <Icon className="text-foreground size-4 shrink-0" strokeWidth={1.5} aria-hidden />
+      <span className="text-foreground/90 text-pretty">{label}</span>
     </div>
   );
 }
@@ -344,11 +352,11 @@ function AppleHeroLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex h-[52px] min-w-[10.5rem] items-center justify-center rounded-full px-8 text-[17px] font-medium tracking-[-0.01em] transition-[transform,opacity,background-color] duration-200 active:scale-[0.98] sm:min-w-[11.5rem]",
+        "inline-flex h-[52px] min-w-[10.5rem] items-center justify-center rounded-full px-8 text-[17px] font-medium tracking-[-0.01em] transition-[transform,opacity,background-color,box-shadow,border-color] duration-300 ease-out active:scale-[0.98] sm:min-w-[11.5rem]",
         variant === "primary" &&
-          "bg-foreground text-background hover:opacity-88 shadow-sm dark:bg-white dark:text-black dark:hover:opacity-90",
+          "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/25 dark:shadow-primary/20",
         variant === "secondary" &&
-          "border-border/60 bg-background/40 text-foreground hover:bg-muted/50 border backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]",
+          "border-border/70 bg-background/50 text-foreground hover:bg-muted/60 border backdrop-blur-xl dark:border-white/12 dark:bg-white/[0.07] dark:hover:bg-white/[0.12]",
         className
       )}
     >
@@ -365,54 +373,57 @@ export function HomeView() {
   return (
     <div className="flex flex-1 flex-col">
       <section
-        className="relative isolate flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center px-6 pt-8 pb-16 sm:min-h-[calc(100svh-5rem)] sm:px-8 sm:pt-10 sm:pb-24"
+        className="hero-motion relative isolate flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center px-6 pt-8 pb-16 sm:min-h-[calc(100svh-5rem)] sm:px-8 sm:pt-10 sm:pb-24"
         aria-label="Hero"
       >
-        {/* Apple-style ambient light — cool neutral, no crypto pink */}
+        {/* Ambient light + vector focal — minimal, high-end */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
           <div
-            className="absolute inset-0 opacity-100 dark:opacity-80"
+            className="absolute inset-0 opacity-100 dark:opacity-85"
             style={{
               background:
-                "radial-gradient(ellipse 120% 80% at 50% -30%, oklch(0.94 0.02 250 / 0.45), transparent 55%)",
+                "radial-gradient(ellipse 120% 85% at 50% -35%, oklch(0.92 0.07 175 / 0.5), transparent 58%)",
             }}
           />
           <div
             className="absolute inset-0 opacity-0 dark:opacity-100"
             style={{
               background:
-                "radial-gradient(ellipse 100% 60% at 50% -20%, oklch(0.35 0.06 260 / 0.35), transparent 50%)",
+                "radial-gradient(ellipse 100% 65% at 50% -22%, oklch(0.34 0.12 350 / 0.42), transparent 52%)",
             }}
           />
           <div
             className="absolute inset-0 dark:hidden"
             style={{
               background:
-                "radial-gradient(ellipse 80% 50% at 80% 100%, oklch(0.96 0.015 280 / 0.5), transparent 45%)",
+                "radial-gradient(ellipse 75% 48% at 82% 105%, oklch(0.96 0.045 185 / 0.42), transparent 48%)",
             }}
           />
         </div>
+        <HeroVisual />
 
         <div className="relative z-10 mx-auto flex w-full max-w-[46rem] flex-col items-center text-center">
-          <p className="text-muted-foreground mb-3 text-xs font-medium tracking-[0.06em]">
+          <p
+            className="text-muted-foreground mb-3 animate-in fade-in slide-in-from-bottom-2 text-xs font-medium tracking-[0.08em] uppercase duration-700 ease-out"
+          >
             {t("home.heroBadge")}
           </p>
 
-          <h1 className="text-foreground text-[2.5rem] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-5xl sm:tracking-[-0.04em] md:text-6xl md:leading-[1.02]">
+          <h1 className="text-primary animate-in fade-in slide-in-from-bottom-3 text-[2.5rem] leading-[1.05] font-semibold tracking-[-0.035em] text-balance delay-75 duration-700 ease-out sm:text-5xl sm:tracking-[-0.04em] md:text-6xl md:leading-[1.02]">
             {t("home.heroTitle")}
           </h1>
 
-          <p className="text-muted-foreground mx-auto mt-6 max-w-[40rem] text-[17px] leading-[1.6] font-normal text-pretty sm:mt-7 sm:max-w-[44rem] sm:text-[18px] sm:leading-[1.6]">
+          <p className="text-muted-foreground mx-auto mt-6 max-w-[40rem] animate-in fade-in slide-in-from-bottom-2 text-[17px] leading-[1.6] font-normal text-pretty delay-150 duration-700 ease-out sm:mt-7 sm:max-w-[44rem] sm:text-[18px] sm:leading-[1.6]">
             {t("home.heroSubtitle")}
           </p>
 
-          <div className="mt-8 flex w-full max-w-xl flex-wrap items-center justify-center gap-2 sm:mt-9 sm:gap-2.5">
+          <div className="mt-8 flex w-full max-w-xl flex-wrap items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-3 delay-200 duration-700 ease-out sm:mt-9 sm:gap-2.5">
             <HomeHeroFeaturePill icon={Layers} label={t("home.heroFeatureAmm")} />
             <HomeHeroFeaturePill icon={ArrowLeftRight} label={t("home.heroFeatureTrade")} />
             <HomeHeroFeaturePill icon={CircleDollarSign} label={t("home.heroFeatureFees")} />
           </div>
 
-          <div className="mt-11 flex w-full max-w-md flex-col items-center gap-3 sm:mt-14 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
+          <div className="mt-11 flex w-full max-w-md animate-in fade-in slide-in-from-bottom-3 flex-col items-center gap-3 delay-300 duration-700 ease-out sm:mt-14 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
             <AppleHeroLink href="/swap" variant="primary" className="w-full sm:w-auto">
               {t("home.ctaSwap")}
             </AppleHeroLink>
@@ -423,12 +434,12 @@ export function HomeView() {
 
           <a
             href="#protocol"
-            className="text-muted-foreground hover:text-foreground group mt-20 inline-flex flex-col items-center gap-2 text-[13px] font-medium tracking-wide transition-colors sm:mt-28"
+            className="text-muted-foreground hover:text-foreground group mt-20 inline-flex animate-in fade-in flex-col items-center gap-2 text-[13px] font-medium tracking-wide delay-500 duration-700 ease-out transition-colors sm:mt-28"
           >
             <span>{t("home.learnMore")}</span>
             <ChevronDown
-              className="size-4 opacity-50 transition-transform duration-300 group-hover:translate-y-0.5"
-              strokeWidth={1.75}
+              className="size-4 opacity-60 transition-transform duration-500 ease-out group-hover:translate-y-1"
+              strokeWidth={1.5}
             />
           </a>
         </div>
@@ -439,14 +450,14 @@ export function HomeView() {
         className="scroll-mt-20"
         aria-labelledby="protocol-heading"
       >
-        <div className="border-border/30 from-muted/15 to-background relative border-t bg-gradient-to-b pb-24 sm:pb-32 dark:from-white/[0.03] dark:to-background">
+        <div className="border-border/40 from-muted/20 to-background relative border-t bg-gradient-to-b pb-24 sm:pb-32 dark:from-white/[0.04] dark:to-background">
           <div className="mx-auto max-w-6xl px-6 pt-20 sm:px-8 sm:pt-28">
-            <p className="text-muted-foreground text-center text-xs font-medium tracking-[0.2em] uppercase">
+            <p className="text-muted-foreground text-center text-xs font-medium tracking-[0.22em] uppercase">
               {t("home.protocolEyebrow")}
             </p>
             <h2
               id="protocol-heading"
-              className="text-foreground mt-2 text-center text-[1.75rem] leading-tight font-semibold tracking-[-0.025em] sm:text-[2rem]"
+              className="text-foreground mt-3 text-center text-[1.75rem] leading-tight font-semibold tracking-[-0.028em] sm:text-[2rem]"
             >
               {t("home.protocolTitle")}
             </h2>

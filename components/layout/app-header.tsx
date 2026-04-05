@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDownIcon, MoreHorizontal, MoonIcon, SunIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  Layers,
+  MoreHorizontal,
+  MoonIcon,
+  SunIcon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
@@ -55,19 +61,16 @@ export function AppHeader() {
   }, []);
 
   return (
-    <header className="border-border/60 bg-background/80 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-50 border-b backdrop-blur-md">
+    <header className="border-border/70 bg-background/85 supports-[backdrop-filter]:bg-background/75 sticky top-0 z-50 border-b backdrop-blur-xl transition-[background-color,border-color] duration-300">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6">
         <Link
           href="/"
-          className="text-foreground shrink-0 text-lg font-semibold tracking-tight"
+          aria-label={t("brand")}
+          className="text-foreground group inline-flex shrink-0 items-center transition-opacity duration-300 hover:opacity-85"
         >
-          {/* Mobile: placeholder glyph icon, desktop: wordmark */}
-          <span className="inline-flex items-center sm:hidden" aria-label={t("brand")}>
-            <span className="flex size-9 items-center justify-center rounded-full border border-border/70 text-[13px] font-semibold tracking-[0.09em]">
-              E
-            </span>
+          <span className="border-border/80 flex size-9 items-center justify-center rounded-full border bg-gradient-to-br from-background to-muted/50 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md">
+            <Layers className="text-foreground size-[1.05rem]" strokeWidth={1.65} aria-hidden />
           </span>
-          <span className="hidden sm:inline">{t("brand")}</span>
         </Link>
 
         <nav
@@ -82,10 +85,10 @@ export function AppHeader() {
                 key={href}
                 href={href}
                 className={cn(
-                  "shrink-0 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3",
+                  "shrink-0 rounded-full px-2.5 py-1.5 text-sm font-medium transition-[color,background-color,transform] duration-200 ease-out sm:px-3",
                   active
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-[0.98]"
                 )}
               >
                 {t(key)}
@@ -248,8 +251,9 @@ export function AppHeader() {
           {/* Connect: shared pill button on all breakpoints */}
           <Button
             type="button"
+            variant="default"
             size="sm"
-            className="bg-foreground text-background hover:bg-foreground/88 inline-flex rounded-full border-0 px-3.5 py-1.5 text-xs font-medium shadow-none transition-[opacity,transform] active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm dark:bg-white dark:text-neutral-950 dark:hover:bg-white/90"
+            className="inline-flex rounded-full border-0 px-3.5 py-1.5 text-xs font-medium shadow-md shadow-primary/25 transition-[opacity,transform,box-shadow] duration-300 ease-out hover:bg-primary/90 active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm dark:shadow-primary/20"
             onClick={() => toast.message(t("wallet.connectPlaceholder"))}
           >
             {t("wallet.connect")}

@@ -10,7 +10,7 @@ export function FactoryCreateCard() {
 
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
-      <div className="bg-[var(--dex-surface)] ring-border/60 rounded-[28px] p-1 shadow-lg ring-1">
+      <div className="bg-[var(--dex-surface)] ring-border/70 rounded-[28px] p-1 shadow-xl shadow-foreground/5 ring-1 transition-[box-shadow] duration-500 ease-out dark:shadow-black/40 hover:shadow-2xl hover:shadow-foreground/8 dark:hover:shadow-black/50">
         <div className="bg-[var(--dex-surface-elevated)] rounded-[24px] p-4 sm:p-6">
           <h1 className="text-xl font-semibold tracking-tight">
             {t("ercs20.title")}
