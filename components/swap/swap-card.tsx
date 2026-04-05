@@ -7,6 +7,7 @@ import { ArrowDownIcon, Settings2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useI18n } from "@/providers/i18n-provider";
@@ -14,10 +15,10 @@ import { useI18n } from "@/providers/i18n-provider";
 const DISCONNECTED = "--";
 const STOCK_PER_NATIVE = 0.00421;
 
-function UsdcIcon() {
+function TokenSvgIcon({ symbol }: { symbol: string }) {
   return (
     <Image
-      src="/tokens/usdc.svg"
+      src={getTokenIconSrc(symbol)}
       alt=""
       width={28}
       height={28}
@@ -25,17 +26,6 @@ function UsdcIcon() {
       priority
       unoptimized
     />
-  );
-}
-
-function Ercs20Icon() {
-  return (
-    <span
-      className="bg-card text-foreground flex size-7 shrink-0 items-center justify-center rounded-full border border-primary/15 text-[10px] font-semibold tracking-[0.08em] ring-1 ring-primary/10 dark:border-primary/25 dark:ring-primary/15"
-      aria-hidden
-    >
-      E
-    </span>
   );
 }
 
@@ -106,8 +96,16 @@ export function SwapCard() {
     return `1 ${stock} ≈ ${STOCK_PER_NATIVE} ${native}`;
   }, [flipped, isConnected, native, stock]);
 
-  const sellIcon = flipped ? <Ercs20Icon /> : <UsdcIcon />;
-  const buyIcon = flipped ? <UsdcIcon /> : <Ercs20Icon />;
+  const sellIcon = flipped ? (
+    <TokenSvgIcon symbol="OXD" />
+  ) : (
+    <TokenSvgIcon symbol="USDC" />
+  );
+  const buyIcon = flipped ? (
+    <TokenSvgIcon symbol="USDC" />
+  ) : (
+    <TokenSvgIcon symbol="OXD" />
+  );
   const sellToken = flipped ? stock : native;
   const buyToken = flipped ? native : stock;
 
@@ -116,8 +114,8 @@ export function SwapCard() {
       className="mx-auto w-full max-w-[480px] px-4 py-8 sm:py-12"
       aria-labelledby="swap-title"
     >
-      <div className="bg-[var(--dex-surface)] ring-border/60 rounded-[28px] p-1 shadow-lg ring-1">
-        <div className="bg-[var(--dex-surface-elevated)] rounded-[24px] p-3 sm:p-4">
+      <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
+        <div className="rounded-[24px] bg-card p-3 sm:p-4">
           <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
             <h1
               id="swap-title"
@@ -150,7 +148,7 @@ export function SwapCard() {
                 type="button"
                 variant="secondary"
                 size="icon"
-                className="border-background size-9 rounded-full border-[3px] bg-card shadow-md transition-[transform,box-shadow] duration-200 ease-out hover:scale-105 hover:shadow-lg active:scale-95 sm:size-10 sm:border-4"
+                className="size-9 rounded-full border-[3px] border-border/60 bg-card shadow-md transition-[transform,box-shadow] duration-200 ease-out hover:scale-105 hover:shadow-lg active:scale-95 sm:size-10 sm:border-4"
                 aria-label={t("swap.flip")}
                 aria-pressed={flipped}
                 onClick={() => setFlipped((v) => !v)}
@@ -211,9 +209,9 @@ export function SwapCard() {
             disabled
             className={cn(
               "mt-5 h-12 w-full rounded-2xl border-0 text-base font-semibold",
-              "bg-primary text-primary-foreground shadow-md shadow-primary/25 hover:enabled:bg-primary/90",
-              "dark:shadow-primary/20",
-              "disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+              "bg-primary text-primary-foreground shadow-md shadow-black/[0.08] hover:enabled:bg-primary/90",
+              "dark:shadow-black/30",
+              "disabled:pointer-events-none disabled:cursor-not-allowed disabled:!bg-primary disabled:!text-primary-foreground disabled:!opacity-100 disabled:brightness-[0.88] disabled:saturate-[0.92] disabled:shadow-none"
             )}
           >
             {t("swap.swapAction")}

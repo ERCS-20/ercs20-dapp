@@ -54,7 +54,7 @@ export const zhCN = {
     review: "预览",
     swapAction: "兑换",
     native: "USDC",
-    stock: "ERCS-20",
+    stock: "OXD",
   },
   ercs20: {
     title: "部署 ERCS-20",

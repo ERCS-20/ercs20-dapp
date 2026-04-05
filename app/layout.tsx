@@ -33,6 +33,9 @@ const notoSansTC = Noto_Sans_TC({
 export const metadata: Metadata = {
   title: "ERCS-20",
   description: "ERCS-20 dApp — swap and factory deployment",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

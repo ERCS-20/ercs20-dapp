@@ -54,7 +54,7 @@ export const en = {
     review: "Review",
     swapAction: "Swap",
     native: "USDC",
-    stock: "ERCS-20",
+    stock: "OXD",
   },
   ercs20: {
     title: "Deploy ERCS-20",

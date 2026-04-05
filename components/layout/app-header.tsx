@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { toast } from "sonner";
 import {
   ChevronDownIcon,
-  Layers,
   MoreHorizontal,
   MoonIcon,
   SunIcon,
@@ -39,6 +38,7 @@ import {
   locales,
   type Locale,
 } from "@/lib/i18n/messages";
+import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { useI18n } from "@/providers/i18n-provider";
 
 const navPaths = [
@@ -68,8 +68,16 @@ export function AppHeader() {
           aria-label={t("brand")}
           className="text-foreground group inline-flex shrink-0 items-center transition-opacity duration-300 hover:opacity-85"
         >
-          <span className="border-border/80 flex size-9 items-center justify-center rounded-full border bg-gradient-to-br from-background to-muted/50 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md">
-            <Layers className="text-foreground size-[1.05rem]" strokeWidth={1.65} aria-hidden />
+          <span className="border-border/80 bg-muted/25 dark:bg-muted/20 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md sm:h-12 sm:w-12">
+            <Image
+              src="/brand/orbix.svg"
+              alt=""
+              width={40}
+              height={40}
+              className="h-8 w-8 object-contain sm:h-10 sm:w-10"
+              priority
+              unoptimized
+            />
           </span>
         </Link>
 
@@ -248,16 +256,7 @@ export function AppHeader() {
             </SheetContent>
           </Sheet>
 
-          {/* Connect: shared pill button on all breakpoints */}
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="inline-flex rounded-full border-0 px-3.5 py-1.5 text-xs font-medium shadow-md shadow-primary/25 transition-[opacity,transform,box-shadow] duration-300 ease-out hover:bg-primary/90 active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm dark:shadow-primary/20"
-            onClick={() => toast.message(t("wallet.connectPlaceholder"))}
-          >
-            {t("wallet.connect")}
-          </Button>
+          <ConnectWalletButton />
         </div>
       </div>
 

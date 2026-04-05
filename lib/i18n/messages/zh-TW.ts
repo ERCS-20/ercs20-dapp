@@ -54,7 +54,7 @@ export const zhTW = {
     review: "預覽",
     swapAction: "兌換",
     native: "USDC",
-    stock: "ERCS-20",
+    stock: "OXD",
   },
   ercs20: {
     title: "部署 ERCS-20",

@@ -1,9 +1,8 @@
 "use client";
 
-/** Placeholder until Wagmi / RainbowKit (or similar) is wired up. */
+import { useAccount } from "wagmi";
+
 export function useWallet() {
-  return {
-    address: undefined as `0x${string}` | undefined,
-    isConnected: false,
-  };
+  const { address, isConnected } = useAccount();
+  return { address, isConnected };
 }
