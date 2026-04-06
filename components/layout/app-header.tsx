@@ -6,8 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronDownIcon,
-  MoreHorizontal,
   MoonIcon,
+  Settings2Icon,
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -75,6 +75,7 @@ export function AppHeader() {
               width={40}
               height={40}
               className="h-8 w-8 object-contain sm:h-10 sm:w-10"
+              style={{ width: "auto", height: "auto" }}
               priority
               unoptimized
             />
@@ -159,7 +160,7 @@ export function AppHeader() {
             </Button>
           </div>
 
-          {/* Mobile: three-dots trigger for bottom sheet (theme + language) */}
+          {/* Mobile: settings icon opens bottom sheet (theme + language) */}
           <Sheet open={mobilePrefsOpen} onOpenChange={setMobilePrefsOpen}>
             <SheetTrigger asChild>
               <Button
@@ -167,10 +168,10 @@ export function AppHeader() {
                 variant="ghost"
                 size="icon-sm"
                 className="inline-flex shrink-0 sm:hidden"
-                aria-label={t("common.theme")}
+                aria-label={t("common.settings")}
                 aria-haspopup="dialog"
               >
-                <MoreHorizontal className="size-5" aria-hidden />
+                <Settings2Icon className="size-5" strokeWidth={1.5} aria-hidden />
               </Button>
             </SheetTrigger>
 

@@ -22,7 +22,7 @@ function TokenSvgIcon({ symbol }: { symbol: string }) {
       alt=""
       width={28}
       height={28}
-      className="size-7 shrink-0 rounded-full ring-1 ring-black/10 transition-transform duration-300 ease-out group-hover:scale-105 dark:ring-white/14"
+      className="size-7 shrink-0 rounded-full ring-1 ring-border/60 transition-transform duration-300 ease-out group-hover:scale-105"
       priority
       unoptimized
     />
@@ -143,12 +143,12 @@ export function SwapCard() {
               amountPlaceholder={amountPh}
               tokenIcon={sellIcon}
             />
-            <div className="relative z-10 flex justify-center -my-3 sm:-my-4">
+            <div className="relative z-10 flex justify-center -my-4 sm:-my-4.5">
               <Button
                 type="button"
                 variant="secondary"
                 size="icon"
-                className="size-9 rounded-full border-[3px] border-border/60 bg-card shadow-md transition-[transform,box-shadow] duration-200 ease-out hover:scale-105 hover:shadow-lg active:scale-95 sm:size-10 sm:border-4"
+                className="size-9 shrink-0 rounded-xl border-[3px] border-border/60 bg-card shadow-md transition-[transform,box-shadow] duration-200 ease-out hover:scale-105 hover:shadow-lg active:scale-95 sm:size-10 sm:border-4"
                 aria-label={t("swap.flip")}
                 aria-pressed={flipped}
                 onClick={() => setFlipped((v) => !v)}
@@ -209,8 +209,7 @@ export function SwapCard() {
             disabled
             className={cn(
               "mt-5 h-12 w-full rounded-2xl border-0 text-base font-semibold",
-              "bg-primary text-primary-foreground shadow-md shadow-black/[0.08] hover:enabled:bg-primary/90",
-              "dark:shadow-black/30",
+              "bg-primary text-primary-foreground shadow-md hover:enabled:bg-primary/90",
               "disabled:pointer-events-none disabled:cursor-not-allowed disabled:!bg-primary disabled:!text-primary-foreground disabled:!opacity-100 disabled:brightness-[0.88] disabled:saturate-[0.92] disabled:shadow-none"
             )}
           >
