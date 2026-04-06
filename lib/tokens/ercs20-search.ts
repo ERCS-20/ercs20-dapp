@@ -115,3 +115,18 @@ export function listBrowseableErcs20Tokens(): Ercs20TokenMeta[] {
   for (const t of getCachedErcs20Tokens()) m.set(t.address.toLowerCase(), t);
   return [...m.values()];
 }
+
+/** Match `NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN` etc. to browse list / cache for UI label before RPC. */
+export function findErcs20ListMetaByAddress(
+  address: string | undefined
+): Ercs20TokenMeta | undefined {
+  if (!address?.startsWith("0x")) return undefined;
+  const key = address.toLowerCase();
+  for (const t of getDefaultListTokens()) {
+    if (t.address.toLowerCase() === key) return t;
+  }
+  for (const t of getCachedErcs20Tokens()) {
+    if (t.address.toLowerCase() === key) return t;
+  }
+  return undefined;
+}

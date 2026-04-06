@@ -1,4 +1,5 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { defineChain } from "viem";
 import { http } from "wagmi";
 import { hardhat, mainnet, sepolia } from "wagmi/chains";
 
@@ -14,14 +15,28 @@ const mainnetRpc = getRpcUrl(CHAIN_IDS.mainnet);
 const sepoliaRpc = getRpcUrl(CHAIN_IDS.sepolia);
 const hardhatRpc = getRpcUrl(CHAIN_IDS.hardhat);
 
+/**
+ * `wallet_switchEthereumChain` / `wallet_addEthereumChain` use `chain.rpcUrls`.
+ * Stock `hardhat` from viem is always `http://127.0.0.1:8545`, ignoring `transports`.
+ */
+const hardhatChain = defineChain({
+  ...hardhat,
+  rpcUrls: {
+    ...hardhat.rpcUrls,
+    default: {
+      http: hardhatRpc ? [hardhatRpc] : [...hardhat.rpcUrls.default.http],
+    },
+  },
+});
+
 export const wagmiConfig = getDefaultConfig({
   appName: "ERCS-20",
   projectId,
-  chains: [mainnet, sepolia, hardhat],
+  chains: [mainnet, sepolia, hardhatChain],
   ssr: true,
   transports: {
     [mainnet.id]: http(mainnetRpc ? mainnetRpc : undefined),
     [sepolia.id]: http(sepoliaRpc ? sepoliaRpc : undefined),
-    [hardhat.id]: http(hardhatRpc ? hardhatRpc : undefined),
+    [hardhatChain.id]: http(hardhatRpc ? hardhatRpc : undefined),
   },
 });

@@ -3,18 +3,19 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   DEFAULT_DEADLINE_MINUTES,
   DEFAULT_SLIPPAGE_BPS,
 } from "@/hooks/use-swap-settings";
+import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
 function SwapSettingsDraft({
@@ -34,9 +35,9 @@ function SwapSettingsDraft({
 
   return (
     <>
-      <SheetHeader className="mb-4 p-0 text-left">
-        <SheetTitle className="text-lg">{t("swap.settings")}</SheetTitle>
-      </SheetHeader>
+      <DialogHeader className="mb-4 p-0 text-left">
+        <DialogTitle className="text-lg">{t("swap.settings")}</DialogTitle>
+      </DialogHeader>
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="swap-slippage-bps">{t("swap.slippage")}</Label>
@@ -64,7 +65,7 @@ function SwapSettingsDraft({
         </div>
         <Button
           type="button"
-          className="w-full"
+          className="h-12 w-full rounded-2xl"
           onClick={() => {
             let nextBps = Number.parseInt(bps, 10);
             if (!Number.isFinite(nextBps)) nextBps = DEFAULT_SLIPPAGE_BPS;
@@ -101,10 +102,17 @@ export function SwapSettingsSheet({
   onSave,
 }: Props) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="border-t px-4 pb-6 pt-3 sm:max-w-none"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+        }}
+        className={cn(
+          "px-4 pb-6 pt-3 sm:max-w-none",
+          "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[82vh] max-md:max-w-full max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-3xl max-md:border-x-0 max-md:border-t max-md:border-b-0",
+          "max-md:data-[state=open]:slide-in-from-bottom-6 max-md:data-[state=closed]:slide-out-to-bottom-6",
+          "md:max-w-md"
+        )}
         showCloseButton
       >
         <SwapSettingsDraft
@@ -114,7 +122,7 @@ export function SwapSettingsSheet({
           onSave={onSave}
           onClose={() => onOpenChange(false)}
         />
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

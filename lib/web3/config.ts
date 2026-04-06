@@ -1,15 +1,16 @@
 import type { SupportedChainId } from "./chains";
 
-const env = (key: string) => process.env[key]?.trim() || undefined;
+/**
+ * Read each `NEXT_PUBLIC_*` directly so Next/Turbopack can inline values in the client bundle.
+ * `process.env[variable]` is often **not** inlined, so Hardhat RPC falls back to `127.0.0.1` in the wallet.
+ */
+const RPC_BY_CHAIN: Record<SupportedChainId, string | undefined> = {
+  1: process.env.NEXT_PUBLIC_RPC_MAINNET?.trim() || undefined,
+  11155111: process.env.NEXT_PUBLIC_RPC_SEPOLIA?.trim() || undefined,
+  31337:
+    process.env.NEXT_PUBLIC_RPC_HARDHAT?.trim()
+};
 
-const HARDHAT_DEFAULT_RPC = "http://127.0.0.1:8545";
-
-/** RPC URLs keyed by chain; set in `.env.local` with `NEXT_PUBLIC_` for client use. */
 export function getRpcUrl(chainId: SupportedChainId): string | undefined {
-  const map: Record<SupportedChainId, string | undefined> = {
-    1: env("NEXT_PUBLIC_RPC_MAINNET"),
-    11155111: env("NEXT_PUBLIC_RPC_SEPOLIA"),
-    31337: env("NEXT_PUBLIC_RPC_HARDHAT") ?? HARDHAT_DEFAULT_RPC,
-  };
-  return map[chainId];
+  return RPC_BY_CHAIN[chainId];
 }

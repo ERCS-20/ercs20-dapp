@@ -19,6 +19,7 @@ import { Ercs20TokenSelectSheet } from "@/components/swap/ercs20-token-select-sh
 import { SwapSettingsSheet } from "@/components/swap/swap-settings-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ercs20TokenAbi } from "@/lib/contracts/ercs20-abi";
 import {
   getDefaultErcs20TokenAddress,
@@ -28,14 +29,21 @@ import {
 } from "@/lib/config/swap-target";
 import { minOutAfterSlippage, swapDeadlineTimestamp } from "@/lib/swap/min-out";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
+import { findErcs20ListMetaByAddress } from "@/lib/tokens/ercs20-search";
 import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
 import { cn } from "@/lib/utils";
 import { useSwapSettings } from "@/hooks/use-swap-settings";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@/hooks/use-wallet";
 import { useI18n } from "@/providers/i18n-provider";
 
 const DISCONNECTED = "--";
 const NATIVE_DECIMALS = 18;
+
+function trimDecimalInput(s: string): string {
+  if (!s.includes(".")) return s;
+  return s.replace(/\.?0+$/, "").replace(/\.$/, "") || "0";
+}
 
 function TokenIcon({ symbol }: { symbol: string }) {
   const s = symbol.trim() || "TOKEN";
@@ -60,6 +68,8 @@ function AmountRow({
   amountReadOnly,
   amountPlaceholder,
   tokenButton,
+  footer,
+  className,
 }: {
   label: string;
   balanceLabel: string;
@@ -68,10 +78,17 @@ function AmountRow({
   amountReadOnly?: boolean;
   amountPlaceholder: string;
   tokenButton: ReactNode;
+  footer?: ReactNode;
+  className?: string;
 }) {
   const { t } = useI18n();
   return (
-    <div className="bg-muted/50 border-border/60 space-y-1.5 rounded-2xl border p-2.5 sm:p-3">
+    <div
+      className={cn(
+        "bg-muted/50 border-border/60 space-y-1.5 rounded-2xl border p-3.5 sm:p-4",
+        className
+      )}
+    >
       <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">
         <span>{label}</span>
         <span>
@@ -90,11 +107,12 @@ function AmountRow({
               : undefined
           }
           placeholder={amountPlaceholder}
-          className="text-foreground placeholder:text-muted-foreground h-auto min-w-0 flex-1 border-0 bg-transparent px-0 text-2xl font-semibold tracking-tight shadow-none ring-0 focus-visible:ring-0 sm:text-3xl"
+          className="text-foreground placeholder:text-muted-foreground h-auto min-w-0 flex-1 border-0 bg-transparent px-0 text-2xl font-semibold tracking-tight shadow-none ring-0 focus-visible:border-transparent focus-visible:bg-transparent focus-visible:ring-0 dark:bg-transparent dark:focus-visible:bg-transparent sm:text-3xl"
           aria-label={label}
         />
         {tokenButton}
       </div>
+      {footer ? <div className="mt-2">{footer}</div> : null}
     </div>
   );
 }
@@ -111,10 +129,14 @@ export function SwapCard() {
 
   const [buyMode, setBuyMode] = useState(true);
   const [amountIn, setAmountIn] = useState("");
+  const [payPreset, setPayPreset] = useState("");
   const [token, setToken] = useState<`0x${string}` | undefined>(() =>
     getDefaultErcs20TokenAddress()
   );
-  const [pickedMeta, setPickedMeta] = useState<Ercs20TokenMeta | null>(null);
+  const [pickedMeta, setPickedMeta] = useState<Ercs20TokenMeta | null>(() => {
+    const addr = getDefaultErcs20TokenAddress();
+    return addr ? findErcs20ListMetaByAddress(addr) ?? null : null;
+  });
   const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsMountKey, setSettingsMountKey] = useState(0);
@@ -166,23 +188,27 @@ export function SwapCard() {
     }
   }, [amountIn, inputDecimals]);
 
-  const { data: nativeBal } = useBalance({
+  const balanceQueryEnabled =
+    !!address && isConnected && targetChainId != null;
+
+  /** Native: `eth_getBalance` on the swap target chain (not the same code path as ERC-20). */
+  const { data: nativeBal, refetch: refetchNativeBal } = useBalance({
     address,
     chainId: targetChainId ?? undefined,
     query: {
-      enabled: !!address && isConnected && targetChainId != null,
+      enabled: balanceQueryEnabled,
     },
   });
 
-  const { data: tokenBal } = useReadContract({
-    address: token,
-    abi: ercs20TokenAbi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
+  const {
+    data: tokenBalRaw,
+    isError: tokenBalReadError,
+    refetch: refetchTokenBal,
+  } = useTokenBalance({
+    token,
+    address,
     chainId: targetChainId ?? undefined,
-    query: {
-      enabled: !!token && !!address && isConnected && targetChainId != null,
-    },
+    query: { enabled: balanceQueryEnabled && !!token },
   });
 
   const nativeBalLabel = useMemo(() => {
@@ -191,9 +217,49 @@ export function SwapCard() {
   }, [isConnected, nativeBal]);
 
   const tokenBalLabel = useMemo(() => {
-    if (!isConnected || tokenBal == null) return DISCONNECTED;
-    return formatUnits(tokenBal as bigint, tokenDecimals);
-  }, [isConnected, tokenBal, tokenDecimals]);
+    if (!isConnected || !address || !token) return DISCONNECTED;
+    if (tokenBalReadError) return "—";
+    if (typeof tokenBalRaw === "bigint")
+      return formatUnits(tokenBalRaw, tokenDecimals);
+    return DISCONNECTED;
+  }, [
+    isConnected,
+    address,
+    token,
+    tokenBalReadError,
+    tokenBalRaw,
+    tokenDecimals,
+  ]);
+
+  const payBalanceWei = useMemo(() => {
+    if (buyMode) return nativeBal?.value;
+    if (typeof tokenBalRaw === "bigint") return tokenBalRaw;
+    return undefined;
+  }, [buyMode, nativeBal?.value, tokenBalRaw]);
+
+  const canUsePayPresets =
+    isConnected &&
+    !wrongNetwork &&
+    payBalanceWei != null &&
+    payBalanceWei > BigInt(0);
+
+  const applyPayPercent = useCallback(
+    (pct: number) => {
+      if (pct < 1 || pct > 100) return;
+      const wei = buyMode
+        ? nativeBal?.value
+        : typeof tokenBalRaw === "bigint"
+          ? tokenBalRaw
+          : undefined;
+      if (wei == null) return;
+      const dec = buyMode
+        ? (nativeBal?.decimals ?? NATIVE_DECIMALS)
+        : tokenDecimals;
+      const part = (wei * BigInt(pct)) / BigInt(100);
+      setAmountIn(trimDecimalInput(formatUnits(part, dec)));
+    },
+    [buyMode, nativeBal, tokenBalRaw, tokenDecimals]
+  );
 
   const quoteEnabled =
     !!token &&
@@ -222,31 +288,9 @@ export function SwapCard() {
   const outputAmountStr =
     expectedOut != null ? formatUnits(expectedOut, outputDecimals) : "";
 
-  const { data: reserves } = useReadContract({
-    address: token,
-    abi: ercs20TokenAbi,
-    functionName: "getReserves",
-    chainId: targetChainId ?? undefined,
-    query: { enabled: !!token && targetChainId != null },
-  });
-
-  const reserveLabels = useMemo(() => {
-    if (!reserves || !Array.isArray(reserves)) {
-      return { tok: DISCONNECTED, quote: DISCONNECTED };
-    }
-    const [rTok, rQuote] = reserves as [bigint, bigint];
-    return {
-      tok: formatUnits(rTok, tokenDecimals),
-      quote: formatUnits(rQuote, NATIVE_DECIMALS),
-    };
-  }, [reserves, tokenDecimals]);
-
-  const feePctApprox = useMemo(() => {
-    if (expectedOut == null || feeOut == null) return null;
-    const sum = expectedOut + feeOut;
-    if (sum === BigInt(0)) return null;
-    return (Number(feeOut) / Number(sum)) * 100;
-  }, [expectedOut, feeOut]);
+  /** `getAmountOut` second return: fee in output-asset units (same decimals as Receive). */
+  const protocolFeeAmountStr =
+    feeOut != null ? formatUnits(feeOut, outputDecimals) : null;
 
   const {
     writeContract,
@@ -272,15 +316,18 @@ export function SwapCard() {
     if (!isSuccess) return;
     toast.success(t("swap.swapSuccess"));
     setAmountIn("");
+    setPayPreset("");
+    void Promise.all([refetchNativeBal(), refetchTokenBal()]);
     resetWrite();
-  }, [isSuccess, resetWrite, t]);
+  }, [isSuccess, resetWrite, t, refetchNativeBal, refetchTokenBal]);
 
   const insufficient =
     parsedAmountIn != null &&
     parsedAmountIn > BigInt(0) &&
     (buyMode
       ? nativeBal != null && parsedAmountIn > nativeBal.value
-      : tokenBal != null && parsedAmountIn > (tokenBal as bigint));
+      : typeof tokenBalRaw === "bigint" &&
+          parsedAmountIn > tokenBalRaw);
 
   const canSubmit =
     configured &&
@@ -405,7 +452,7 @@ export function SwapCard() {
       />
 
       <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
-        <div className="rounded-[24px] bg-card p-3 sm:p-4">
+        <div className="rounded-[24px] bg-card p-5 sm:p-6">
           <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
             <h1
               id="swap-title"
@@ -448,10 +495,12 @@ export function SwapCard() {
 
           <div className="relative flex flex-col gap-0">
             <AmountRow
+              className="pb-6 sm:pb-7"
               label={t("swap.pay")}
               balanceLabel={buyMode ? nativeBalLabel : tokenBalLabel}
               amount={amountIn}
               onAmountChange={(v) => {
+                setPayPreset("");
                 let x = v.replace(/[^\d.]/g, "");
                 const dot = x.indexOf(".");
                 if (dot !== -1) {
@@ -465,6 +514,37 @@ export function SwapCard() {
                 isConnected ? t("swap.enterAmount") : DISCONNECTED
               }
               tokenButton={buyMode ? nativeTokenButton : ercs20TokenButton}
+              footer={
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  size="sm"
+                  spacing={4}
+                  disabled={!canUsePayPresets}
+                  value={payPreset || undefined}
+                  onValueChange={(v) => {
+                    if (!v) {
+                      setPayPreset("");
+                      return;
+                    }
+                    setPayPreset(v);
+                    const pct = Number.parseInt(v, 10);
+                    if (Number.isFinite(pct)) applyPayPercent(pct);
+                  }}
+                  className="flex w-full gap-1"
+                >
+                  {(["25", "50", "75", "100"] as const).map((p) => (
+                    <ToggleGroupItem
+                      key={p}
+                      value={p}
+                      className="min-w-0 flex-1 px-1 text-xs font-medium"
+                      aria-label={`${p}%`}
+                    >
+                      {p}%
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              }
             />
             <div className="relative z-10 flex justify-center -my-4 sm:-my-4.5">
               <Button
@@ -477,6 +557,7 @@ export function SwapCard() {
                 onClick={() => {
                   setBuyMode((v) => !v);
                   setAmountIn("");
+                  setPayPreset("");
                 }}
               >
                 <ArrowDownIcon
@@ -489,6 +570,7 @@ export function SwapCard() {
               </Button>
             </div>
             <AmountRow
+              className="pt-6 sm:pt-7"
               label={t("swap.receive")}
               balanceLabel={buyMode ? tokenBalLabel : nativeBalLabel}
               amount={outputAmountStr}
@@ -502,28 +584,10 @@ export function SwapCard() {
 
           <dl className="text-muted-foreground mt-3 space-y-2 px-1 text-xs sm:mt-4 sm:text-sm">
             <div className="flex justify-between gap-4">
-              <dt>{t("swap.priceImpact")}</dt>
-              <dd className="text-right font-medium tabular-nums">
-                {token && quoteEnabled ? "—" : DISCONNECTED}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt>{t("swap.reserveToken")}</dt>
-              <dd className="text-foreground text-right font-medium tabular-nums">
-                {token ? reserveLabels.tok : DISCONNECTED}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt>{t("swap.reserveQuote")}</dt>
-              <dd className="text-foreground text-right font-medium tabular-nums">
-                {token ? reserveLabels.quote : DISCONNECTED}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
               <dt>{t("swap.protocolFee")}</dt>
               <dd className="text-right font-medium tabular-nums">
-                {feePctApprox != null
-                  ? `~${feePctApprox.toFixed(2)}%`
+                {token && quoteEnabled && protocolFeeAmountStr != null
+                  ? `${protocolFeeAmountStr} ${buyMode ? displaySymbol : t("swap.native")}`
                   : DISCONNECTED}
               </dd>
             </div>

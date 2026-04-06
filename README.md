@@ -19,7 +19,7 @@ ercs20-dapp/
 ├── lib/
 │   ├── utils.ts            # Shared helpers (e.g. cn)
 │   ├── web3/               # Chain IDs, RPC config
-│   └── contracts/          # ABIs, token addresses per chain
+│   └── contracts/          # Contract ABIs
 ├── providers/              # Top-level React providers (e.g. Web3)
 ├── public/                 # Static assets
 └── types/                  # Shared TypeScript types
@@ -27,7 +27,7 @@ ercs20-dapp/
 
 - **`app/`** — URL-facing files only; keep heavy UI in `components/`.
 - **`components/ui/`** — Design-system components; keep feature UI one level up or in co-located modules.
-- **`lib/web3` & `lib/contracts`** — RPC URLs, chain constants, ABIs, and deployed addresses (use `NEXT_PUBLIC_*` env vars for client-visible config).
+- **`lib/web3` & `lib/contracts`** — RPC URLs, chain constants, and ABIs (deployed factory / default token use `NEXT_PUBLIC_*` env and token list JSON).
 - **`hooks/` & `providers/`** — Client wallet/chain state and context; `Web3Provider` wraps the tree in `app/layout.tsx`.
 
 ## Getting Started
