@@ -1,24 +1,47 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ArrowDownIcon, Settings2Icon } from "lucide-react";
+import { formatUnits, parseUnits } from "viem";
 import { toast } from "sonner";
+import {
+  useBalance,
+  useChainId,
+  useReadContract,
+  useSwitchChain,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 
+import { Ercs20TokenSelectSheet } from "@/components/swap/ercs20-token-select-sheet";
+import { SwapSettingsSheet } from "@/components/swap/swap-settings-sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ercs20TokenAbi } from "@/lib/contracts/ercs20-abi";
+import {
+  getDefaultErcs20TokenAddress,
+  getErcs20FactoryAddress,
+  getSwapTargetChainId,
+  isSwapEnvConfigured,
+} from "@/lib/config/swap-target";
+import { minOutAfterSlippage, swapDeadlineTimestamp } from "@/lib/swap/min-out";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
+import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
 import { cn } from "@/lib/utils";
+import { useSwapSettings } from "@/hooks/use-swap-settings";
 import { useWallet } from "@/hooks/use-wallet";
 import { useI18n } from "@/providers/i18n-provider";
 
 const DISCONNECTED = "--";
-const STOCK_PER_NATIVE = 0.00421;
+const NATIVE_DECIMALS = 18;
 
-function TokenSvgIcon({ symbol }: { symbol: string }) {
+function TokenIcon({ symbol }: { symbol: string }) {
+  const s = symbol.trim() || "TOKEN";
   return (
     <Image
-      src={getTokenIconSrc(symbol)}
+      src={getTokenIconSrc(s)}
       alt=""
       width={28}
       height={28}
@@ -29,18 +52,22 @@ function TokenSvgIcon({ symbol }: { symbol: string }) {
   );
 }
 
-function TokenRow({
+function AmountRow({
   label,
-  token,
   balanceLabel,
+  amount,
+  onAmountChange,
+  amountReadOnly,
   amountPlaceholder,
-  tokenIcon,
+  tokenButton,
 }: {
   label: string;
-  token: string;
   balanceLabel: string;
+  amount: string;
+  onAmountChange?: (v: string) => void;
+  amountReadOnly?: boolean;
   amountPlaceholder: string;
-  tokenIcon: ReactNode;
+  tokenButton: ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -52,21 +79,21 @@ function TokenRow({
         </span>
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
-        <input
-          readOnly
-          suppressHydrationWarning
-          className="text-foreground placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-tight outline-none sm:text-3xl"
+        <Input
+          type="text"
+          inputMode="decimal"
+          readOnly={amountReadOnly}
+          value={amount}
+          onChange={
+            onAmountChange
+              ? (e) => onAmountChange(e.target.value.replace(/[^\d.]/g, ""))
+              : undefined
+          }
           placeholder={amountPlaceholder}
+          className="text-foreground placeholder:text-muted-foreground h-auto min-w-0 flex-1 border-0 bg-transparent px-0 text-2xl font-semibold tracking-tight shadow-none ring-0 focus-visible:ring-0 sm:text-3xl"
           aria-label={label}
         />
-        <button
-          type="button"
-          className="group bg-card text-foreground ring-border inline-flex shrink-0 items-center gap-2 rounded-full py-1.5 pr-2.5 pl-2 text-sm font-semibold ring-1 transition hover:bg-muted/80 sm:py-2 sm:pr-3 sm:pl-2.5"
-          aria-label={`${t("swap.selectToken")}: ${token}`}
-        >
-          {tokenIcon}
-          <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{token}</span>
-        </button>
+        {tokenButton}
       </div>
     </div>
   );
@@ -74,46 +101,309 @@ function TokenRow({
 
 export function SwapCard() {
   const { t } = useI18n();
-  const { isConnected } = useWallet();
-  const [flipped, setFlipped] = useState(false);
+  const { address, isConnected } = useWallet();
+  const chainId = useChainId();
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
 
-  const balanceLabel = isConnected ? "—" : DISCONNECTED;
-  const amountPh = isConnected ? t("swap.enterAmount") : DISCONNECTED;
+  const targetChainId = getSwapTargetChainId();
+  const factory = getErcs20FactoryAddress();
+  const configured = isSwapEnvConfigured() && factory != null && targetChainId != null;
 
-  const native = t("swap.native");
-  const stock = t("swap.stock");
+  const [buyMode, setBuyMode] = useState(true);
+  const [amountIn, setAmountIn] = useState("");
+  const [token, setToken] = useState<`0x${string}` | undefined>(() =>
+    getDefaultErcs20TokenAddress()
+  );
+  const [pickedMeta, setPickedMeta] = useState<Ercs20TokenMeta | null>(null);
+  const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsMountKey, setSettingsMountKey] = useState(0);
 
-  const rateLabel = useMemo(() => {
-    if (!isConnected) return DISCONNECTED;
-    if (flipped) {
-      const per = 1 / STOCK_PER_NATIVE;
-      const rounded =
-        per >= 100
-          ? per.toLocaleString(undefined, { maximumFractionDigits: 0 })
-          : per.toLocaleString(undefined, { maximumFractionDigits: 2 });
-      return `1 ${native} ≈ ${rounded} ${stock}`;
+  const {
+    slippageBps,
+    setSlippageBps,
+    deadlineMinutes,
+    setDeadlineMinutes,
+    persist,
+  } = useSwapSettings();
+
+  const wrongNetwork =
+    configured && isConnected && targetChainId != null && chainId !== targetChainId;
+
+  const { data: decimalsData } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "decimals",
+    chainId: targetChainId ?? undefined,
+    query: {
+      enabled: !!token && targetChainId != null,
+    },
+  });
+
+  const tokenDecimals =
+    typeof decimalsData === "number" && decimalsData >= 0 ? decimalsData : 18;
+
+  const { data: symbolOnChain } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "symbol",
+    chainId: targetChainId ?? undefined,
+    query: { enabled: !!token && targetChainId != null },
+  });
+
+  const displaySymbol =
+    pickedMeta?.symbol || (symbolOnChain ? String(symbolOnChain) : t("swap.stock"));
+
+  const inputDecimals = buyMode ? NATIVE_DECIMALS : tokenDecimals;
+
+  const parsedAmountIn = useMemo(() => {
+    const s = amountIn.trim();
+    if (!s) return BigInt(0);
+    try {
+      return parseUnits(s, inputDecimals);
+    } catch {
+      return undefined;
     }
-    return `1 ${stock} ≈ ${STOCK_PER_NATIVE} ${native}`;
-  }, [flipped, isConnected, native, stock]);
+  }, [amountIn, inputDecimals]);
 
-  const sellIcon = flipped ? (
-    <TokenSvgIcon symbol="OXD" />
-  ) : (
-    <TokenSvgIcon symbol="USDC" />
+  const { data: nativeBal } = useBalance({
+    address,
+    chainId: targetChainId ?? undefined,
+    query: {
+      enabled: !!address && isConnected && targetChainId != null,
+    },
+  });
+
+  const { data: tokenBal } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    chainId: targetChainId ?? undefined,
+    query: {
+      enabled: !!token && !!address && isConnected && targetChainId != null,
+    },
+  });
+
+  const nativeBalLabel = useMemo(() => {
+    if (!isConnected || !nativeBal) return DISCONNECTED;
+    return formatUnits(nativeBal.value, nativeBal.decimals);
+  }, [isConnected, nativeBal]);
+
+  const tokenBalLabel = useMemo(() => {
+    if (!isConnected || tokenBal == null) return DISCONNECTED;
+    return formatUnits(tokenBal as bigint, tokenDecimals);
+  }, [isConnected, tokenBal, tokenDecimals]);
+
+  const quoteEnabled =
+    !!token &&
+    targetChainId != null &&
+    parsedAmountIn != null &&
+    parsedAmountIn > BigInt(0);
+
+  const { data: quoteOut } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "getAmountOut",
+    args:
+      quoteEnabled && parsedAmountIn != null
+        ? [parsedAmountIn, buyMode]
+        : undefined,
+    chainId: targetChainId ?? undefined,
+    query: { enabled: quoteEnabled },
+  });
+
+  const expectedOut =
+    quoteOut && Array.isArray(quoteOut) ? (quoteOut[0] as bigint) : undefined;
+  const feeOut =
+    quoteOut && Array.isArray(quoteOut) ? (quoteOut[1] as bigint) : undefined;
+
+  const outputDecimals = buyMode ? tokenDecimals : NATIVE_DECIMALS;
+  const outputAmountStr =
+    expectedOut != null ? formatUnits(expectedOut, outputDecimals) : "";
+
+  const { data: reserves } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "getReserves",
+    chainId: targetChainId ?? undefined,
+    query: { enabled: !!token && targetChainId != null },
+  });
+
+  const reserveLabels = useMemo(() => {
+    if (!reserves || !Array.isArray(reserves)) {
+      return { tok: DISCONNECTED, quote: DISCONNECTED };
+    }
+    const [rTok, rQuote] = reserves as [bigint, bigint];
+    return {
+      tok: formatUnits(rTok, tokenDecimals),
+      quote: formatUnits(rQuote, NATIVE_DECIMALS),
+    };
+  }, [reserves, tokenDecimals]);
+
+  const feePctApprox = useMemo(() => {
+    if (expectedOut == null || feeOut == null) return null;
+    const sum = expectedOut + feeOut;
+    if (sum === BigInt(0)) return null;
+    return (Number(feeOut) / Number(sum)) * 100;
+  }, [expectedOut, feeOut]);
+
+  const {
+    writeContract,
+    data: txHash,
+    isPending: isWritePending,
+    error: writeError,
+    reset: resetWrite,
+  } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+    chainId: targetChainId ?? undefined,
+  });
+
+  useEffect(() => {
+    if (!writeError) return;
+    toast.error(t("swap.swapFailed"), {
+      description: writeError.message.slice(0, 200),
+    });
+  }, [writeError, t]);
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    toast.success(t("swap.swapSuccess"));
+    setAmountIn("");
+    resetWrite();
+  }, [isSuccess, resetWrite, t]);
+
+  const insufficient =
+    parsedAmountIn != null &&
+    parsedAmountIn > BigInt(0) &&
+    (buyMode
+      ? nativeBal != null && parsedAmountIn > nativeBal.value
+      : tokenBal != null && parsedAmountIn > (tokenBal as bigint));
+
+  const canSubmit =
+    configured &&
+    isConnected &&
+    !wrongNetwork &&
+    !!token &&
+    quoteEnabled &&
+    expectedOut != null &&
+    !insufficient &&
+    parsedAmountIn !== undefined;
+
+  const handleSwap = useCallback(() => {
+    if (
+      !token ||
+      targetChainId == null ||
+      parsedAmountIn == null ||
+      parsedAmountIn === BigInt(0) ||
+      expectedOut == null
+    ) {
+      return;
+    }
+    const deadline = swapDeadlineTimestamp(deadlineMinutes);
+    if (buyMode) {
+      const minTok = minOutAfterSlippage(expectedOut, slippageBps);
+      writeContract({
+        address: token,
+        abi: ercs20TokenAbi,
+        functionName: "buy",
+        args: [minTok, deadline],
+        value: parsedAmountIn,
+        chainId: targetChainId,
+      });
+    } else {
+      const minQuote = minOutAfterSlippage(expectedOut, slippageBps);
+      writeContract({
+        address: token,
+        abi: ercs20TokenAbi,
+        functionName: "sell",
+        args: [parsedAmountIn, minQuote, deadline],
+        chainId: targetChainId,
+      });
+    }
+  }, [
+    token,
+    targetChainId,
+    parsedAmountIn,
+    expectedOut,
+    buyMode,
+    slippageBps,
+    deadlineMinutes,
+    writeContract,
+  ]);
+
+  const nativeTokenButton = (
+    <button
+      type="button"
+      className="group bg-card text-foreground ring-border inline-flex shrink-0 cursor-default items-center gap-2 rounded-full py-1.5 pr-2.5 pl-2 text-sm font-semibold ring-1 sm:py-2 sm:pr-3 sm:pl-2.5"
+      aria-label={t("swap.native")}
+    >
+      <TokenIcon symbol="USDC" />
+      <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{t("swap.native")}</span>
+    </button>
   );
-  const buyIcon = flipped ? (
-    <TokenSvgIcon symbol="USDC" />
-  ) : (
-    <TokenSvgIcon symbol="OXD" />
+
+  const ercs20TokenButton = (
+    <button
+      type="button"
+      className="group bg-card text-foreground ring-border inline-flex shrink-0 items-center gap-2 rounded-full py-1.5 pr-2.5 pl-2 text-sm font-semibold ring-1 transition hover:bg-muted/80 sm:py-2 sm:pr-3 sm:pl-2.5"
+      aria-label={`${t("swap.selectToken")}: ${displaySymbol}`}
+      onClick={() => setTokenSheetOpen(true)}
+      disabled={!configured}
+    >
+      <TokenIcon symbol={displaySymbol} />
+      <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{displaySymbol}</span>
+    </button>
   );
-  const sellToken = flipped ? stock : native;
-  const buyToken = flipped ? native : stock;
+
+  if (!configured) {
+    return (
+      <section
+        className="mx-auto w-full max-w-[480px] px-4 py-8 sm:py-12"
+        aria-labelledby="swap-title"
+      >
+        <p className="text-muted-foreground text-center text-sm" id="swap-title">
+          {t("swap.envNotConfigured")}
+        </p>
+      </section>
+    );
+  }
+
+  const busy = isWritePending || isConfirming;
 
   return (
     <section
       className="mx-auto w-full max-w-[480px] px-4 py-8 sm:py-12"
       aria-labelledby="swap-title"
     >
+      {factory && targetChainId != null ? (
+        <Ercs20TokenSelectSheet
+          open={tokenSheetOpen}
+          onOpenChange={setTokenSheetOpen}
+          factory={factory}
+          chainId={targetChainId}
+          onSelect={(meta) => {
+            setToken(meta.address);
+            setPickedMeta(meta);
+          }}
+        />
+      ) : null}
+
+      <SwapSettingsSheet
+        mountKey={settingsMountKey}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        slippageBps={slippageBps}
+        deadlineMinutes={deadlineMinutes}
+        onSave={(bps, m) => {
+          setSlippageBps(bps);
+          setDeadlineMinutes(m);
+          persist();
+        }}
+      />
+
       <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
         <div className="rounded-[24px] bg-card p-3 sm:p-4">
           <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3">
@@ -129,19 +419,52 @@ export function SwapCard() {
               size="icon-sm"
               className="text-muted-foreground hover:text-foreground shrink-0 rounded-full"
               aria-label={t("swap.settings")}
-              onClick={() => toast.message(t("swap.settingsPlaceholder"))}
+              onClick={() => {
+                setSettingsMountKey((k) => k + 1);
+                setSettingsOpen(true);
+              }}
             >
               <Settings2Icon className="size-4" strokeWidth={1.5} />
             </Button>
           </div>
 
+          {wrongNetwork ? (
+            <div className="mb-3 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm">
+              <p className="text-muted-foreground mb-2">{t("swap.wrongNetwork")}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isSwitching}
+                onClick={() =>
+                  targetChainId != null &&
+                  void switchChainAsync?.({ chainId: targetChainId })
+                }
+              >
+                {t("swap.switchNetwork")}
+              </Button>
+            </div>
+          ) : null}
+
           <div className="relative flex flex-col gap-0">
-            <TokenRow
-              label={t("swap.sell")}
-              token={sellToken}
-              balanceLabel={balanceLabel}
-              amountPlaceholder={amountPh}
-              tokenIcon={sellIcon}
+            <AmountRow
+              label={t("swap.pay")}
+              balanceLabel={buyMode ? nativeBalLabel : tokenBalLabel}
+              amount={amountIn}
+              onAmountChange={(v) => {
+                let x = v.replace(/[^\d.]/g, "");
+                const dot = x.indexOf(".");
+                if (dot !== -1) {
+                  x =
+                    x.slice(0, dot + 1) +
+                    x.slice(dot + 1).replace(/\./g, "");
+                }
+                setAmountIn(x);
+              }}
+              amountPlaceholder={
+                isConnected ? t("swap.enterAmount") : DISCONNECTED
+              }
+              tokenButton={buyMode ? nativeTokenButton : ercs20TokenButton}
             />
             <div className="relative z-10 flex justify-center -my-4 sm:-my-4.5">
               <Button
@@ -150,70 +473,98 @@ export function SwapCard() {
                 size="icon"
                 className="size-9 shrink-0 rounded-xl border-[3px] border-border/60 bg-card shadow-md transition-[transform,box-shadow] duration-200 ease-out hover:scale-105 hover:shadow-lg active:scale-95 sm:size-10 sm:border-4"
                 aria-label={t("swap.flip")}
-                aria-pressed={flipped}
-                onClick={() => setFlipped((v) => !v)}
+                aria-pressed={!buyMode}
+                onClick={() => {
+                  setBuyMode((v) => !v);
+                  setAmountIn("");
+                }}
               >
                 <ArrowDownIcon
                   className={cn(
                     "size-4 transition-transform duration-300 ease-out",
-                    flipped ? "rotate-0" : "rotate-180"
+                    buyMode ? "rotate-180" : "rotate-0"
                   )}
                   strokeWidth={1.5}
                 />
               </Button>
             </div>
-            <TokenRow
-              label={t("swap.buy")}
-              token={buyToken}
-              balanceLabel={balanceLabel}
-              amountPlaceholder={amountPh}
-              tokenIcon={buyIcon}
+            <AmountRow
+              label={t("swap.receive")}
+              balanceLabel={buyMode ? tokenBalLabel : nativeBalLabel}
+              amount={outputAmountStr}
+              amountReadOnly
+              amountPlaceholder={
+                isConnected ? t("swap.outputEstimate") : DISCONNECTED
+              }
+              tokenButton={buyMode ? ercs20TokenButton : nativeTokenButton}
             />
           </div>
 
           <dl className="text-muted-foreground mt-3 space-y-2 px-1 text-xs sm:mt-4 sm:text-sm">
             <div className="flex justify-between gap-4">
-              <dt>{t("swap.rate")}</dt>
-              <dd className="text-foreground text-right font-medium tabular-nums">
-                {rateLabel}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
               <dt>{t("swap.priceImpact")}</dt>
               <dd className="text-right font-medium tabular-nums">
-                {isConnected ? "< 0.01%" : DISCONNECTED}
+                {token && quoteEnabled ? "—" : DISCONNECTED}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t("swap.reserveToken")}</dt>
-              <dd className="text-right font-medium tabular-nums">
-                {isConnected ? "100,000,000" : DISCONNECTED}
+              <dd className="text-foreground text-right font-medium tabular-nums">
+                {token ? reserveLabels.tok : DISCONNECTED}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t("swap.reserveQuote")}</dt>
+              <dd className="text-foreground text-right font-medium tabular-nums">
+                {token ? reserveLabels.quote : DISCONNECTED}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt>{t("swap.protocolFee")}</dt>
               <dd className="text-right font-medium tabular-nums">
-                {isConnected ? "4,200,000" : DISCONNECTED}
+                {feePctApprox != null
+                  ? `~${feePctApprox.toFixed(2)}%`
+                  : DISCONNECTED}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt>{t("swap.slippage")}</dt>
-              <dd className="text-right font-medium tabular-nums">
-                {isConnected ? "0.5%" : DISCONNECTED}
+              <dd className="text-foreground text-right font-medium tabular-nums">
+                {(slippageBps / 100).toFixed(2)}%
               </dd>
             </div>
           </dl>
 
           <Button
             type="button"
-            disabled
+            disabled={
+              !isConnected ||
+              wrongNetwork ||
+              busy ||
+              !canSubmit ||
+              insufficient ||
+              parsedAmountIn === undefined
+            }
             className={cn(
               "mt-5 h-12 w-full rounded-2xl border-0 text-base font-semibold",
               "bg-primary text-primary-foreground shadow-md hover:enabled:bg-primary/90",
               "disabled:pointer-events-none disabled:cursor-not-allowed disabled:!bg-primary disabled:!text-primary-foreground disabled:!opacity-100 disabled:brightness-[0.88] disabled:saturate-[0.92] disabled:shadow-none"
             )}
+            onClick={handleSwap}
           >
-            {t("swap.swapAction")}
+            {!isConnected
+              ? t("swap.disconnectedHint")
+              : insufficient
+                ? t("swap.insufficientBalance")
+                : busy
+                  ? isConfirming
+                    ? t("swap.confirming")
+                    : t("swap.confirmWallet")
+                  : !token
+                    ? t("swap.pickToken")
+                    : parsedAmountIn === undefined
+                      ? t("swap.invalidAmount")
+                      : t("swap.swapAction")}
           </Button>
         </div>
       </div>
