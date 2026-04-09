@@ -1,27 +1,16 @@
-import { hardhat, mainnet, sepolia } from "wagmi/chains";
-
 import { publicEnv } from "@/lib/config/public-env";
+import { getAppChainId, getChainById, isSupportedChainId } from "@/lib/web3/chains";
+import type { Chain } from "viem";
 
-const CHAINS_BY_ID: ReadonlyMap<number, (typeof mainnet) | (typeof sepolia) | (typeof hardhat)> =
-  new Map(
-    [mainnet, sepolia, hardhat].map((c) => [c.id, c])
-  );
-
-/** Target chain for ERCS-20 swap (from `NEXT_PUBLIC_CHAIN_ID`). */
+/** Target chain for ERCS-20 swap (`NEXT_PUBLIC_CHAIN_ID` must match a supported chain). */
 export function getSwapTargetChainId(): number | undefined {
-  const id = publicEnv.chainId;
-  if (id == null || !Number.isFinite(id) || id <= 0) return undefined;
-  return id;
+  return getAppChainId();
 }
 
-export function getSwapTargetChain():
-  | (typeof mainnet)
-  | (typeof sepolia)
-  | (typeof hardhat)
-  | undefined {
+export function getSwapTargetChain(): Chain | undefined {
   const id = getSwapTargetChainId();
   if (id == null) return undefined;
-  return CHAINS_BY_ID.get(id);
+  return getChainById(id);
 }
 
 export function getErcs20FactoryAddress(): `0x${string}` | undefined {
@@ -38,12 +27,9 @@ export function getDefaultErcs20TokenAddress(): `0x${string}` | undefined {
 
 export function isSwapTargetChainKnown(): boolean {
   const id = getSwapTargetChainId();
-  return id != null && CHAINS_BY_ID.has(id);
+  return id != null && isSupportedChainId(id);
 }
 
 export function isSwapEnvConfigured(): boolean {
-  return (
-    isSwapTargetChainKnown() &&
-    getErcs20FactoryAddress() != null
-  );
+  return isSwapTargetChainKnown() && getErcs20FactoryAddress() != null;
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/providers/i18n-provider";
 
 const pillClassName =
-  "inline-flex rounded-full border-0 px-3.5 py-1.5 text-xs font-medium shadow-md shadow-primary/25 transition-[opacity,transform,box-shadow] duration-300 ease-out hover:bg-primary/90 active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm dark:shadow-primary/20";
+  "inline-flex rounded-full border-0 px-3.5 py-1.5 text-xs font-medium shadow-md shadow-primary/25 transition-[opacity,transform,box-shadow] duration-300 ease-out active:scale-[0.98] sm:px-4 sm:py-2 sm:text-sm dark:shadow-primary/20";
 
 export function ConnectWalletButton() {
   const { t } = useI18n();

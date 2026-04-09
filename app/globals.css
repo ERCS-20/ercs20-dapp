@@ -94,8 +94,8 @@
   /** Dark theme brand (only pink; teal reserved for light) */
   --dex-accent: var(--brand-accent-alt);
   --dex-accent-foreground: #1a0812;
-  --dex-surface: oklch(0.17 0.035 350);
-  --dex-surface-elevated: oklch(0.2 0.04 350);
+  --dex-surface: oklch(0.22 0.03 350);
+  --dex-surface-elevated: oklch(0.28 0.035 350);
   --background: oklch(0.1 0.01 350);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.16 0.025 350);

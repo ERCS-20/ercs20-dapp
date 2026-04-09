@@ -20,6 +20,9 @@ export const zhTW = {
     connect: "連接錢包",
     connectPlaceholder:
       "下一步將接入 WalletConnect。準備好後請在環境變數中填寫 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID。",
+    wrongNetworkDialogDesc:
+      "目前錢包網路與本應用程式設定不一致。請切換到下方網路後再使用兌換與部署。",
+    wrongNetworkLater: "稍後再說",
   },
   home: {
     heroBadge: "ERCS-20",
@@ -66,7 +69,7 @@ export const zhTW = {
     confirming: "確認中…",
     swapSuccess: "交易已確認",
     swapFailed: "交易失敗",
-    protocolFee: "協議費（0.2%）",
+    currentPrice: "當前價",
     saveSettings: "儲存",
     slippageBpsHint: "50 = 0.5%，最大 5000（50%）。",
     deadlineHint: "1–1440 分鐘。",
@@ -76,33 +79,78 @@ export const zhTW = {
   },
   ercs20: {
     title: "部署 ERCS-20",
-    subtitle: "透過工廠建立新代幣（Factory.create）。本階段僅版面樣式。",
+    subtitle:
+      "發行您自主的 ERCS-20，並配套鏈上流動性。當代幣在協議內被交易時，手續費機制會向發行方回流——讓激勵與真實成交與長期參與綁定，而不只是「部署即結束」。",
     name: "名稱",
     symbol: "符號",
+    price: "價格（每枚代幣的報價）",
+    pricePlaceholder: "填寫總供應量與初始報價後自動計算",
     totalSupply: "總供應量",
     seedQuote: "初始報價儲備（種子）",
-    newOwner: "新擁有者地址",
-    submit: "建立代幣",
-    hint: "尚未接入鏈上呼叫，僅供樣式確認。",
+    ownerAddress: "擁有者地址",
+    ownerConnectWallet: "請連接錢包",
+    submit: "部署",
+    toastNeedWallet: "需要連接錢包",
+    toastNeedWalletDesc: "請先連接錢包以確認擁有者地址。",
+    toastWrongNetwork: "網路不正確",
+    toastWrongNetworkDesc: "請先切換到應用程式設定的目標網路。",
+    toastNeedName: "請填寫名稱",
+    toastNeedNameDesc: "請輸入代幣名稱。",
+    toastNeedSymbol: "請填寫符號",
+    toastNeedSymbolDesc: "請輸入代幣符號。",
+    toastNeedSupply: "請填寫總供應量",
+    toastNeedSupplyDesc: "請輸入有效數量（18 位小數，且大於零）。",
+    toastNeedSeed: "請填寫初始報價",
+    toastNeedSeedDesc: "請輸入有效初始報價（18 位小數，且大於零）。",
+    deploySuccessTitle: "部署成功",
+    deploySuccessSubtitle:
+      "您的 ERCS-20 已在鏈上生效。請保存下方合約地址，便於上架與兌換。",
+    tokenContractAddress: "代幣合約地址",
+    registryIndex: "工廠序號",
+    copyAddress: "複製",
+    copyFailed: "複製失敗",
+    addressCopied: "已複製地址",
+    deployAnother: "再部署一個",
+    deployParseFailed: "交易已成功，但無法從事件日誌中解析代幣合約地址。",
+    txHashLabel: "交易雜湊",
+    createFailed: "建立失敗",
+    hint: "在錢包中確認交易。",
   },
   phase2: {
+    detailBody: `目前形式下，ERCS-20 池在鏈上以固定庫存初始化。由於不會像成熟交易場所那樣持續補充流動性，在流動性稀薄或大額成交時，價格可能出現劇烈波動。
+
+為因應此關鍵弱點，專案將從單一 AMM 池演進為完整的去中心化交易所體系，以提供可延續的流動性與更深的市場深度。
+
+Orbix 與 OBX（說明 / 風險揭露）
+
+交易所：Orbix（網站：orbix.exchange）是規劃在 ERCS-20 生態中擴展流動性的去中心化交易所，旨在提供更深的市場深度，並隨時間推移承載現貨、衍生性商品與激勵機制的執行層。
+
+協議代幣：Orbix DAO（符號：OBX）是面向 ERCS-20 生態導入的首個代幣，擬用於交易所階段的質押／挖礦計畫、手續費分配及更廣義的生態激勵（最終機制以正式主網版本為準）。
+
+實驗定位：Orbix 與 OBX 構成 ERCS-20「實驗沙盒」，用於在真實市場條件下驗證「流動性主權」、手續費回流與非稀釋融資敘事的可行性與邊界。
+
+高風險提示：本專案處於積極開發與實驗階段，可能存在智慧合約風險、機制／設計風險、流動性風險及劇烈價格波動。參與前請自行研究並充分理解規則與風險。請審慎參與並量力而為。本儲存庫任何內容均不構成投資建議。`,
+    detailRoadmap: `我們分兩個階段交付：
+
+第一階段：類 Uniswap 的兌換體驗（優先做前端）
+建置前端與可互動的兌換頁面，讓使用者能便捷地以報價資產兌換 ERCS20。本階段側重可用性與交易入口體驗：使用者無需理解合約內部細節即可可靠地完成交易。
+
+第二階段：類 dYdX 的去中心化交易所（現貨 + 合約）+ 質押挖礦
+部署更完整的 DEX：
+• 支援現貨與合約交易。
+• 採用類 dYdX 的「鏈下簽章 + 鏈上結算」流程（訂單在鏈下簽章，隨後在鏈上校驗並結算）。
+• 增加質押與挖礦：使用者質押協議代幣參與挖礦。
+• 手續費分配：交易所手續費分為兩部分——一部分用於專案／平台營運，另一部分透過質押平台分配給挖礦獎勵。
+
+從務實的交易入口起步，再逐步升級為可延續承載流動性、衍生性商品與激勵的場域，社群可以更早使用與驗證，並隨時間形成更健康的流動性與獎勵閉環。`,
     spot: {
       title: "現貨",
-      body: "現貨市場與更深流動性預計在第二期提供。",
-      roadmap:
-        "規劃：統一現貨路由或訂單簿整合、更深池子、以及與 ERCS-20 路線圖一致的成交體驗。",
     },
     futures: {
       title: "合約",
-      body: "永續與衍生性商品流程不在第一期範圍內。",
-      roadmap:
-        "規劃：鏈下簽章＋鏈上結算（類 dYdX 流程）、風控與手續費分配。",
     },
     pools: {
       title: "流動性池",
-      body: "獨立池管理介面將在核心兌換路徑穩定後提供。",
-      roadmap:
-        "規劃：池子總覽、數據看板、以及與更大 DEX 里程碑相關的激勵入口。",
     },
   },
 } as const;

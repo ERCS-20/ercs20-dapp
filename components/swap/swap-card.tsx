@@ -10,7 +10,6 @@ import {
   useBalance,
   useChainId,
   useReadContract,
-  useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
@@ -45,7 +44,13 @@ function trimDecimalInput(s: string): string {
   return s.replace(/\.?0+$/, "").replace(/\.$/, "") || "0";
 }
 
-function TokenIcon({ symbol }: { symbol: string }) {
+function TokenIcon({
+  symbol,
+  interactive = true,
+}: {
+  symbol: string;
+  interactive?: boolean;
+}) {
   const s = symbol.trim() || "TOKEN";
   return (
     <Image
@@ -53,7 +58,10 @@ function TokenIcon({ symbol }: { symbol: string }) {
       alt=""
       width={28}
       height={28}
-      className="size-7 shrink-0 rounded-full ring-1 ring-border/60 transition-transform duration-300 ease-out group-hover:scale-105"
+      className={cn(
+        "size-7 shrink-0 rounded-full ring-1 ring-border/60 transition-transform duration-300 ease-out",
+        interactive && "group-hover:scale-105"
+      )}
       priority
       unoptimized
     />
@@ -121,7 +129,6 @@ export function SwapCard() {
   const { t } = useI18n();
   const { address, isConnected } = useWallet();
   const chainId = useChainId();
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
 
   const targetChainId = getSwapTargetChainId();
   const factory = getErcs20FactoryAddress();
@@ -281,16 +288,56 @@ export function SwapCard() {
 
   const expectedOut =
     quoteOut && Array.isArray(quoteOut) ? (quoteOut[0] as bigint) : undefined;
-  const feeOut =
-    quoteOut && Array.isArray(quoteOut) ? (quoteOut[1] as bigint) : undefined;
 
   const outputDecimals = buyMode ? tokenDecimals : NATIVE_DECIMALS;
   const outputAmountStr =
     expectedOut != null ? formatUnits(expectedOut, outputDecimals) : "";
 
-  /** `getAmountOut` second return: fee in output-asset units (same decimals as Receive). */
-  const protocolFeeAmountStr =
-    feeOut != null ? formatUnits(feeOut, outputDecimals) : null;
+  /** Fixed-notional pool quote via public RPC (no wallet). Buys: 1 unit quote in; sells: 1 full token in. */
+  const spotRefAmountIn = useMemo(() => {
+    try {
+      return buyMode
+        ? parseUnits("1", NATIVE_DECIMALS)
+        : parseUnits("1", tokenDecimals);
+    } catch {
+      return BigInt(0);
+    }
+  }, [buyMode, tokenDecimals]);
+
+  const spotQuoteEnabled =
+    !!token &&
+    targetChainId != null &&
+    configured &&
+    spotRefAmountIn > BigInt(0);
+
+  const { data: spotQuoteOut } = useReadContract({
+    address: token,
+    abi: ercs20TokenAbi,
+    functionName: "getAmountOut",
+    args: spotQuoteEnabled ? [spotRefAmountIn, buyMode] : undefined,
+    chainId: targetChainId ?? undefined,
+    query: { enabled: spotQuoteEnabled },
+  });
+
+  const spotExpectedOut =
+    spotQuoteOut && Array.isArray(spotQuoteOut)
+      ? (spotQuoteOut[0] as bigint)
+      : undefined;
+
+  /** Same convention as the form: buy → tokens received per 1 unit pay; sell → quote received per 1 token sold. */
+  const spotPriceStr = useMemo(() => {
+    if (
+      spotExpectedOut == null ||
+      spotExpectedOut <= BigInt(0) ||
+      spotRefAmountIn <= BigInt(0)
+    ) {
+      return null;
+    }
+    if (buyMode) {
+      return trimDecimalInput(formatUnits(spotExpectedOut, tokenDecimals));
+    }
+    return trimDecimalInput(formatUnits(spotExpectedOut, NATIVE_DECIMALS));
+  }, [buyMode, spotRefAmountIn, spotExpectedOut, tokenDecimals]);
 
   const {
     writeContract,
@@ -384,10 +431,12 @@ export function SwapCard() {
   const nativeTokenButton = (
     <button
       type="button"
-      className="group bg-card text-foreground ring-border inline-flex shrink-0 cursor-default items-center gap-2 rounded-full py-1.5 pr-2.5 pl-2 text-sm font-semibold ring-1 sm:py-2 sm:pr-3 sm:pl-2.5"
+      className="bg-muted/60 text-muted-foreground ring-border/70 inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-full py-1.5 pr-2.5 pl-2 text-sm font-semibold ring-1 sm:py-2 sm:pr-3 sm:pl-2.5"
       aria-label={t("swap.native")}
+      aria-disabled="true"
+      disabled
     >
-      <TokenIcon symbol="USDC" />
+      <TokenIcon symbol="USDC" interactive={false} />
       <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{t("swap.native")}</span>
     </button>
   );
@@ -447,7 +496,7 @@ export function SwapCard() {
         onSave={(bps, m) => {
           setSlippageBps(bps);
           setDeadlineMinutes(m);
-          persist();
+          persist({ slippageBps: bps, deadlineMinutes: m });
         }}
       />
 
@@ -462,9 +511,9 @@ export function SwapCard() {
             </h1>
             <Button
               type="button"
-              variant="ghost"
+              variant="default"
               size="icon-sm"
-              className="text-muted-foreground hover:text-foreground shrink-0 rounded-full"
+              className="shrink-0 rounded-full shadow-md"
               aria-label={t("swap.settings")}
               onClick={() => {
                 setSettingsMountKey((k) => k + 1);
@@ -474,24 +523,6 @@ export function SwapCard() {
               <Settings2Icon className="size-4" strokeWidth={1.5} />
             </Button>
           </div>
-
-          {wrongNetwork ? (
-            <div className="mb-3 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm">
-              <p className="text-muted-foreground mb-2">{t("swap.wrongNetwork")}</p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={isSwitching}
-                onClick={() =>
-                  targetChainId != null &&
-                  void switchChainAsync?.({ chainId: targetChainId })
-                }
-              >
-                {t("swap.switchNetwork")}
-              </Button>
-            </div>
-          ) : null}
 
           <div className="relative flex flex-col gap-0">
             <AmountRow
@@ -584,11 +615,9 @@ export function SwapCard() {
 
           <dl className="text-muted-foreground mt-3 space-y-2 px-1 text-xs sm:mt-4 sm:text-sm">
             <div className="flex justify-between gap-4">
-              <dt>{t("swap.protocolFee")}</dt>
-              <dd className="text-right font-medium tabular-nums">
-                {token && quoteEnabled && protocolFeeAmountStr != null
-                  ? `${protocolFeeAmountStr} ${buyMode ? displaySymbol : t("swap.native")}`
-                  : DISCONNECTED}
+              <dt>{t("swap.currentPrice")}</dt>
+              <dd className="max-w-[min(100%,18rem)] text-right font-medium break-words tabular-nums sm:max-w-[22rem]">
+                {token && spotPriceStr != null ? spotPriceStr : DISCONNECTED}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
@@ -610,9 +639,8 @@ export function SwapCard() {
               parsedAmountIn === undefined
             }
             className={cn(
-              "mt-5 h-12 w-full rounded-2xl border-0 text-base font-semibold",
-              "bg-primary text-primary-foreground shadow-md hover:enabled:bg-primary/90",
-              "disabled:pointer-events-none disabled:cursor-not-allowed disabled:!bg-primary disabled:!text-primary-foreground disabled:!opacity-100 disabled:brightness-[0.88] disabled:saturate-[0.92] disabled:shadow-none"
+              "mt-5 h-12 w-full rounded-2xl border-0 text-base font-semibold shadow-md",
+              "disabled:pointer-events-none disabled:cursor-not-allowed disabled:!bg-[var(--primary)] disabled:!text-[var(--primary-foreground)] disabled:!opacity-100 disabled:brightness-[0.88] disabled:saturate-[0.92] disabled:shadow-none"
             )}
             onClick={handleSwap}
           >

@@ -68,13 +68,13 @@ export function AppHeader() {
           aria-label={t("brand")}
           className="text-foreground group inline-flex shrink-0 items-center transition-opacity duration-300 hover:opacity-85"
         >
-          <span className="border-border/80 bg-muted/25 dark:bg-muted/20 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md sm:h-12 sm:w-12">
+          <span className="border-border/80 bg-muted/25 dark:bg-muted/20 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-2 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md sm:h-12 sm:w-12">
             <Image
               src="/brand/orbix.svg"
               alt=""
               width={40}
               height={40}
-              className="h-8 w-8 object-contain sm:h-10 sm:w-10"
+              className="h-6 w-6 object-contain sm:h-8 sm:w-8"
               style={{ width: "auto", height: "auto" }}
               priority
               unoptimized
