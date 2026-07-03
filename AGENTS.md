@@ -1,3 +1,14 @@
+<!-- BEGIN:cursor-agent-rules -->
+# Cursor rules & skills
+
+Project AI config: **`.cursor/README.md`**
+
+- **Rules** (`.cursor/rules/*.mdc`) — hard constraints; `project` + `security` always apply
+- **Skills** (`.cursor/skills/*/SKILL.md`) — invoke with `@design-system`, `@create-page`, etc.
+
+UI work: follow `ui.mdc` + Orbix tokens in `app/globals.css` before generic exchange templates.
+<!-- END:cursor-agent-rules -->
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

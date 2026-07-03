@@ -1,0 +1,17 @@
+---
+description: TypeScript 文件结构与命名
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Code Style
+
+## Always
+
+- Keep files ≤ **300 lines**; functions ≤ **50 lines**; nesting ≤ **3 levels**.
+- Prefer **early return** and **descriptive names** (avoid cryptic abbreviations).
+
+## Never
+
+- Use deep `else` chains when early return is clearer.
+- Exceed limits without splitting into focused modules first.

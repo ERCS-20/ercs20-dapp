@@ -1,0 +1,25 @@
+---
+description: viem/wagmi、ERCS-20 合约交互与 env
+globs: "{lib/web3,lib/wagmi,lib/contracts,lib/config,hooks,providers,components/wallet,components/swap,components/ercs20}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Web3
+
+## Always
+
+- **viem** for types, `parseUnits` / `formatUnits`; **wagmi** for hooks; **RainbowKit** via `providers/web3-provider.tsx`.
+- Read: `useReadContract`; write: `useWriteContract` + `useWaitForTransactionReceipt`.
+- Prefer `simulateContract` for **new** write paths when feasible.
+- Chain/RPC from `lib/web3/chains.ts` and `lib/config/public-env.ts` — target chain via `NEXT_PUBLIC_CHAIN_ID`.
+- ERCS-20 flows: token `buy()` / `sell()` + `getAmountOut` (no approve-first trading path); Factory deploy via `ercs20-factory-abi.ts`.
+- Slippage/deadline: `hooks/use-swap-settings.ts`, `lib/swap/min-out.ts`.
+- Wrong network: `wrong-network-gate.tsx`; degrade when `isSwapEnvConfigured()` is false.
+- ABIs in `lib/contracts/` — minimal diff on changes.
+
+## Never
+
+- Replace stack with ethers.js unless user explicitly requests.
+- Hardcode production contract addresses or chain IDs in source.
+- Store or transmit private keys / mnemonics in frontend code.
+- Add unvetted wallet SDKs or hidden outbound scripts.

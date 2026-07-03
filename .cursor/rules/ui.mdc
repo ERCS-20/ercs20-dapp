@@ -1,0 +1,31 @@
+---
+description: Orbix 视觉 token、间距与 shadcn 用法
+globs: "{app,components}/**/*.{tsx,css}"
+alwaysApply: false
+---
+
+# UI (Orbix)
+
+## Brand (app/globals.css)
+
+- Light primary: teal `--brand-accent` (#00d1b2) via `bg-primary`
+- Dark primary: pink `--brand-accent-alt` (#f06292) — do not force teal CTAs in dark mode
+- Surfaces: semantic tokens only (`bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`)
+
+## Always
+
+- shadcn/ui for Button, Card, Dialog, Sheet, Table, Input, ToggleGroup, etc.
+- Spacing scale: **4, 6, 8, 12, 16, 24, 32** (dense UI may use 48, 64)
+- Radius: `rounded-xl` / `rounded-2xl`; pills & nav `rounded-full`; Swap shell `rounded-[24px]`–`[28px]`
+- Width: `max-w-[480px]` (swap/forms), `max-w-6xl` (marketing/docs); padding `px-4 sm:px-6`
+- Support dark mode with `dark:` + CSS variables
+- Reuse patterns from: `home-view.tsx`, `swap-card.tsx`, `factory-create-card.tsx`, `site-layout.tsx`
+- Exchange UI polish: `@design-system` + domain skills (`trading-page`, `forms`, …)
+
+## Never
+
+- Hardcode hex/rgb in TSX when tokens exist
+- Add MUI, Ant Design, Chakra, or new CSS-in-JS libraries without approval
+- Custom `components/ui/*` duplicates of shadcn blocks
+- Generic “AI purple” gradients or unrelated font stacks
+- Per-page heavy backgrounds — use `SiteLayout` grid/grain

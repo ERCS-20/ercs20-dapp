@@ -1,0 +1,23 @@
+---
+description: Next.js Route Handler 约定（app/api 预留）
+globs: "{app/api,services}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# API
+
+> Primary data path today is client-side wagmi/viem. Use API routes only when server-side is required.
+
+## Always
+
+- Route handlers: `app/api/<resource>/route.ts`
+- HTTP clients live in `services/`; components use React Query with `staleTime`, retry ≤ 3
+- Handle loading, error, empty, timeout in UI
+- JSON shape: `{ ok: true, data }` | `{ ok: false, error }`
+- Server secrets without `NEXT_PUBLIC_` prefix
+
+## Never
+
+- Raw `fetch()` inside React components
+- Leak stack traces, RPC URLs, or secrets in responses
+- Server-side signing without explicit security review

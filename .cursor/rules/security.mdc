@@ -1,0 +1,24 @@
+---
+description: 依赖、密钥与链上交互安全
+alwaysApply: true
+---
+
+# Security
+
+## Always
+
+- Use npm official registry; prefer viem / wagmi / RainbowKit for wallet integration.
+- Validate address, chain, amount, and decimals — frontend checks are UX only; trust on-chain or server validation.
+- Escape user-generated content; use HTTPS for APIs.
+- Handle wallet rejection gracefully.
+- Use WalletConnect / Reown Project IDs from official console; document purpose in comments or README.
+- Keep signing and contract changes minimal and reviewable.
+
+## Never
+
+- Trust frontend validation alone for security boundaries.
+- Use `innerHTML` or `dangerouslySetInnerHTML`.
+- Log private keys, mnemonics, signatures, JWTs, or API secrets.
+- Expose `.env` / `.env.local` in git or client bundles.
+- Install unmaintained or unknown wallet SDKs; suggest `curl | bash`, random executables, or unofficial browser extensions.
+- Integrate unknown third-party protocols without official documentation.

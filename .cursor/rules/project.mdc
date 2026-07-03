@@ -1,0 +1,43 @@
+---
+description: ERCS-20 dApp 项目结构、技术栈与通用编码约束
+alwaysApply: true
+---
+
+# Project
+
+ERCS-20 / Orbix — 代币化股权 + 内置 AMM 的 Web3 前端（Phase 1：Swap、Factory；Phase 2：spot/futures/pools 占位）。
+
+Tech stack: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui, wagmi, viem, RainbowKit, TanStack Query, next-themes, sonner.
+
+## Directory
+
+| Path | Role |
+|------|------|
+| `app/` | Routes, `layout.tsx`, `globals.css` — keep pages thin |
+| `components/ui/` | shadcn primitives (CLI only) |
+| `components/<feature>/` | Feature UI |
+| `hooks/` | Client hooks |
+| `lib/web3/`, `lib/wagmi/`, `lib/contracts/`, `lib/config/` | Chain & contracts |
+| `lib/i18n/messages/` | en / zh-CN / zh-TW |
+| `providers/` | AppProviders, Web3, theme, i18n |
+
+See `.cursor/README.md` for rules/skills index.
+
+## Always
+
+- Use App Router; prefer Server Components; Client only when needed (wallet, theme, i18n, forms).
+- Write strict TypeScript; prefer composition over inheritance.
+- Use `bigint` for on-chain amounts; `parseUnits` / `formatUnits` (viem) for decimals.
+- Use formatted strings for display only; UTC for timestamps; order/tx IDs as strings.
+- Wait for transaction receipt before treating writes as successful.
+- Minimal diff — only touch task-related files.
+- When adding npm packages: list names in reply + give `npm install …`; user runs install locally (do not assume install succeeded in agent env).
+
+## Never
+
+- Use `any` or ignore TypeScript errors.
+- Add libraries without clear need (see `security.mdc`).
+- Duplicate components or put business logic inside presentational UI.
+- Mix unrelated UI refactors with Web3 changes in one diff.
+- Use `number` for token amounts or float for price math internally.
+- Commit `.env.local` or secrets; create git commits unless user asks.

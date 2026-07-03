@@ -1,0 +1,26 @@
+---
+description: Next.js 路由、i18n、shadcn 与 Client 边界
+globs: "{app,components,hooks,providers}/**/*.{tsx,ts,css}"
+alwaysApply: false
+---
+
+# Frontend
+
+## Always
+
+- New routes: `app/<route>/page.tsx` + optional `export const metadata`.
+- Root `app/layout.tsx` already wraps `AppProviders` + `SiteLayout` — do not wrap again in child pages.
+- Add shadcn via `npx shadcn@latest add <component>`; extend in `components/<feature>/` with `cn()` from `@/lib/utils`.
+- Icons: **lucide-react**; toasts: **sonner** (mounted in `AppProviders`).
+- Layout shell: `site-layout.tsx` + `app-header.tsx`.
+- User-visible copy: `useI18n()` → `t("key")`; update **en**, **zh-CN**, **zh-TW** in `lib/i18n/messages/`.
+- Wallet: `hooks/use-wallet.ts`; chain logic in feature hooks/components.
+- a11y: `aria-label` on icon buttons; `role="alert"` on field errors; decorative layers `pointer-events-none` + `aria-hidden`.
+- Visual constraints: follow `ui.mdc`; design guidance: `@design-system` skill.
+
+## Never
+
+- Hand-roll duplicates under `components/ui/`.
+- Hardcode user-visible strings (except temporary dev placeholders).
+- Change `lib/contracts/` or `lib/wagmi/` during pure UI tasks.
+- Call `fetch()` in components for API data — use `services/` + React Query (`api.mdc`).
