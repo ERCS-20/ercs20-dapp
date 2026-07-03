@@ -61,54 +61,64 @@ export function AppHeader() {
   }, []);
 
   return (
-    <header className="border-border/70 bg-background/85 supports-[backdrop-filter]:bg-background/75 sticky top-0 z-50 border-b backdrop-blur-xl transition-[background-color,border-color] duration-300">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6">
-        <Link
-          href="/"
-          aria-label={t("brand")}
-          className="text-foreground group inline-flex shrink-0 items-center transition-opacity duration-300 hover:opacity-85"
-        >
-          <span className="border-border/80 bg-muted/25 dark:bg-muted/20 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-2 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md sm:h-12 sm:w-12">
-            <Image
-              src="/brand/orbix.svg"
-              alt=""
-              width={40}
-              height={40}
-              className="h-6 w-6 object-contain sm:h-8 sm:w-8"
-              style={{ width: "auto", height: "auto" }}
-              priority
-              unoptimized
-            />
-          </span>
-        </Link>
+    <header className="border-border/70 bg-background/85 supports-[backdrop-filter]:bg-background/75 sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-[background-color,border-color] duration-300">
+      <div className="mx-auto flex h-14 w-full items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:max-w-none lg:px-0">
+        {/* Uniswap-style: logo + nav grouped on the left */}
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4 lg:gap-5 lg:pl-3">
+          <Link
+            href="/"
+            aria-label={t("brand")}
+            className="text-foreground group inline-flex shrink-0 items-center transition-opacity duration-300 hover:opacity-85"
+          >
+            <span className="border-border/80 bg-muted/25 dark:bg-muted/20 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border p-2 shadow-sm transition-[transform,box-shadow] duration-300 ease-out group-hover:shadow-md sm:h-11 sm:w-11">
+              <Image
+                src="/brand/orbix.svg"
+                alt=""
+                width={40}
+                height={40}
+                className="h-6 w-6 object-contain sm:h-7 sm:w-7"
+                style={{ width: "auto", height: "auto" }}
+                priority
+                unoptimized
+              />
+            </span>
+          </Link>
 
-        <nav
-          className="scrollbar-none -mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto overscroll-x-contain px-1 sm:gap-1"
-          aria-label="Primary"
-        >
-          {navPaths.map(({ href, key }) => {
-            const active =
-              pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "shrink-0 rounded-full px-2.5 py-1.5 text-sm font-medium transition-[color,background-color,transform] duration-200 ease-out sm:px-3",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-[0.98]"
-                )}
-              >
-                {t(key)}
-              </Link>
-            );
-          })}
-        </nav>
+          <nav
+            className={cn(
+              "scrollbar-none flex min-w-0 items-center overflow-x-auto overscroll-x-contain",
+              "gap-0.5 sm:gap-1",
+              "lg:overflow-visible"
+            )}
+            aria-label="Primary"
+          >
+            {navPaths.map(({ href, key }) => {
+              const active =
+                pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative inline-flex min-h-9 shrink-0 items-center px-3 py-2 text-sm font-medium tracking-tight transition-colors duration-200 ease-out sm:min-h-10 sm:px-3.5",
+                    "focus-visible:ring-ring focus-visible:ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                    "after:absolute after:inset-x-3 after:bottom-1 after:h-0.5 after:rounded-full after:transition-opacity after:duration-200 sm:after:inset-x-3.5",
+                    active
+                      ? "text-foreground after:bg-primary after:opacity-100"
+                      : "text-muted-foreground hover:text-foreground after:opacity-0"
+                  )}
+                >
+                  {t(key)}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-        <div className="relative z-[60] flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="relative z-[60] ml-2 flex shrink-0 items-center gap-2 sm:gap-2.5 lg:gap-3 lg:pr-3">
           {/* Desktop: language dropdown + theme toggle */}
-          <div className="hidden items-center gap-1.5 sm:flex sm:gap-2">
+          <div className="hidden items-center gap-2 sm:flex lg:gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1">

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageShell } from "@/components/layout/page-shell";
 import { useI18n } from "@/providers/i18n-provider";
 
 type Phase2Key = "spot" | "futures" | "pools";
@@ -9,7 +10,8 @@ export function RoadmapPlaceholder({ page }: { page: Phase2Key }) {
   const prefix = `phase2.${page}` as const;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+    <PageShell>
+      <div className="mx-auto max-w-2xl px-0 py-10 sm:py-16 lg:px-3">
       <h1 className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
         {t(`${prefix}.title`)}
       </h1>
@@ -24,6 +26,7 @@ export function RoadmapPlaceholder({ page }: { page: Phase2Key }) {
           {t("phase2.detailRoadmap")}
         </p>
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

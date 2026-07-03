@@ -9,6 +9,7 @@ import { useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagm
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageShell } from "@/components/layout/page-shell";
 import {
   getErcs20FactoryAddress,
   getSwapTargetChainId,
@@ -269,11 +270,13 @@ export function FactoryCreateCard() {
 
   if (!configured) {
     return (
-      <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
-        <p className="text-muted-foreground text-center text-sm">
-          {t("swap.envNotConfigured")}
-        </p>
-      </div>
+      <PageShell className="flex justify-center py-8 sm:py-12">
+        <div className="w-full max-w-lg">
+          <p className="text-muted-foreground text-center text-sm">
+            {t("swap.envNotConfigured")}
+          </p>
+        </div>
+      </PageShell>
     );
   }
 
@@ -281,7 +284,8 @@ export function FactoryCreateCard() {
     const withToken = "tokenAddress" in deployResult;
 
     return (
-      <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
+      <PageShell className="flex justify-center py-8 sm:py-12">
+        <div className="w-full max-w-lg">
         <div className="bg-muted/35 border-border/65 rounded-2xl border p-5 shadow-sm sm:p-8">
           <div className="flex flex-col items-center text-center">
             <div
@@ -377,12 +381,14 @@ export function FactoryCreateCard() {
             {t("ercs20.deployAnother")}
           </Button>
         </div>
-      </div>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
+    <PageShell className="flex justify-center py-8 sm:py-12">
+      <div className="w-full max-w-lg">
       <div className="bg-muted/35 border-border/65 rounded-2xl border p-5 shadow-sm transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md sm:p-6">
         <h1 className="text-xl font-semibold tracking-tight">
           {t("ercs20.title")}
@@ -533,6 +539,7 @@ export function FactoryCreateCard() {
           {t("ercs20.hint")}
         </p>
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

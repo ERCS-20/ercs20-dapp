@@ -16,6 +16,7 @@ import {
 
 import { Ercs20TokenSelectSheet } from "@/components/swap/ercs20-token-select-sheet";
 import { SwapSettingsSheet } from "@/components/swap/swap-settings-sheet";
+import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -38,6 +39,9 @@ import { useI18n } from "@/providers/i18n-provider";
 
 const DISCONNECTED = "--";
 const NATIVE_DECIMALS = 18;
+
+const swapPageShellClass =
+  "flex justify-center px-3 pt-8 pb-12 sm:px-4 sm:pt-10 lg:px-4 lg:pt-14 lg:pb-16";
 
 function trimDecimalInput(s: string): string {
   if (!s.includes(".")) return s;
@@ -456,24 +460,21 @@ export function SwapCard() {
 
   if (!configured) {
     return (
-      <section
-        className="mx-auto w-full max-w-[480px] px-4 py-8 sm:py-12"
-        aria-labelledby="swap-title"
-      >
-        <p className="text-muted-foreground text-center text-sm" id="swap-title">
-          {t("swap.envNotConfigured")}
-        </p>
-      </section>
+      <PageShell className={swapPageShellClass}>
+        <section className="mx-auto w-full max-w-[480px]" aria-labelledby="swap-title">
+          <p className="text-muted-foreground text-center text-sm" id="swap-title">
+            {t("swap.envNotConfigured")}
+          </p>
+        </section>
+      </PageShell>
     );
   }
 
   const busy = isWritePending || isConfirming;
 
   return (
-    <section
-      className="mx-auto w-full max-w-[480px] px-4 py-8 sm:py-12"
-      aria-labelledby="swap-title"
-    >
+    <PageShell className={swapPageShellClass}>
+      <section className="mx-auto w-full max-w-[480px]" aria-labelledby="swap-title">
       {factory && targetChainId != null ? (
         <Ercs20TokenSelectSheet
           open={tokenSheetOpen}
@@ -661,5 +662,6 @@ export function SwapCard() {
         </div>
       </div>
     </section>
+    </PageShell>
   );
 }

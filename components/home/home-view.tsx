@@ -22,6 +22,7 @@ import {
 import type { HomeBlock } from "@/lib/content/home-contract";
 import { HeroVisual } from "@/components/home/hero-visual";
 import { cn } from "@/lib/utils";
+import { PageShell } from "@/components/layout/page-shell";
 import { useI18n } from "@/providers/i18n-provider";
 
 /** Comfortable reading width inside a wider protocol column (cards/quotes span full). */
@@ -371,9 +372,9 @@ export function HomeView() {
   const protocolBlocks = copy.blocks.slice(HOME_PROTOCOL_BLOCKS_START);
 
   return (
-    <div className="flex flex-1 flex-col">
+    <PageShell as="div" className="flex flex-1 flex-col lg:py-0">
       <section
-        className="hero-motion relative isolate flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center px-6 pt-8 pb-16 sm:min-h-[calc(100svh-5rem)] sm:px-8 sm:pt-10 sm:pb-24"
+        className="hero-motion relative isolate flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center px-0 pt-8 pb-16 sm:min-h-[calc(100svh-5rem)] sm:pt-10 sm:pb-24"
         aria-label="Hero"
       >
         {/* Ambient light + vector focal — minimal, high-end */}
@@ -451,7 +452,7 @@ export function HomeView() {
         aria-labelledby="protocol-heading"
       >
         <div className="border-border/40 from-muted/20 to-background relative border-t bg-gradient-to-b pb-24 sm:pb-32 dark:from-white/[0.04] dark:to-background">
-          <div className="mx-auto max-w-6xl px-6 pt-20 sm:px-8 sm:pt-28">
+          <div className="mx-auto w-full max-w-6xl px-0 pt-20 sm:pt-28 lg:px-3">
             <p className="text-muted-foreground text-center text-xs font-medium tracking-[0.22em] uppercase">
               {t("home.protocolEyebrow")}
             </p>
@@ -479,6 +480,6 @@ export function HomeView() {
           </div>
         </div>
       </section>
-    </div>
+    </PageShell>
   );
 }

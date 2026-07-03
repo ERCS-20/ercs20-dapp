@@ -1,5 +1,8 @@
-import { RoadmapPlaceholder } from "@/components/phase2/roadmap-placeholder";
+import { redirect } from "next/navigation";
 
-export default function SpotPage() {
-  return <RoadmapPlaceholder page="spot" />;
+import { getSpotPairs, pairPath } from "@/lib/spot/mock-market";
+
+export default function SpotIndexPage() {
+  const pairs = getSpotPairs();
+  redirect(`/spot/${pairPath(pairs[0]!)}`);
 }
