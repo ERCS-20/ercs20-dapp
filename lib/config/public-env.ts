@@ -6,8 +6,7 @@ import { getAppChainId } from "@/lib/web3/chains";
  * (Keys keep `ERCS20` without hyphen; product naming in UI is ERCS-20.)
  */
 export const publicEnv = {
-  walletConnectProjectId:
-    process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "",
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "",
   /** Same as `getAppChainId()` — `NEXT_PUBLIC_CHAIN_ID`. */
   chainId: getAppChainId(),
   rpcUrl: process.env.NEXT_PUBLIC_RPC_URL ?? "",
@@ -16,4 +15,20 @@ export const publicEnv = {
     process.env.NEXT_PUBLIC_ERC20_FACTORY_ADDRESS ??
     "",
   defaultErcs20Token: process.env.NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN ?? "",
+  assetVaultAddress: process.env.NEXT_PUBLIC_ASSET_VAULT_ADDRESS ?? "",
+  /** API origin only, e.g. `https://api.example.com` (no `/api/v1`). */
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
+  /** Global REST prefix, e.g. `/api/v1`. Overridable via env. */
+  apiPathPrefix: process.env.NEXT_PUBLIC_API_PATH_PREFIX ?? "/api/v1",
 } as const;
+
+export function getApiBaseUrl(): string {
+  return publicEnv.apiBaseUrl.replace(/\/$/, "");
+}
+
+export function getApiPathPrefix(): string {
+  const raw = publicEnv.apiPathPrefix.trim();
+  if (!raw) return "";
+  const withLeading = raw.startsWith("/") ? raw : `/${raw}`;
+  return withLeading.replace(/\/$/, "");
+}

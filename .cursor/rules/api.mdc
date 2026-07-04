@@ -1,23 +1,52 @@
 ---
-description: Next.js Route Handler 约定（app/api 预留）
-globs: "{app/api,services}/**/*.{ts,tsx}"
+description: HTTP API 约定（client + services 按领域拆分）
+globs: "{lib/api,services}/**/*.{ts,tsx}"
 alwaysApply: false
 ---
 
 # API
 
-> Primary data path today is client-side wagmi/viem. Use API routes only when server-side is required.
+> 主数据路径仍是客户端 wagmi/viem（链上读写）。REST 用于链下服务：签名 salt、订单、行情索引等。
+
+## 目录
+
+```
+lib/api/
+  types.ts          # ApiEnvelope<T>、RequestOptions
+  errors.ts         # ApiRequestError、ApiNetworkError
+  client.ts         # apiFetch — 统一 fetch、解包 envelope
+  request.ts        # request.get/post/put/patch/delete
+  notify-error.ts   # notifyApiError → sonner（对齐 swap）
+  hooks.ts          # useApiMutation / useApiQuery
+
+services/<domain>/
+  paths.ts          # 路径常量，避免魔法字符串
+  types.ts          # 该领域的请求/响应类型（Req / Rsp 后缀）
+  api.ts            # 纯函数，只调 request.*
+  hooks.ts          # React Query hooks（组件只 import 这里）
+  ws.ts             # （可选）WebSocket，与 REST 分离
+```
+
+## 响应格式
+
+- JSON：`{ code: "success" | string, msg: string, data: T }`
+- `code === "success"` → 成功，`client` 层只返回 `data`
+- 否则抛 `ApiRequestError(code, msg)`；失败时 `toast.error(msg)`（无单独标题）
 
 ## Always
 
-- Route handlers: `app/api/<resource>/route.ts`
-- HTTP clients live in `services/`; components use React Query with `staleTime`, retry ≤ 3
-- Handle loading, error, empty, timeout in UI
-- JSON shape: `{ code: "success" | string, msg: string, data: T }` — `code === "success"` 表示成功，否则失败（`msg` 用于错误提示）
-- Server secrets without `NEXT_PUBLIC_` prefix
+- HTTP 客户端只在 `lib/api/`；业务 API 在 `services/<domain>/api.ts`
+- 组件 **不** 直接 `fetch()` / `axios` — 用 `services/<domain>/hooks.ts`
+- React Query：`staleTime`、retry ≤ 3；mutation 成功后 `invalidateQueries`
+- 环境变量：
+  - `NEXT_PUBLIC_API_BASE_URL` — API origin（如 `https://api.example.com`，不含 `/api/v1`）
+  - `NEXT_PUBLIC_API_PATH_PREFIX` — 全局前缀（默认 `/api/v1`），在 `lib/api/client.ts` 拼接
+  - `services/*/paths.ts` 只写业务路径（如 `/spot/order/salt`）
+- 链上与 REST 分离：合约调用走 wagmi，REST 不走 `services/*/api.ts`
 
 ## Never
 
-- Raw `fetch()` inside React components
-- Leak stack traces, RPC URLs, or secrets in responses
-- Server-side signing without explicit security review
+- 单文件 `api.ts` 堆全部接口
+- 在 `services/*/api.ts` 里写 toast / React 状态
+- 把 WebSocket 和 REST 混在同一文件
+- 响应中泄露 stack、RPC URL、密钥

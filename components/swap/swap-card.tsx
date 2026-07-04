@@ -17,9 +17,9 @@ import {
 import { Ercs20TokenSelectSheet } from "@/components/swap/ercs20-token-select-sheet";
 import { SwapSettingsSheet } from "@/components/swap/swap-settings-sheet";
 import { PageShell } from "@/components/layout/page-shell";
+import { SizePctControls } from "@/components/trading/size-pct-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ercs20TokenAbi } from "@/lib/contracts/ercs20-abi";
 import {
   getDefaultErcs20TokenAddress,
@@ -140,7 +140,7 @@ export function SwapCard() {
 
   const [buyMode, setBuyMode] = useState(true);
   const [amountIn, setAmountIn] = useState("");
-  const [payPreset, setPayPreset] = useState("");
+  const [sizePct, setSizePct] = useState(0);
   const [token, setToken] = useState<`0x${string}` | undefined>(() =>
     getDefaultErcs20TokenAddress()
   );
@@ -367,7 +367,7 @@ export function SwapCard() {
     if (!isSuccess) return;
     toast.success(t("swap.swapSuccess"));
     setAmountIn("");
-    setPayPreset("");
+    setSizePct(0);
     void Promise.all([refetchNativeBal(), refetchTokenBal()]);
     resetWrite();
   }, [isSuccess, resetWrite, t, refetchNativeBal, refetchTokenBal]);
@@ -532,7 +532,7 @@ export function SwapCard() {
               balanceLabel={buyMode ? nativeBalLabel : tokenBalLabel}
               amount={amountIn}
               onAmountChange={(v) => {
-                setPayPreset("");
+                setSizePct(0);
                 let x = v.replace(/[^\d.]/g, "");
                 const dot = x.indexOf(".");
                 if (dot !== -1) {
@@ -547,35 +547,15 @@ export function SwapCard() {
               }
               tokenButton={buyMode ? nativeTokenButton : ercs20TokenButton}
               footer={
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  size="sm"
-                  spacing={4}
+                <SizePctControls
+                  pct={sizePct}
                   disabled={!canUsePayPresets}
-                  value={payPreset || undefined}
-                  onValueChange={(v) => {
-                    if (!v) {
-                      setPayPreset("");
-                      return;
-                    }
-                    setPayPreset(v);
-                    const pct = Number.parseInt(v, 10);
-                    if (Number.isFinite(pct)) applyPayPercent(pct);
+                  side={buyMode ? "buy" : "sell"}
+                  onPctChange={(pct) => {
+                    setSizePct(pct);
+                    applyPayPercent(pct);
                   }}
-                  className="flex w-full gap-1"
-                >
-                  {(["25", "50", "75", "100"] as const).map((p) => (
-                    <ToggleGroupItem
-                      key={p}
-                      value={p}
-                      className="min-w-0 flex-1 px-1 text-xs font-medium"
-                      aria-label={`${p}%`}
-                    >
-                      {p}%
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
+                />
               }
             />
             <div className="relative z-10 flex justify-center -my-4 sm:-my-4.5">
@@ -589,7 +569,7 @@ export function SwapCard() {
                 onClick={() => {
                   setBuyMode((v) => !v);
                   setAmountIn("");
-                  setPayPreset("");
+                  setSizePct(0);
                 }}
               >
                 <ArrowDownIcon
