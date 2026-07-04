@@ -13,7 +13,7 @@ alwaysApply: false
 - Route handlers: `app/api/<resource>/route.ts`
 - HTTP clients live in `services/`; components use React Query with `staleTime`, retry ≤ 3
 - Handle loading, error, empty, timeout in UI
-- JSON shape: `{ ok: true, data }` | `{ ok: false, error }`
+- JSON shape: `{ code: "success" | string, msg: string, data: T }` — `code === "success"` 表示成功，否则失败（`msg` 用于错误提示）
 - Server secrets without `NEXT_PUBLIC_` prefix
 
 ## Never
