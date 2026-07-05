@@ -1,6 +1,4 @@
-/** Minimal ABI for `ERCS20` token contract (`ERCS20.sol`). Factory: `ercs20-factory-abi.ts`. */
-
-export const ercs20TokenAbi = [
+[
   {
     "inputs": [
       {
@@ -21,11 +19,6 @@ export const ercs20TokenAbi = [
       {
         "internalType": "uint256",
         "name": "_usdcAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "index",
         "type": "uint256"
       }
     ],
@@ -74,37 +67,6 @@ export const ercs20TokenAbi = [
       }
     ],
     "name": "OwnershipTransferred",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "ercs20",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "usdc",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "pair",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "index",
-        "type": "uint256"
-      }
-    ],
-    "name": "PairCreated",
     "type": "event"
   },
   {
@@ -634,4 +596,4 @@ export const ercs20TokenAbi = [
     "stateMutability": "payable",
     "type": "receive"
   }
-] as const;
+]

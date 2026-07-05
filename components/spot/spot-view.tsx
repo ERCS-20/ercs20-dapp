@@ -14,7 +14,7 @@ import { SpotOrderForm } from "@/components/spot/spot-order-form";
 import { SpotPairList } from "@/components/spot/spot-pair-list";
 import { SpotToolbar } from "@/components/spot/spot-toolbar";
 import { SpotTradePanel } from "@/components/spot/spot-trade-panel";
-import { erc20ReadAbi } from "@/lib/contracts/erc20";
+import { erc20Abi } from "@/lib/contracts/abis";
 import { getSwapTargetChainId, isSwapEnvConfigured } from "@/lib/config/swap-target";
 import {
   findPairByPath,
@@ -109,13 +109,13 @@ export function SpotView({
 
   const { data: tokenDecimals } = useReadContract({
     address: pair.baseAddress,
-    abi: erc20ReadAbi,
+    abi: erc20Abi,
     functionName: "decimals",
     chainId: effectiveChainId,
     query: { enabled: configured },
   });
 
-  const decimals = tokenDecimals ?? 18;
+  const decimals = Number(tokenDecimals ?? 18);
 
   const availableQuote = useMemo(() => {
     if (!nativeBal) return "0";

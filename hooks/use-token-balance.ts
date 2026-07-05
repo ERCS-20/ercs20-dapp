@@ -3,7 +3,7 @@
 import type { Address } from "viem";
 import { useReadContract } from "wagmi";
 
-import { erc20ReadAbi } from "@/lib/contracts/erc20";
+import { erc20Abi } from "@/lib/contracts/abis";
 
 /**
  * ERC-20 `balanceOf(account)` only (single `eth_call`).
@@ -23,9 +23,9 @@ export function useTokenBalance({
   const balanceOfArgs: readonly [Address] | undefined =
     token && address && chainId != null ? [address] : undefined;
 
-  return useReadContract({
+  const result = useReadContract({
     address: token,
-    abi: erc20ReadAbi,
+    abi: erc20Abi,
     functionName: "balanceOf",
     args: balanceOfArgs,
     chainId,
@@ -35,4 +35,6 @@ export function useTokenBalance({
         balanceOfArgs != null && (query?.enabled ?? true),
     },
   });
+
+  return { ...result, data: result.data as bigint | undefined };
 }

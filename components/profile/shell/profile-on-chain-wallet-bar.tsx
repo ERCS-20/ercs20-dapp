@@ -13,7 +13,7 @@ import { useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@/hooks/use-wallet";
-import { erc20ReadAbi } from "@/lib/contracts/erc20";
+import { erc20Abi } from "@/lib/contracts/abis";
 import { shortTokenAddress } from "@/lib/utils/format/address";
 import defaultTokenList from "@/lib/tokens/ercs20-default-list.json";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
@@ -106,7 +106,7 @@ export function ProfileOnChainWalletBar() {
 
   const { data: obxDecimals } = useReadContract({
     address: obxTokenAddress,
-    abi: erc20ReadAbi,
+    abi: erc20Abi,
     functionName: "decimals",
     chainId,
     query: { enabled: Boolean(isConnected && obxTokenAddress) },
@@ -118,7 +118,7 @@ export function ProfileOnChainWalletBar() {
     nativeBal != null ? formatUnits(nativeBal.value, nativeBal.decimals) : "—";
   const obxName = obxTokenMeta?.name ?? "OBX";
   const obxAmount =
-    obxBal != null ? formatUnits(obxBal, obxDecimals ?? 18) : "—";
+    obxBal != null ? formatUnits(obxBal, Number(obxDecimals ?? 18)) : "—";
 
   const explorerBase = chain?.blockExplorers?.default?.url;
   const explorerUrl =

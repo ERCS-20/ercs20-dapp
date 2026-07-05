@@ -12,7 +12,7 @@ alwaysApply: false
 - Read: `useReadContract`; write: `useWriteContract` + `useWaitForTransactionReceipt`.
 - Prefer `simulateContract` for **new** write paths when feasible.
 - Chain/RPC from `lib/web3/chains.ts` and `lib/config/public-env.ts` — target chain via `NEXT_PUBLIC_CHAIN_ID`.
-- ERCS-20 flows: token `buy()` / `sell()` + `getAmountOut` (no approve-first trading path); Factory deploy via `ercs20-factory-abi.ts`.
+- ERCS-20 flows: token `buy()` / `sell()` + `getAmountOut` (no approve-first trading path); ABIs from `lib/contracts/abi/*.json`, exported via `lib/contracts/abis.ts`.
 - Slippage/deadline: `hooks/use-swap-settings.ts`, `lib/swap/min-out.ts`.
 - Wrong network: `wrong-network-gate.tsx`; degrade when `isSwapEnvConfigured()` is false.
 - ABIs in `lib/contracts/` — minimal diff on changes.

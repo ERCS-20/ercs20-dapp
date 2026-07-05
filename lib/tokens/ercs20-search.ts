@@ -1,7 +1,7 @@
 import type { PublicClient } from "viem";
 import { isAddress, zeroAddress } from "viem";
 
-import { ercs20FactoryAbi } from "@/lib/contracts/ercs20-factory-abi";
+import { ercs20FactoryAbi } from "@/lib/contracts/abis";
 import {
   assertValidErcs20Address,
   readErcs20TokenMeta,
@@ -78,12 +78,12 @@ export async function searchErcs20Tokens(
       collected.push(meta);
     }
   } else {
-    const resolved = await client.readContract({
+    const resolved = (await client.readContract({
       address: factory,
       abi: ercs20FactoryAbi,
       functionName: "symbols",
       args: [query],
-    });
+    })) as `0x${string}`;
     if (
       resolved &&
       resolved !== zeroAddress &&

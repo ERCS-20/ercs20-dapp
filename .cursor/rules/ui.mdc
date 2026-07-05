@@ -12,6 +12,13 @@ alwaysApply: false
 - Dark primary: pink `--brand-accent-alt` (#f06292) — do not force teal CTAs in dark mode
 - Surfaces: semantic tokens only (`bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`)
 
+## shadcn / `components/ui`
+
+- **禁止手写** `components/ui/*` 下的 shadcn  primitive（Button、Dialog、Alert Dialog、Sheet 等）。样式与 API 必须与 [shadcn/ui registry](https://ui.shadcn.com/docs/components) 一致，只能经 CLI 安装。
+- 需要新组件时，先执行：`npx shadcn@latest add <component>`
+- **若 CLI 在本环境无法完成**（超时、网络、权限等）：**不要**自行仿写替代文件；在回复中明确告知用户，并给出可复制命令，由用户在项目根目录**手动执行**上述命令后再继续集成。
+- 安装完成后，在 `components/<feature>/` 里用 `className`、组合扩展；不要 fork 一份 `components/ui/*`。
+
 ## Always
 
 - shadcn/ui for Button, Card, Dialog, Sheet, Table, Input, ToggleGroup, etc.
@@ -24,6 +31,7 @@ alwaysApply: false
 
 ## Never
 
+- 手写或「按 shadcn 风格仿写」`components/ui/*`（缺组件时走 CLI 或提示用户手动 CLI）
 - Hardcode hex/rgb in TSX when tokens exist
 - Add MUI, Ant Design, Chakra, or new CSS-in-JS libraries without approval
 - Custom `components/ui/*` duplicates of shadcn blocks

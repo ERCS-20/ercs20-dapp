@@ -154,7 +154,7 @@ export function ProfileTransferAddressBlock({
   value: string;
   hint?: string;
   onCopy?: () => void;
-  copyLabel: string;
+  copyLabel?: string;
   truncate?: boolean;
   tone?: "neutral" | "brand" | "brand-alt";
 }) {

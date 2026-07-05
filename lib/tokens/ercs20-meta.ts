@@ -1,7 +1,7 @@
 import type { PublicClient } from "viem";
 import { getAddress, isAddress } from "viem";
 
-import { ercs20TokenAbi } from "@/lib/contracts/ercs20-abi";
+import { ercs20TokenAbi } from "@/lib/contracts/abis";
 import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
 
 export async function readErcs20TokenMeta(

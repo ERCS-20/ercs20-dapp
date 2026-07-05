@@ -15,8 +15,8 @@ import {
   getSwapTargetChainId,
   isSwapEnvConfigured,
 } from "@/lib/config/swap-target";
-import { ercs20FactoryAbi } from "@/lib/contracts/ercs20-factory-abi";
-import { getErcs20CreateFromReceipt } from "@/lib/contracts/ercs20-factory-receipt";
+import { ercs20FactoryAbi } from "@/lib/contracts/abis";
+import { getErcs20CreateFromReceipt } from "@/lib/contracts/ercs20-factory";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useWrongNetworkGate } from "@/components/wallet/wrong-network-gate";

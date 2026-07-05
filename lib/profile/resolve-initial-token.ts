@@ -1,4 +1,4 @@
-import { isNativeVaultToken } from "@/lib/config/asset-vault";
+import { isNativeUsdcDepositAddress } from "@/lib/contracts/global-spot-vault";
 import { createNativeUsdcToken } from "@/lib/profile/native-usdc-token";
 import { findObxQuickPickToken } from "@/lib/profile/quick-pick-tokens";
 import type { Ercs20Rsp } from "@/services/chain/types";
@@ -8,7 +8,7 @@ export function resolveInitialProfileToken(
   tokenParam: string | null
 ): Ercs20Rsp | undefined {
   if (tokenParam) {
-    if (isNativeVaultToken(tokenParam)) {
+    if (isNativeUsdcDepositAddress(tokenParam)) {
       return createNativeUsdcToken();
     }
     const match = tokens.find((t) => t.contract.toLowerCase() === tokenParam.toLowerCase());

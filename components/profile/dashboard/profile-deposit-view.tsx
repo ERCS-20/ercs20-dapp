@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DownloadIcon } from "lucide-react";
-import { formatUnits, parseUnits, zeroAddress } from "viem";
+import { formatUnits, parseUnits } from "viem";
 import { toast } from "sonner";
 import {
   useBalance,
@@ -17,6 +17,8 @@ import {
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
 import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
 import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
+import { ProfileDepositApproveDialog } from "@/components/profile/shared/profile-deposit-approve-dialog";
+import { ProfileTransferAddressBlock } from "@/components/profile/shared/profile-transfer-dialog-parts";
 import { ProfileTokenSelectSheet } from "@/components/profile/shared/profile-token-select-sheet";
 import { SizePctControls } from "@/components/trading/size-pct-controls";
 import { Button } from "@/components/ui/button";
@@ -26,12 +28,14 @@ import { useWallet } from "@/hooks/use-wallet";
 import {
   getAssetVaultAddress,
   isAssetVaultConfigured,
-  isNativeVaultToken,
 } from "@/lib/config/asset-vault";
 import { getSwapTargetChainId } from "@/lib/config/swap-target";
-import { assetVaultAbi } from "@/lib/contracts/asset-vault-abi";
-import { erc20WriteAbi } from "@/lib/contracts/erc20";
-import { isNativeUsdcToken } from "@/lib/profile/native-usdc-token";
+import {
+  approveTokenForVault,
+  executeGlobalSpotVaultDeposit,
+  isNativeUsdcDepositAddress,
+  readVaultErc20Allowance,
+} from "@/lib/contracts/global-spot-vault";
 import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import { useErcs20Pagination } from "@/services/chain/hooks";
@@ -88,6 +92,10 @@ export function ProfileDepositView() {
   const [sizePct, setSizePct] = useState(0);
   const [selectedToken, setSelectedToken] = useState<Ercs20Rsp | null>(null);
   const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [depositHash, setDepositHash] = useState<`0x${string}` | undefined>();
+  const handledDepositHashRef = useRef<`0x${string}` | null>(null);
 
   useEffect(() => {
     if (selectedToken) return;
@@ -100,8 +108,7 @@ export function ProfileDepositView() {
 
   const token = selectedToken?.contract as `0x${string}` | undefined;
   const isNative =
-    selectedToken != null &&
-    (isNativeVaultToken(selectedToken.contract) || isNativeUsdcToken(selectedToken));
+    selectedToken != null && isNativeUsdcDepositAddress(selectedToken.contract);
   const tokenDecimals = selectedToken?.decimals ?? 18;
   const balanceQueryEnabled =
     !!address && isConnected && targetChainId != null && !!token;
@@ -165,18 +172,17 @@ export function ProfileDepositView() {
 
   const {
     writeContractAsync,
-    data: txHash,
     isPending: isWritePending,
     error: writeError,
     reset: resetWrite,
   } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: txHash,
+    hash: depositHash,
     chainId: targetChainId ?? undefined,
   });
 
-  const busy = isWritePending || isConfirming;
+  const busy = isApproving || isWritePending || isConfirming;
 
   useEffect(() => {
     if (!writeError) return;
@@ -186,12 +192,45 @@ export function ProfileDepositView() {
   }, [writeError, t]);
 
   useEffect(() => {
-    if (!isSuccess || !selectedToken) return;
+    if (!isSuccess || !selectedToken || !depositHash) return;
+    if (handledDepositHashRef.current === depositHash) return;
+    handledDepositHashRef.current = depositHash;
     toast.success(t("profile.depositSubmitted").replace("{symbol}", selectedToken.symbol));
-    router.push("/profile");
-  }, [isSuccess, selectedToken, router, t]);
+    setAmount("");
+    setSizePct(0);
+    setDepositHash(undefined);
+    resetWrite();
+  }, [isSuccess, selectedToken, depositHash, t, resetWrite]);
 
-  const submitDeposit = useCallback(async () => {
+  const runDeposit = useCallback(async () => {
+    if (
+      !selectedToken ||
+      parsedAmount == null ||
+      !vaultAddress ||
+      targetChainId == null ||
+      !token
+    ) {
+      return;
+    }
+
+    const hash = await executeGlobalSpotVaultDeposit({
+      writeContractAsync,
+      vaultAddress,
+      tokenAddress: token,
+      amount: parsedAmount,
+      chainId: targetChainId,
+    });
+    setDepositHash(hash);
+  }, [
+    selectedToken,
+    parsedAmount,
+    vaultAddress,
+    targetChainId,
+    token,
+    writeContractAsync,
+  ]);
+
+  const handleApproveAndDeposit = useCallback(async () => {
     if (
       !selectedToken ||
       parsedAmount == null ||
@@ -204,36 +243,24 @@ export function ProfileDepositView() {
       return;
     }
 
-    const isNativeToken = isNativeVaultToken(token);
-
-    if (!isNativeToken) {
-      const allowance = await publicClient.readContract({
-        address: token,
-        abi: erc20WriteAbi,
-        functionName: "allowance",
-        args: [address, vaultAddress],
+    setApproveDialogOpen(false);
+    setIsApproving(true);
+    resetWrite();
+    try {
+      await approveTokenForVault({
+        publicClient,
+        writeContractAsync,
+        tokenAddress: token,
+        vaultAddress,
+        amount: parsedAmount,
+        chainId: targetChainId,
       });
-
-      if (allowance < parsedAmount) {
-        const approveHash = await writeContractAsync({
-          address: token,
-          abi: erc20WriteAbi,
-          functionName: "approve",
-          args: [vaultAddress, parsedAmount],
-          chainId: targetChainId,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      }
+      await runDeposit();
+    } catch {
+      // writeContractAsync errors also surface via writeError effect
+    } finally {
+      setIsApproving(false);
     }
-
-    await writeContractAsync({
-      address: vaultAddress,
-      abi: assetVaultAbi,
-      functionName: "deposit",
-      args: [isNativeToken ? zeroAddress : token, parsedAmount],
-      value: isNativeToken ? parsedAmount : undefined,
-      chainId: targetChainId,
-    });
   }, [
     selectedToken,
     parsedAmount,
@@ -243,6 +270,8 @@ export function ProfileDepositView() {
     publicClient,
     token,
     writeContractAsync,
+    runDeposit,
+    resetWrite,
   ]);
 
   async function handleConfirm() {
@@ -258,13 +287,33 @@ export function ProfileDepositView() {
       toast.error(t("profile.depositVaultNotConfigured"));
       return;
     }
-    if (!selectedToken || parsedAmount == null) {
+    if (!selectedToken || parsedAmount == null || !vaultAddress || !publicClient || !token) {
       toast.error(t("profile.invalidAmount"));
       return;
     }
 
+    resetWrite();
+    setDepositHash(undefined);
+
     try {
-      await submitDeposit();
+      if (isNative) {
+        await runDeposit();
+        return;
+      }
+
+      const allowance = await readVaultErc20Allowance({
+        publicClient,
+        tokenAddress: token,
+        owner: address,
+        vaultAddress,
+      });
+
+      if (allowance >= parsedAmount) {
+        await runDeposit();
+        return;
+      }
+
+      setApproveDialogOpen(true);
     } catch {
       // writeContractAsync errors also surface via writeError effect
     }
@@ -282,6 +331,8 @@ export function ProfileDepositView() {
     setSelectedToken(token);
     setAmount("");
     setSizePct(0);
+    setApproveDialogOpen(false);
+    setDepositHash(undefined);
     resetWrite();
   }
 
@@ -291,9 +342,11 @@ export function ProfileDepositView() {
     isAssetVaultConfigured() &&
     selectedToken != null &&
     parsedAmount != null &&
-    !busy;
+    !busy &&
+    !approveDialogOpen;
 
   const displaySymbol = selectedToken?.symbol ?? "—";
+  const approveAmountLabel = amount.trim() || "0";
 
   return (
     <ProfileShell section="dashboard" onSectionChange={handleSectionChange}>
@@ -301,6 +354,15 @@ export function ProfileDepositView() {
         open={tokenSheetOpen}
         onOpenChange={setTokenSheetOpen}
         onSelect={selectToken}
+      />
+
+      <ProfileDepositApproveDialog
+        open={approveDialogOpen}
+        onOpenChange={setApproveDialogOpen}
+        symbol={displaySymbol}
+        amountLabel={approveAmountLabel}
+        isApproving={isApproving}
+        onApprove={handleApproveAndDeposit}
       />
 
       <section className={profileDetailSectionClass}>
@@ -367,6 +429,22 @@ export function ProfileDepositView() {
                 />
               </div>
 
+              <div className="mt-4">
+                {address ? (
+                  <ProfileTransferAddressBlock
+                    id="deposit-owner-address"
+                    label={t("profile.depositAssetOwner")}
+                    value={address}
+                    hint={t("profile.depositOwnerHint")}
+                    tone="brand"
+                  />
+                ) : (
+                  <p className="text-muted-foreground rounded-xl border border-dashed border-brand/20 bg-brand/5 px-3.5 py-3 text-sm">
+                    {t("profile.notConnected")}
+                  </p>
+                )}
+              </div>
+
               <Button
                 type="button"
                 className={cn("mt-4 h-11 w-full rounded-xl text-base")}
@@ -374,9 +452,11 @@ export function ProfileDepositView() {
                 disabled={!canSubmit}
               >
                 {busy
-                  ? isWritePending
-                    ? t("swap.confirmWallet")
-                    : t("swap.confirming")
+                  ? isApproving
+                    ? t("profile.depositApproving")
+                    : isWritePending
+                      ? t("swap.confirmWallet")
+                      : t("swap.confirming")
                   : t("profile.confirmDeposit")}
               </Button>
             </div>

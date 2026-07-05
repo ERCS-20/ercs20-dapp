@@ -1,27 +1,4 @@
-/**
- * Minimal ABI for `ERCS20Factory` (registry reads used by token search).
- * Extend when you wire `create`, `pause`, etc.
- */
-export const ercs20FactoryAbi = [
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "ercs20",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "index",
-        "type": "uint256"
-      }
-    ],
-    "name": "Create",
-    "type": "event"
-  },
+[
   {
     "anonymous": false,
     "inputs": [
@@ -39,6 +16,37 @@ export const ercs20FactoryAbi = [
       }
     ],
     "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "ercs20",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "usdc",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "pair",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "PairCreated",
     "type": "event"
   },
   {
@@ -252,4 +260,4 @@ export const ercs20FactoryAbi = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-] as const;
+]

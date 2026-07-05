@@ -20,7 +20,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { SizePctControls } from "@/components/trading/size-pct-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ercs20TokenAbi } from "@/lib/contracts/ercs20-abi";
+import { ercs20TokenAbi } from "@/lib/contracts/abis";
 import {
   getDefaultErcs20TokenAddress,
   getErcs20FactoryAddress,

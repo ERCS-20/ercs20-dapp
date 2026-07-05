@@ -1,7 +1,7 @@
 import type { TransactionReceipt } from "viem";
 import { decodeEventLog } from "viem";
 
-import { ercs20FactoryAbi } from "@/lib/contracts/ercs20-factory-abi";
+import { ercs20FactoryAbi } from "@/lib/contracts/abis";
 
 /**
  * Reads `Create` from factory tx receipt (ERCS20Factory emits `Create`, not Uniswap `PairCreated`).
@@ -29,7 +29,7 @@ export function getErcs20CreateFromReceipt(
         strict: false,
       });
       if (decoded.eventName !== "Create") continue;
-      const args = decoded.args as {
+      const args = decoded.args as unknown as {
         ercs20: `0x${string}`;
         index: bigint;
       };

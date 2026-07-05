@@ -15,7 +15,7 @@ export const publicEnv = {
     process.env.NEXT_PUBLIC_ERC20_FACTORY_ADDRESS ??
     "",
   defaultErcs20Token: process.env.NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN ?? "",
-  assetVaultAddress: process.env.NEXT_PUBLIC_ASSET_VAULT_ADDRESS ?? "",
+  spotAssetVaultAddress: process.env.NEXT_PUBLIC_SPOT_ASSET_VAULT_ADDRESS ?? "",
   /** API origin only, e.g. `https://api.example.com` (no `/api/v1`). */
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
   /** Global REST prefix, e.g. `/api/v1`. Overridable via env. */
