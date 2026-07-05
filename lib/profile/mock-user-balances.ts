@@ -1,8 +1,11 @@
 import type { UserBalanceRsp } from "@/services/asset/types";
+import { getDefaultErcs20TokenAddress } from "@/lib/config/swap-target";
 
 /** Phase 2 mock — replace with `services/asset` API when wired. */
 export function getMockUserBalances(): UserBalanceRsp[] {
   const now = "2026-07-04T10:30:00.000Z";
+  const obxAddress =
+    getDefaultErcs20TokenAddress() ?? "0xa16E02E87b7454126E5E10d957A927A7F5B5d2be";
   return [
     {
       tokenAddress: "0x0000000000000000000000000000000000000000",
@@ -15,7 +18,7 @@ export function getMockUserBalances(): UserBalanceRsp[] {
       updatedAt: now,
     },
     {
-      tokenAddress: "0xa16E02E87b7454126E5E10d957A927A7F5B5d2be",
+      tokenAddress: obxAddress,
       symbol: "OBX",
       name: "Orbix DAO",
       availableBalance: "850000000000000000000",

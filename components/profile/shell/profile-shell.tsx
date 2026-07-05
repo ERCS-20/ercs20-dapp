@@ -9,7 +9,7 @@ import {
   WalletIcon,
 } from "lucide-react";
 
-import { ProfileOnChainWalletBar } from "@/components/profile/profile-on-chain-wallet-bar";
+import { ProfileOnChainWalletBar } from "@/components/profile/shell/profile-on-chain-wallet-bar";
 import { PageShell } from "@/components/layout/page-shell";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";

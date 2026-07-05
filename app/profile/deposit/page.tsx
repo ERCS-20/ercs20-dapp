@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ProfileDepositView } from "@/components/profile/profile-deposit-view";
+import { ProfileDepositView } from "@/components/profile/dashboard/profile-deposit-view";
 
 export const metadata: Metadata = {
   title: "Deposit · Profile · ERCS-20",

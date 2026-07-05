@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ProfileView } from "@/components/profile/profile-view";
+import { ProfileView } from "@/components/profile/shell/profile-view";
 
 export const metadata: Metadata = {
   title: "Profile · ERCS-20",

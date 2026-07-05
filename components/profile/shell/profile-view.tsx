@@ -3,11 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { ProfileDashboardPanel } from "@/components/profile/profile-dashboard-panel";
-import { ProfileSpotBalancesTable } from "@/components/profile/profile-spot-balances-table";
-import { ProfileSpotDepositHistoryPanel } from "@/components/profile/profile-spot-deposit-history-panel";
-import { ProfileSpotWithdrawHistoryPanel } from "@/components/profile/profile-spot-withdraw-history-panel";
-import { ProfileShell, type ProfileSection } from "@/components/profile/profile-shell";
+import { ProfileDashboardPanel } from "@/components/profile/dashboard/profile-dashboard-panel";
+import { ProfileSpotDepositHistoryPanel } from "@/components/profile/spot-deposits/profile-spot-deposit-history-panel";
+import { ProfileSpotBalancesTable } from "@/components/profile/spot-accounts/profile-spot-balances-table";
+import { ProfileSpotWithdrawHistoryPanel } from "@/components/profile/spot-withdrawals/profile-spot-withdraw-history-panel";
+import { ProfileShell, type ProfileSection } from "@/components/profile/shell/profile-shell";
 
 const validSections = new Set<ProfileSection>([
   "dashboard",

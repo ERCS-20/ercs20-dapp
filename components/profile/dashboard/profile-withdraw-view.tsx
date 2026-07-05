@@ -9,19 +9,21 @@ import { toast } from "sonner";
 
 import {
   ProfileTransferAddressBlock,
-} from "@/components/profile/profile-transfer-dialog-parts";
-import { ProfileFormHeader } from "@/components/profile/profile-form-header";
-import { ProfileBackLink } from "@/components/profile/profile-back-link";
-import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/profile-shell";
-import { ProfileTokenSelectSheet } from "@/components/profile/profile-token-select-sheet";
+} from "@/components/profile/shared/profile-transfer-dialog-parts";
+import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
+import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
+import { ProfileTokenSelectSheet } from "@/components/profile/shared/profile-token-select-sheet";
 import { SizePctControls } from "@/components/trading/size-pct-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/hooks/use-wallet";
-import { formatProfileBalance } from "@/lib/profile/format";
-import { getMockUserBalances } from "@/lib/profile/mock-user-balances";
+import { formatBalance } from "@/lib/utils/format/balance";
+import { getMockUserBalanceByTokenAddress } from "@/lib/profile/mock-user-balances";
+import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalanceRsp } from "@/services/asset/types";
+import { useErcs20Pagination } from "@/services/chain/hooks";
+import type { Ercs20Rsp } from "@/services/chain/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -39,9 +41,9 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-function parseAvailableBalance(raw: string): number {
+function parseAvailableBalance(raw: string, decimals: number): number {
   try {
-    const v = Number(formatUnits(BigInt(raw), 18));
+    const v = Number(formatUnits(BigInt(raw), decimals));
     return Number.isFinite(v) ? v : 0;
   } catch {
     return 0;
@@ -54,33 +56,33 @@ export function ProfileWithdrawView() {
   const searchParams = useSearchParams();
   const { address, isConnected } = useWallet();
 
-  const balances = useMemo(() => getMockUserBalances(), []);
+  const { data: tokenPage } = useErcs20Pagination({ currentPage: 1, pageSize: 20 });
   const [amount, setAmount] = useState("");
   const [sizePct, setSizePct] = useState(0);
-  const [selectedTokenAddress, setSelectedTokenAddress] = useState("");
+  const [selectedToken, setSelectedToken] = useState<Ercs20Rsp | null>(null);
   const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
 
-  const selectedAccount = useMemo(
-    () => balances.find((b) => b.tokenAddress === selectedTokenAddress),
-    [balances, selectedTokenAddress]
+  useEffect(() => {
+    if (selectedToken) return;
+    const initial = resolveInitialProfileToken(
+      tokenPage?.pageItems ?? [],
+      searchParams.get("token")
+    );
+    if (initial) setSelectedToken(initial);
+  }, [tokenPage?.pageItems, searchParams, selectedToken]);
+
+  const spotBalance = useMemo(
+    () =>
+      selectedToken
+        ? getMockUserBalanceByTokenAddress(selectedToken.contract)
+        : undefined,
+    [selectedToken]
   );
 
-  useEffect(() => {
-    const tokenParam = searchParams.get("token");
-    if (tokenParam) {
-      const match = balances.find((b) => b.tokenAddress.toLowerCase() === tokenParam.toLowerCase());
-      if (match) {
-        setSelectedTokenAddress(match.tokenAddress);
-        return;
-      }
-    }
-    if (balances.length > 0 && !selectedTokenAddress) {
-      setSelectedTokenAddress(balances[0].tokenAddress);
-    }
-  }, [searchParams, balances, selectedTokenAddress]);
+  const tokenDecimals = selectedToken?.decimals ?? 18;
 
-  const availableAmount = selectedAccount
-    ? parseAvailableBalance(selectedAccount.availableBalance)
+  const availableAmount = spotBalance
+    ? parseAvailableBalance(spotBalance.availableBalance, tokenDecimals)
     : 0;
 
   const canUseSizePct = isConnected && availableAmount > 0;
@@ -105,7 +107,7 @@ export function ProfileWithdrawView() {
   }, [address, t]);
 
   function handleConfirm() {
-    if (!selectedAccount) return;
+    if (!selectedToken) return;
     const trimmed = amount.trim();
     const n = Number(trimmed);
     if (!trimmed || !Number.isFinite(n) || n <= 0) {
@@ -116,7 +118,7 @@ export function ProfileWithdrawView() {
       toast.error(t("profile.notConnected"));
       return;
     }
-    toast.success(t("profile.withdrawSubmitted").replace("{symbol}", selectedAccount.symbol));
+    toast.success(t("profile.withdrawSubmitted").replace("{symbol}", selectedToken.symbol));
     router.push("/profile");
   }
 
@@ -128,26 +130,15 @@ export function ProfileWithdrawView() {
     router.push(`/profile?section=${section}`);
   }
 
-  function selectToken(account: UserBalanceRsp) {
-    setSelectedTokenAddress(account.tokenAddress);
+  function selectToken(token: Ercs20Rsp) {
+    setSelectedToken(token);
     setAmount("");
     setSizePct(0);
   }
 
-  if (balances.length === 0) {
-    return (
-      <ProfileShell section="dashboard" onSectionChange={handleSectionChange}>
-        <section className={profileDetailSectionClass}>
-          <p className="text-muted-foreground text-sm">{t("profile.emptySpotBalances")}</p>
-          <ProfileBackLink href="/profile" label={t("profile.backToDashboard")} className="mt-4" />
-        </section>
-      </ProfileShell>
-    );
-  }
-
-  const displaySymbol = selectedAccount?.symbol ?? "—";
-  const balanceLabel = selectedAccount
-    ? formatProfileBalance(selectedAccount.availableBalance)
+  const displaySymbol = selectedToken?.symbol ?? "—";
+  const balanceLabel = spotBalance
+    ? formatBalance(spotBalance.availableBalance)
     : "—";
 
   return (
@@ -155,7 +146,6 @@ export function ProfileWithdrawView() {
       <ProfileTokenSelectSheet
         open={tokenSheetOpen}
         onOpenChange={setTokenSheetOpen}
-        balances={balances}
         onSelect={selectToken}
       />
 
@@ -178,7 +168,7 @@ export function ProfileWithdrawView() {
                     <span>{t("profile.amount")}</span>
                     <span>
                       {t("profile.availableBalance")}: {balanceLabel}
-                      {selectedAccount ? ` ${selectedAccount.symbol}` : ""}
+                      {selectedToken ? ` ${selectedToken.symbol}` : ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -207,7 +197,7 @@ export function ProfileWithdrawView() {
                       aria-label={`${t("profile.selectToken")}: ${displaySymbol}`}
                       onClick={() => setTokenSheetOpen(true)}
                     >
-                      {selectedAccount ? <TokenIcon symbol={selectedAccount.symbol} /> : null}
+                      {selectedToken ? <TokenIcon symbol={selectedToken.symbol} /> : null}
                       <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{displaySymbol}</span>
                     </button>
                   </div>
@@ -245,7 +235,7 @@ export function ProfileWithdrawView() {
                   "bg-brand-alt text-brand-alt-on hover:bg-brand-alt/90"
                 )}
                 onClick={handleConfirm}
-                disabled={!address || !selectedAccount}
+                disabled={!address || !selectedToken}
               >
                 {t("profile.confirmWithdraw")}
               </Button>

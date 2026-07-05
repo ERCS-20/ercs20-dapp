@@ -14,10 +14,10 @@ import {
   useWriteContract,
 } from "wagmi";
 
-import { ProfileBackLink } from "@/components/profile/profile-back-link";
-import { ProfileFormHeader } from "@/components/profile/profile-form-header";
-import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/profile-shell";
-import { ProfileTokenSelectSheet } from "@/components/profile/profile-token-select-sheet";
+import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
+import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
+import { ProfileTokenSelectSheet } from "@/components/profile/shared/profile-token-select-sheet";
 import { SizePctControls } from "@/components/trading/size-pct-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,25 +31,26 @@ import {
 import { getSwapTargetChainId } from "@/lib/config/swap-target";
 import { assetVaultAbi } from "@/lib/contracts/asset-vault-abi";
 import { erc20WriteAbi } from "@/lib/contracts/erc20";
-import { getMockUserBalances } from "@/lib/profile/mock-user-balances";
+import { isNativeUsdcToken } from "@/lib/profile/native-usdc-token";
+import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalanceRsp } from "@/services/asset/types";
+import { useErcs20Pagination } from "@/services/chain/hooks";
+import type { Ercs20Rsp } from "@/services/chain/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
 const DISCONNECTED = "--";
-const TOKEN_DECIMALS = 18;
 
 function trimDecimalInput(s: string): string {
   if (!s.includes(".")) return s;
   return s.replace(/\.?0+$/, "").replace(/\.$/, "") || "0";
 }
 
-function parseDepositAmount(raw: string): bigint | undefined {
+function parseDepositAmount(raw: string, decimals: number): bigint | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
   try {
-    const v = parseUnits(trimmed, TOKEN_DECIMALS);
+    const v = parseUnits(trimmed, decimals);
     return v > BigInt(0) ? v : undefined;
   } catch {
     return undefined;
@@ -82,33 +83,26 @@ export function ProfileDepositView() {
   const wrongNetwork =
     targetChainId != null && chainId != null && chainId !== targetChainId;
 
-  const balances = useMemo(() => getMockUserBalances(), []);
+  const { data: tokenPage } = useErcs20Pagination({ currentPage: 1, pageSize: 20 });
   const [amount, setAmount] = useState("");
   const [sizePct, setSizePct] = useState(0);
-  const [selectedTokenAddress, setSelectedTokenAddress] = useState("");
+  const [selectedToken, setSelectedToken] = useState<Ercs20Rsp | null>(null);
   const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
 
-  const selectedAccount = useMemo(
-    () => balances.find((b) => b.tokenAddress === selectedTokenAddress),
-    [balances, selectedTokenAddress]
-  );
-
   useEffect(() => {
-    const tokenParam = searchParams.get("token");
-    if (tokenParam) {
-      const match = balances.find((b) => b.tokenAddress.toLowerCase() === tokenParam.toLowerCase());
-      if (match) {
-        setSelectedTokenAddress(match.tokenAddress);
-        return;
-      }
-    }
-    if (balances.length > 0 && !selectedTokenAddress) {
-      setSelectedTokenAddress(balances[0].tokenAddress);
-    }
-  }, [searchParams, balances, selectedTokenAddress]);
+    if (selectedToken) return;
+    const initial = resolveInitialProfileToken(
+      tokenPage?.pageItems ?? [],
+      searchParams.get("token")
+    );
+    if (initial) setSelectedToken(initial);
+  }, [tokenPage?.pageItems, searchParams, selectedToken]);
 
-  const token = selectedAccount?.tokenAddress as `0x${string}` | undefined;
-  const isNative = token != null && isNativeVaultToken(token);
+  const token = selectedToken?.contract as `0x${string}` | undefined;
+  const isNative =
+    selectedToken != null &&
+    (isNativeVaultToken(selectedToken.contract) || isNativeUsdcToken(selectedToken));
+  const tokenDecimals = selectedToken?.decimals ?? 18;
   const balanceQueryEnabled =
     !!address && isConnected && targetChainId != null && !!token;
 
@@ -133,10 +127,10 @@ export function ProfileDepositView() {
     }
     if (tokenBalReadError) return "—";
     if (typeof tokenBalRaw === "bigint") {
-      return trimDecimalInput(formatUnits(tokenBalRaw, TOKEN_DECIMALS));
+      return trimDecimalInput(formatUnits(tokenBalRaw, tokenDecimals));
     }
     return DISCONNECTED;
-  }, [isConnected, token, isNative, nativeBal, tokenBalReadError, tokenBalRaw]);
+  }, [isConnected, token, isNative, nativeBal, tokenBalReadError, tokenBalRaw, tokenDecimals]);
 
   const balanceWei = useMemo(() => {
     if (!isConnected || !token) return undefined;
@@ -146,8 +140,8 @@ export function ProfileDepositView() {
   }, [isConnected, token, isNative, nativeBal, tokenBalRaw]);
 
   const balanceDecimals = isNative
-    ? (nativeBal?.decimals ?? TOKEN_DECIMALS)
-    : TOKEN_DECIMALS;
+    ? (nativeBal?.decimals ?? tokenDecimals)
+    : tokenDecimals;
 
   const canUseSizePct =
     isConnected &&
@@ -164,7 +158,10 @@ export function ProfileDepositView() {
     [balanceWei, balanceDecimals]
   );
 
-  const parsedAmount = useMemo(() => parseDepositAmount(amount), [amount]);
+  const parsedAmount = useMemo(
+    () => (selectedToken ? parseDepositAmount(amount, tokenDecimals) : undefined),
+    [amount, selectedToken, tokenDecimals]
+  );
 
   const {
     writeContractAsync,
@@ -189,14 +186,14 @@ export function ProfileDepositView() {
   }, [writeError, t]);
 
   useEffect(() => {
-    if (!isSuccess || !selectedAccount) return;
-    toast.success(t("profile.depositSubmitted").replace("{symbol}", selectedAccount.symbol));
+    if (!isSuccess || !selectedToken) return;
+    toast.success(t("profile.depositSubmitted").replace("{symbol}", selectedToken.symbol));
     router.push("/profile");
-  }, [isSuccess, selectedAccount, router, t]);
+  }, [isSuccess, selectedToken, router, t]);
 
   const submitDeposit = useCallback(async () => {
     if (
-      !selectedAccount ||
+      !selectedToken ||
       parsedAmount == null ||
       !address ||
       !vaultAddress ||
@@ -238,7 +235,7 @@ export function ProfileDepositView() {
       chainId: targetChainId,
     });
   }, [
-    selectedAccount,
+    selectedToken,
     parsedAmount,
     address,
     vaultAddress,
@@ -261,7 +258,7 @@ export function ProfileDepositView() {
       toast.error(t("profile.depositVaultNotConfigured"));
       return;
     }
-    if (!selectedAccount || parsedAmount == null) {
+    if (!selectedToken || parsedAmount == null) {
       toast.error(t("profile.invalidAmount"));
       return;
     }
@@ -281,8 +278,8 @@ export function ProfileDepositView() {
     router.push(`/profile?section=${section}`);
   }
 
-  function selectToken(account: UserBalanceRsp) {
-    setSelectedTokenAddress(account.tokenAddress);
+  function selectToken(token: Ercs20Rsp) {
+    setSelectedToken(token);
     setAmount("");
     setSizePct(0);
     resetWrite();
@@ -292,29 +289,17 @@ export function ProfileDepositView() {
     isConnected &&
     !wrongNetwork &&
     isAssetVaultConfigured() &&
-    selectedAccount != null &&
+    selectedToken != null &&
     parsedAmount != null &&
     !busy;
 
-  if (balances.length === 0) {
-    return (
-      <ProfileShell section="dashboard" onSectionChange={handleSectionChange}>
-        <section className={profileDetailSectionClass}>
-          <p className="text-muted-foreground text-sm">{t("profile.emptySpotBalances")}</p>
-          <ProfileBackLink href="/profile" label={t("profile.backToDashboard")} className="mt-4" />
-        </section>
-      </ProfileShell>
-    );
-  }
-
-  const displaySymbol = selectedAccount?.symbol ?? "—";
+  const displaySymbol = selectedToken?.symbol ?? "—";
 
   return (
     <ProfileShell section="dashboard" onSectionChange={handleSectionChange}>
       <ProfileTokenSelectSheet
         open={tokenSheetOpen}
         onOpenChange={setTokenSheetOpen}
-        balances={balances}
         onSelect={selectToken}
       />
 
@@ -336,8 +321,8 @@ export function ProfileDepositView() {
                   <span>{t("profile.amount")}</span>
                   <span>
                     {t("swap.balance")}: {balanceLabel}
-                    {selectedAccount && balanceLabel !== DISCONNECTED
-                      ? ` ${selectedAccount.symbol}`
+                    {selectedToken && balanceLabel !== DISCONNECTED
+                      ? ` ${selectedToken.symbol}`
                       : ""}
                   </span>
                 </div>
@@ -367,7 +352,7 @@ export function ProfileDepositView() {
                     aria-label={`${t("profile.selectToken")}: ${displaySymbol}`}
                     onClick={() => setTokenSheetOpen(true)}
                   >
-                    {selectedAccount ? <TokenIcon symbol={selectedAccount.symbol} /> : null}
+                    {selectedToken ? <TokenIcon symbol={selectedToken.symbol} /> : null}
                     <span className="max-w-[6.5rem] truncate sm:max-w-[7rem]">{displaySymbol}</span>
                   </button>
                 </div>

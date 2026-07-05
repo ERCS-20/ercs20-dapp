@@ -161,7 +161,7 @@ export const zhTW = {
     switchNetwork: "切換網路",
     envNotConfigured: "請在 .env.local 設定 NEXT_PUBLIC_CHAIN_ID 與 NEXT_PUBLIC_ERCS20_FACTORY_ADDRESS。",
     pickToken: "請選擇 ERCS-20 代幣",
-    searchTokens: "符號或 0x 位址（工廠依符號精確比對）",
+    searchTokens: "符號或 0x 位址",
     noTokenResults: "找不到代幣",
     loading: "載入中…",
     insufficientBalance: "餘額不足",

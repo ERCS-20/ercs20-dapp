@@ -2,7 +2,7 @@
 
 import { DownloadIcon, UploadIcon } from "lucide-react";
 
-import { ProfileActionLinkCard } from "@/components/profile/profile-action-link-card";
+import { ProfileActionLinkCard } from "@/components/profile/dashboard/profile-action-link-card";
 import { useI18n } from "@/providers/i18n-provider";
 
 export function ProfileDashboardPanel() {

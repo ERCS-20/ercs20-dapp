@@ -161,7 +161,7 @@ export const zhCN = {
     switchNetwork: "切换网络",
     envNotConfigured: "请在 .env.local 中设置 NEXT_PUBLIC_CHAIN_ID 与 NEXT_PUBLIC_ERCS20_FACTORY_ADDRESS。",
     pickToken: "请选择 ERCS-20 代币",
-    searchTokens: "符号或 0x 地址（工厂按符号精确匹配）",
+    searchTokens: "符号或 0x 地址",
     noTokenResults: "未找到代币",
     loading: "加载中…",
     insufficientBalance: "余额不足",

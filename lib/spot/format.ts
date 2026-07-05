@@ -38,8 +38,3 @@ export function formatSpotTotal(value: number): string {
     maximumFractionDigits: 2,
   });
 }
-
-export function shortTxHash(hash: string): string {
-  if (!hash || hash.length < 10) return hash || "—";
-  return `${hash.slice(0, 6)}…${hash.slice(-4)}`;
-}

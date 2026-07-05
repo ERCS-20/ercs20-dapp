@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@/hooks/use-wallet";
 import { erc20ReadAbi } from "@/lib/contracts/erc20";
-import { shortTokenAddress } from "@/lib/profile/format";
+import { shortTokenAddress } from "@/lib/utils/format/address";
 import defaultTokenList from "@/lib/tokens/ercs20-default-list.json";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import { supportedChains } from "@/lib/web3/chains";

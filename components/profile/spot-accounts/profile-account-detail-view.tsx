@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 
-import { ProfileAccountInfoCard } from "@/components/profile/profile-account-info-card";
-import { ProfileAccountLedgerTable } from "@/components/profile/profile-account-ledger-table";
-import { ProfileBackLink } from "@/components/profile/profile-back-link";
-import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/profile-shell";
+import { ProfileAccountInfoCard } from "@/components/profile/spot-accounts/profile-account-info-card";
+import { ProfileAccountLedgerTable } from "@/components/profile/spot-accounts/profile-account-ledger-table";
+import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
 import { getMockUserBalanceByTokenAddress } from "@/lib/profile/mock-user-balances";
 import { useI18n } from "@/providers/i18n-provider";
 

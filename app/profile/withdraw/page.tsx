@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ProfileWithdrawView } from "@/components/profile/profile-withdraw-view";
+import { ProfileWithdrawView } from "@/components/profile/dashboard/profile-withdraw-view";
 
 export const metadata: Metadata = {
   title: "Withdraw · Profile · ERCS-20",

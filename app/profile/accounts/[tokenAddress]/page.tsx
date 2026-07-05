@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ProfileAccountDetailView } from "@/components/profile/profile-account-detail-view";
+import { ProfileAccountDetailView } from "@/components/profile/spot-accounts/profile-account-detail-view";
 
 type PageProps = {
   params: Promise<{ tokenAddress: string }>;

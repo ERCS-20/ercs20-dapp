@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatProfileBalance, shortTokenAddress } from "@/lib/profile/format";
+import { formatBalance } from "@/lib/utils/format/balance";
+import { shortTokenAddress } from "@/lib/utils/format/address";
 import { getMockUserBalances } from "@/lib/profile/mock-user-balances";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { UserBalanceRsp, UserBalanceStatus } from "@/services/asset/types";
@@ -94,10 +95,10 @@ function BalanceRow({ row }: { row: UserBalanceRsp }) {
         </div>
       </TableCell>
       <TableCell className="text-brand tabular-nums">
-        {formatProfileBalance(row.availableBalance)} {row.symbol}
+        {formatBalance(row.availableBalance)} {row.symbol}
       </TableCell>
       <TableCell className="text-brand-alt tabular-nums">
-        {formatProfileBalance(row.frozenBalance)} {row.symbol}
+        {formatBalance(row.frozenBalance)} {row.symbol}
       </TableCell>
       <TableCell>
         <span

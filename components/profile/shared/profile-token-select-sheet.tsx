@@ -11,8 +11,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { buildErcs20SearchCondition } from "@/lib/profile/ercs20-search-condition";
+import { getProfileTokenQuickPicks } from "@/lib/profile/quick-pick-tokens";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalanceRsp } from "@/services/asset/types";
+import { useErcs20Pagination } from "@/services/chain/hooks";
+import type { Ercs20Rsp } from "@/services/chain/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -31,8 +35,7 @@ const tokenSelectListClass = cn(
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  balances: UserBalanceRsp[];
-  onSelect: (account: UserBalanceRsp) => void;
+  onSelect: (token: Ercs20Rsp) => void;
 };
 
 function TokenRowIcon({ symbol }: { symbol: string }) {
@@ -49,26 +52,56 @@ function TokenRowIcon({ symbol }: { symbol: string }) {
   );
 }
 
-export function ProfileTokenSelectSheet({ open, onOpenChange, balances, onSelect }: Props) {
+function QuickPickIcon({ symbol }: { symbol: string }) {
+  const s = symbol.trim() || "TOKEN";
+  return (
+    <Image
+      src={getTokenIconSrc(s)}
+      alt=""
+      width={20}
+      height={20}
+      className="size-5 shrink-0 rounded-full ring-1 ring-border/60"
+      unoptimized
+    />
+  );
+}
+
+export function ProfileTokenSelectSheet({ open, onOpenChange, onSelect }: Props) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
 
   useEffect(() => {
-    if (!open) setQuery("");
+    if (!open) {
+      setQuery("");
+      setDebounced("");
+    }
   }, [open]);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return balances;
-    return balances.filter(
-      (row) =>
-        row.symbol.toLowerCase().includes(q) ||
-        row.name.toLowerCase().includes(q) ||
-        row.tokenAddress.toLowerCase().includes(q)
-    );
-  }, [balances, query]);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(query), 300);
+    return () => window.clearTimeout(id);
+  }, [query]);
 
-  const pick = (row: UserBalanceRsp) => {
+  const paginationReq = useMemo(
+    () => ({
+      currentPage: 1,
+      pageSize: 20,
+      condition: buildErcs20SearchCondition(debounced),
+    }),
+    [debounced]
+  );
+
+  const { data, isLoading } = useErcs20Pagination(paginationReq, {
+    enabled: open,
+    notifyError: true,
+  });
+
+  const tokens = data?.pageItems ?? [];
+
+  const quickPicks = useMemo(() => getProfileTokenQuickPicks(tokens), [tokens]);
+
+  const pick = (row: Ercs20Rsp) => {
     onSelect(row);
     onOpenChange(false);
   };
@@ -95,16 +128,34 @@ export function ProfileTokenSelectSheet({ open, onOpenChange, balances, onSelect
             autoComplete="off"
             autoCorrect="off"
           />
+          {quickPicks.length > 0 ? (
+            <div className="mt-2 flex gap-2">
+              {quickPicks.map((row) => (
+                <Button
+                  key={`${row.contract}-${row.symbol}`}
+                  type="button"
+                  variant="outline"
+                  className="h-9 flex-1 rounded-xl gap-2 text-sm font-medium"
+                  onClick={() => pick(row)}
+                >
+                  <QuickPickIcon symbol={row.symbol} />
+                  {row.symbol}
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className={tokenSelectListClass}>
-          {results.length === 0 ? (
+          {isLoading ? (
+            <p className="text-muted-foreground py-10 text-center text-sm">{t("swap.loading")}</p>
+          ) : tokens.length === 0 ? (
             <p className="text-muted-foreground py-10 text-center text-sm">
               {t("swap.noTokenResults")}
             </p>
           ) : (
             <ul className="divide-border/60 divide-y px-1 pb-2 md:px-2">
-              {results.map((row) => (
-                <li key={row.tokenAddress}>
+              {tokens.map((row) => (
+                <li key={`${row.contract}-${row.symbol}`}>
                   <button
                     type="button"
                     className={cn(
@@ -117,9 +168,9 @@ export function ProfileTokenSelectSheet({ open, onOpenChange, balances, onSelect
                     <div className="min-w-0 flex-1 leading-tight">
                       <div
                         className="text-foreground font-mono text-xs tracking-tight truncate md:text-[13px]"
-                        title={row.tokenAddress}
+                        title={row.contract}
                       >
-                        {row.tokenAddress}
+                        {row.contract}
                       </div>
                       <div className="text-foreground mt-0.5 text-sm font-semibold truncate">
                         {row.symbol}

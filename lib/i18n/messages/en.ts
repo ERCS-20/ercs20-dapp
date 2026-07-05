@@ -161,7 +161,7 @@ export const en = {
     envNotConfigured:
       "Set NEXT_PUBLIC_CHAIN_ID and NEXT_PUBLIC_ERCS20_FACTORY_ADDRESS in .env.local.",
     pickToken: "Select an ERCS-20 token",
-    searchTokens: "Symbol or 0x address (factory uses exact symbol)",
+    searchTokens: "Symbol or 0x address",
     noTokenResults: "No tokens found",
     loading: "Loading…",
     insufficientBalance: "Insufficient balance",

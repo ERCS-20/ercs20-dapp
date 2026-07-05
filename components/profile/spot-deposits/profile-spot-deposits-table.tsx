@@ -11,27 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  formatProfileBalance,
-  formatProfileDateTime,
-  shortTokenAddress,
-  shortTxHash,
-} from "@/lib/profile/format";
-import { getMockWithdrawals } from "@/lib/profile/mock-withdrawals";
+import { formatBalance } from "@/lib/utils/format/balance";
+import { shortTokenAddress, shortTxHash } from "@/lib/utils/format/address";
+import { formatUtcDateTime } from "@/lib/utils/format/datetime";
+import { getMockDeposits } from "@/lib/profile/mock-deposits";
 import { profileTableFilterSelectClass } from "@/lib/profile/table-filters";
 import {
-  withdrawalStatusBadgeClass,
-  withdrawalStatusLabel,
+  depositStatusBadgeClass,
+  depositStatusLabel,
 } from "@/lib/profile/transfer-status";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { WithdrawalRsp, WithdrawalStatus } from "@/services/asset/types";
+import type { DepositRsp, DepositStatus } from "@/services/asset/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
-const WITHDRAWAL_STATUSES: WithdrawalStatus[] = ["AwaitingClaim", "Success"];
+const DEPOSIT_STATUSES: DepositStatus[] = ["Pending", "Success"];
 
 type SymbolFilter = string | "all";
-type WithdrawalStatusFilter = WithdrawalStatus | "all";
+type DepositStatusFilter = DepositStatus | "all";
 
 function TokenIcon({ symbol }: { symbol: string }) {
   const [failed, setFailed] = useState(false);
@@ -61,7 +58,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-function WithdrawalRow({ row }: { row: WithdrawalRsp }) {
+function DepositRow({ row }: { row: DepositRsp }) {
   const { t } = useI18n();
 
   return (
@@ -80,49 +77,44 @@ function WithdrawalRow({ row }: { row: WithdrawalRsp }) {
           </div>
         </div>
       </TableCell>
-      <TableCell className="text-brand-alt tabular-nums">
-        {formatProfileBalance(row.amount)} {row.symbol}
+      <TableCell className="text-brand tabular-nums">
+        {formatBalance(row.amount)} {row.symbol}
       </TableCell>
       <TableCell>
-        {row.toAddress ? (
-          <span className="font-mono text-xs" title={row.toAddress}>
-            {shortTokenAddress(row.toAddress)}
-          </span>
-        ) : (
-          "—"
-        )}
+        <span className="font-mono text-xs" title={row.fromAddress}>
+          {shortTokenAddress(row.fromAddress)}
+        </span>
       </TableCell>
       <TableCell>
         <span
           className={cn(
             "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            withdrawalStatusBadgeClass(row.status)
+            depositStatusBadgeClass(row.status)
           )}
         >
-          {withdrawalStatusLabel(t, row.status)}
+          {depositStatusLabel(t, row.status)}
         </span>
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
-        {formatProfileDateTime(row.createdAt)}
+        {formatUtcDateTime(row.createdAt)}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs">
+        {row.confirmedAt ? formatUtcDateTime(row.confirmedAt) : "—"}
       </TableCell>
       <TableCell>
-        {row.txHash ? (
-          <span className="font-mono text-xs" title={row.txHash}>
-            {shortTxHash(row.txHash)}
-          </span>
-        ) : (
-          "—"
-        )}
+        <span className="font-mono text-xs" title={row.txHash}>
+          {shortTxHash(row.txHash)}
+        </span>
       </TableCell>
     </TableRow>
   );
 }
 
-export function ProfileSpotWithdrawalsTable() {
+export function ProfileSpotDepositsTable() {
   const { t } = useI18n();
-  const rows = useMemo(() => getMockWithdrawals(), []);
+  const rows = useMemo(() => getMockDeposits(), []);
   const [symbolFilter, setSymbolFilter] = useState<SymbolFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<WithdrawalStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<DepositStatusFilter>("all");
 
   const symbolOptions = useMemo(
     () => [...new Set(rows.map((r) => r.symbol))].sort(),
@@ -140,7 +132,7 @@ export function ProfileSpotWithdrawalsTable() {
   return (
     <section className="border-border/60 bg-card rounded-2xl border p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-foreground text-base font-medium">{t("profile.spotWithdrawHistory")}</h2>
+        <h2 className="text-foreground text-base font-medium">{t("profile.spotDepositHistory")}</h2>
         {rows.length > 0 && (
           <div className="flex flex-wrap items-center justify-end gap-3">
             <label className="flex items-center gap-2 text-sm">
@@ -166,13 +158,13 @@ export function ProfileSpotWithdrawalsTable() {
               <select
                 className={profileTableFilterSelectClass}
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as WithdrawalStatusFilter)}
+                onChange={(e) => setStatusFilter(e.target.value as DepositStatusFilter)}
                 aria-label={t("profile.balanceStatus")}
               >
                 <option value="all">{t("profile.ledgerFilterAll")}</option>
-                {WITHDRAWAL_STATUSES.map((status) => (
+                {DEPOSIT_STATUSES.map((status) => (
                   <option key={status} value={status}>
-                    {withdrawalStatusLabel(t, status)}
+                    {depositStatusLabel(t, status)}
                   </option>
                 ))}
               </select>
@@ -182,28 +174,26 @@ export function ProfileSpotWithdrawalsTable() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-muted-foreground mt-6 text-sm">{t("profile.spotWithdrawHistoryEmpty")}</p>
+        <p className="text-muted-foreground mt-6 text-sm">{t("profile.spotDepositHistoryEmpty")}</p>
       ) : filteredRows.length === 0 ? (
         <p className="text-muted-foreground mt-6 text-sm">{t("profile.accountLedgerFilterEmpty")}</p>
       ) : (
         <div className="mt-4">
-          <Table className="min-w-[44rem]">
+          <Table className="min-w-[48rem]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-muted-foreground text-xs">{t("profile.asset")}</TableHead>
                 <TableHead className="text-muted-foreground text-xs">{t("profile.amount")}</TableHead>
-                <TableHead className="text-muted-foreground text-xs">{t("profile.toAddress")}</TableHead>
+                <TableHead className="text-muted-foreground text-xs">{t("profile.fromAddress")}</TableHead>
                 <TableHead className="text-muted-foreground text-xs">{t("profile.balanceStatus")}</TableHead>
                 <TableHead className="text-muted-foreground text-xs">{t("profile.createdAt")}</TableHead>
+                <TableHead className="text-muted-foreground text-xs">{t("profile.confirmedAt")}</TableHead>
                 <TableHead className="text-muted-foreground text-xs">{t("profile.txHash")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRows.map((row, index) => (
-                <WithdrawalRow
-                  key={`${row.createdAt}-${row.symbol}-${index}`}
-                  row={row}
-                />
+              {filteredRows.map((row) => (
+                <DepositRow key={`${row.txHash}-${row.createdAt}`} row={row} />
               ))}
             </TableBody>
           </Table>

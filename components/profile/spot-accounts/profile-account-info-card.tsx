@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 
-import { formatProfileBalance } from "@/lib/profile/format";
+import { formatBalance } from "@/lib/utils/format/balance";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { UserBalanceRsp, UserBalanceStatus } from "@/services/asset/types";
 import { cn } from "@/lib/utils";
@@ -92,13 +92,13 @@ export function ProfileAccountInfoCard({ account }: { account: UserBalanceRsp })
           <div>
             <dt className="text-muted-foreground text-xs">{t("profile.availableBalance")}</dt>
             <dd className="text-brand mt-0.5 tabular-nums text-sm font-medium">
-              {formatProfileBalance(account.availableBalance)} {account.symbol}
+              {formatBalance(account.availableBalance)} {account.symbol}
             </dd>
           </div>
           <div>
             <dt className="text-muted-foreground text-xs">{t("profile.frozenBalance")}</dt>
             <dd className="text-brand-alt mt-0.5 tabular-nums text-sm font-medium">
-              {formatProfileBalance(account.frozenBalance)} {account.symbol}
+              {formatBalance(account.frozenBalance)} {account.symbol}
             </dd>
           </div>
         </dl>

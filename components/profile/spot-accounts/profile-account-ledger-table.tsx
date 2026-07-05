@@ -10,11 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  formatProfileDateTime,
-  formatSignedBalanceDelta,
-  shortRefId,
-} from "@/lib/profile/format";
+import { formatSignedBalanceDelta } from "@/lib/utils/format/balance";
+import { shortRefId } from "@/lib/utils/format/address";
+import { formatUtcDateTime } from "@/lib/utils/format/datetime";
 import { getMockAccountLedger } from "@/lib/profile/mock-account-ledger";
 import { profileTableFilterSelectClass } from "@/lib/profile/table-filters";
 import type {
@@ -102,7 +100,7 @@ function LedgerRow({ row, symbol }: { row: AccountLedgerRsp; symbol: string }) {
         {row.remark ?? "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
-        {formatProfileDateTime(row.createdAt)}
+        {formatUtcDateTime(row.createdAt)}
       </TableCell>
     </TableRow>
   );

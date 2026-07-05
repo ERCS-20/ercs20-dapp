@@ -7,8 +7,8 @@ import {
   formatSpotPrice,
   formatSpotSize,
   formatSpotTotal,
-  shortTxHash,
 } from "@/lib/spot/format";
+import { shortTxHash } from "@/lib/utils/format/address";
 import type {
   SpotCancelStatus,
   SpotOrder,
