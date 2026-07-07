@@ -1,5 +1,5 @@
-/** Spot REST path constants — avoid magic strings in api.ts. */
-export const SpotApi = {
+/** Spot orders REST path constants. */
+export const SpotOrdersApi = {
   pairByTokens: (baseToken: string, quoteToken: string) =>
     `/orders/pairs/${encodeURIComponent(baseToken)}/${encodeURIComponent(quoteToken)}`,
 } as const;

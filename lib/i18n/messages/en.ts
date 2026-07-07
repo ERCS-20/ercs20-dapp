@@ -16,6 +16,19 @@ export const en = {
     themeSystem: "System",
     roadmap: "Roadmap",
   },
+  auth: {
+    loginTitle: "Sign in required",
+    loginDesc:
+      "Connect your wallet and sign once to access spot balances, deposits, and trading.",
+    loginStep1: "Connect your wallet",
+    loginStep2: "Sign the login message in your wallet",
+    loginWalletLabel: "Connected wallet",
+    loginConnectHint: "No wallet connected yet. Connect to continue.",
+    signIn: "Sign in",
+    signingIn: "Signing…",
+    loginLater: "Not now",
+    loginFailed: "Sign in failed",
+  },
   wallet: {
     connect: "Connect",
     connectPlaceholder: "WalletConnect will be enabled in the next step. Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID when ready.",

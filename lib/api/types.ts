@@ -16,4 +16,6 @@ export type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   /** Skip envelope unwrap (raw JSON body). */
   raw?: boolean;
+  /** Internal: retried once after token refresh. */
+  _authRetried?: boolean;
 };

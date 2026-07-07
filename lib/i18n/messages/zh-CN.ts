@@ -16,6 +16,18 @@ export const zhCN = {
     themeSystem: "跟随系统",
     roadmap: "路线图",
   },
+  auth: {
+    loginTitle: "需要登录",
+    loginDesc: "连接钱包并签名一次，即可查看现货余额、充值与交易等功能。",
+    loginStep1: "连接钱包",
+    loginStep2: "在钱包中签名登录消息",
+    loginWalletLabel: "已连接钱包",
+    loginConnectHint: "尚未连接钱包，请先连接后继续。",
+    signIn: "登录",
+    signingIn: "签名中…",
+    loginLater: "稍后再说",
+    loginFailed: "登录失败",
+  },
   wallet: {
     connect: "连接钱包",
     connectPlaceholder:

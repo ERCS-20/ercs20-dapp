@@ -38,9 +38,12 @@ import {
 } from "@/lib/contracts/global-spot-vault";
 import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
+import { formatBalance } from "@/lib/utils/format/balance";
 import { useErcs20Pagination } from "@/services/chain/hooks";
 import type { Ercs20Rsp } from "@/services/chain/types";
+import { useUserBalance } from "@/services/spot/accounts/hooks";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 
 const DISCONNECTED = "--";
@@ -77,6 +80,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
 
 export function ProfileDepositView() {
   const { t } = useI18n();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { address, isConnected } = useWallet();
@@ -110,6 +114,49 @@ export function ProfileDepositView() {
   const isNative =
     selectedToken != null && isNativeUsdcDepositAddress(selectedToken.contract);
   const tokenDecimals = selectedToken?.decimals ?? 18;
+
+  const {
+    data: spotBalance,
+    isLoading: isSpotBalanceLoading,
+    isFetching: isSpotBalanceFetching,
+    refetch: refetchSpotBalance,
+  } = useUserBalance(selectedToken?.contract);
+
+  useEffect(() => {
+    if (isAuthenticated && selectedToken?.contract) {
+      void refetchSpotBalance();
+    }
+  }, [isAuthenticated, selectedToken?.contract, refetchSpotBalance]);
+
+  const spotBalancePending =
+    isSpotBalanceLoading || (isSpotBalanceFetching && !spotBalance);
+
+  const spotAvailableLabel = useMemo(() => {
+    if (!selectedToken) return DISCONNECTED;
+    if (spotBalancePending) return "…";
+    if (!spotBalance) return isAuthenticated ? "—" : DISCONNECTED;
+    return formatBalance(spotBalance.availableBalance, tokenDecimals);
+  }, [
+    selectedToken,
+    spotBalancePending,
+    spotBalance,
+    isAuthenticated,
+    tokenDecimals,
+  ]);
+
+  const spotFrozenLabel = useMemo(() => {
+    if (!selectedToken) return DISCONNECTED;
+    if (spotBalancePending) return "…";
+    if (!spotBalance) return isAuthenticated ? "—" : DISCONNECTED;
+    return formatBalance(spotBalance.frozenBalance, tokenDecimals);
+  }, [
+    selectedToken,
+    spotBalancePending,
+    spotBalance,
+    isAuthenticated,
+    tokenDecimals,
+  ]);
+
   const balanceQueryEnabled =
     !!address && isConnected && targetChainId != null && !!token;
 
@@ -200,7 +247,8 @@ export function ProfileDepositView() {
     setSizePct(0);
     setDepositHash(undefined);
     resetWrite();
-  }, [isSuccess, selectedToken, depositHash, t, resetWrite]);
+    void refetchSpotBalance();
+  }, [isSuccess, selectedToken, depositHash, t, resetWrite, refetchSpotBalance]);
 
   const runDeposit = useCallback(async () => {
     if (
@@ -377,6 +425,36 @@ export function ProfileDepositView() {
                 title={t("profile.deposit")}
                 description={t("profile.depositDialogDesc")}
               />
+
+              <div className="bg-muted/50 border-border/60 mb-4 space-y-3 rounded-2xl border p-3.5 sm:p-4">
+                <p className="text-muted-foreground text-center text-xs font-medium sm:text-sm">
+                  {t("profile.spotAccounts")}
+                </p>
+                <dl className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground shrink-0 text-xs sm:text-sm">
+                      {t("profile.availableBalance")}
+                    </dt>
+                    <dd className="text-brand min-w-0 truncate text-right tabular-nums text-sm font-semibold sm:text-base">
+                      {spotAvailableLabel}
+                      {selectedToken && spotAvailableLabel !== DISCONNECTED
+                        ? ` ${selectedToken.symbol}`
+                        : ""}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground shrink-0 text-xs sm:text-sm">
+                      {t("profile.frozenBalance")}
+                    </dt>
+                    <dd className="text-brand-alt min-w-0 truncate text-right tabular-nums text-sm font-semibold sm:text-base">
+                      {spotFrozenLabel}
+                      {selectedToken && spotFrozenLabel !== DISCONNECTED
+                        ? ` ${selectedToken.symbol}`
+                        : ""}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
 
               <div className="bg-muted/50 border-border/60 space-y-1.5 rounded-2xl border p-3.5 sm:p-4">
                 <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">

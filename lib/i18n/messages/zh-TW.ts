@@ -16,6 +16,18 @@ export const zhTW = {
     themeSystem: "跟隨系統",
     roadmap: "路線圖",
   },
+  auth: {
+    loginTitle: "需要登入",
+    loginDesc: "連接錢包並簽署一次，即可查看現貨餘額、充值與交易等功能。",
+    loginStep1: "連接錢包",
+    loginStep2: "在錢包中簽署登入訊息",
+    loginWalletLabel: "已連接錢包",
+    loginConnectHint: "尚未連接錢包，請先連接後繼續。",
+    signIn: "登入",
+    signingIn: "簽署中…",
+    loginLater: "稍後再說",
+    loginFailed: "登入失敗",
+  },
   wallet: {
     connect: "連接錢包",
     connectPlaceholder:
