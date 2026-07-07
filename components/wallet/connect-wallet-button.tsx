@@ -5,6 +5,7 @@ import { ChevronRightIcon, CircleUserIcon } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 import { Button } from "@/components/ui/button";
+import { useWalletConnectAuth } from "@/hooks/use-wallet-connect-auth";
 import { useI18n } from "@/providers/i18n-provider";
 
 const pillClassName =
@@ -12,13 +13,13 @@ const pillClassName =
 
 export function ConnectWalletButton() {
   const { t } = useI18n();
+  const { connectWallet } = useWalletConnectAuth();
 
   return (
     <ConnectButton.Custom>
       {({
         account,
         mounted,
-        openConnectModal,
         authenticationStatus,
       }) => {
         const ready = mounted && authenticationStatus !== "loading";
@@ -43,7 +44,7 @@ export function ConnectWalletButton() {
               variant="default"
               size="sm"
               className={pillClassName}
-              onClick={openConnectModal}
+              onClick={connectWallet}
             >
               {t("wallet.connect")}
             </Button>

@@ -22,11 +22,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { buildAuthLoginRequest, getLoginSignTypedData } from "@/lib/auth/login-eip712";
-import { setAuthSession } from "@/lib/auth/session";
+import { signInWithWallet } from "@/lib/auth/sign-in-with-wallet";
 import { shortTokenAddress } from "@/lib/utils/format/address";
 import { cn } from "@/lib/utils";
-import { loginAuth } from "@/services/auth/api";
 import { useI18n } from "@/providers/i18n-provider";
 
 type Props = {
@@ -94,17 +92,7 @@ export function LoginDialog({ open, onOpenChange, onLoggedIn }: Props) {
 
     setIsSubmitting(true);
     try {
-      const timestamp = Math.floor(Date.now() / 1000);
-      const typedData = getLoginSignTypedData(address, timestamp);
-      const signature = await signTypedDataAsync(typedData);
-      const data = await loginAuth(buildAuthLoginRequest(address, signature, timestamp));
-      setAuthSession({
-        userId: data.userId,
-        sessionId: data.sessionId,
-        tokenVersion: data.tokenVersion,
-        jwtToken: data.jwtToken,
-        jwtRefreshToken: data.jwtRefreshToken,
-      });
+      await signInWithWallet(address, signTypedDataAsync);
       await queryClient.invalidateQueries({ queryKey: ["spot", "accounts"] });
       onLoggedIn?.();
       onOpenChange(false);

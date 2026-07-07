@@ -4,14 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { CopyIcon, ExternalLinkIcon, LogOutIcon } from "lucide-react";
 import { toast } from "sonner";
 import { formatUnits } from "viem";
-import { useBalance, useChainId, useDisconnect, useReadContract } from "wagmi";
+import { useBalance, useChainId, useReadContract } from "wagmi";
 
 import { Button } from "@/components/ui/button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
+import { useWalletConnectAuth } from "@/hooks/use-wallet-connect-auth";
 import { useWallet } from "@/hooks/use-wallet";
 import { erc20Abi } from "@/lib/contracts/abis";
 import { shortTokenAddress } from "@/lib/utils/format/address";
@@ -81,12 +81,8 @@ export function ProfileOnChainWalletBar() {
   const router = useRouter();
   const { address, isConnected } = useWallet();
   const chainId = useChainId();
-  const { disconnect } = useDisconnect({
-    mutation: {
-      onSuccess: () => {
-        router.push("/");
-      },
-    },
+  const { connectWallet, disconnectWallet, isDisconnecting } = useWalletConnectAuth({
+    onDisconnected: () => router.push("/"),
   });
 
   const chain = supportedChains.find((c) => c.id === chainId);
@@ -139,22 +135,14 @@ export function ProfileOnChainWalletBar() {
       {!isConnected || !address ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-sm">{t("profile.notConnected")}</p>
-          <ConnectButton.Custom>
-            {({ openConnectModal, mounted, authenticationStatus }) => {
-              const ready = mounted && authenticationStatus !== "loading";
-              return (
-                <Button
-                  type="button"
-                  disabled={!ready}
-                  size="sm"
-                  className="h-9 rounded-xl px-4"
-                  onClick={openConnectModal}
-                >
-                  {t("wallet.connect")}
-                </Button>
-              );
-            }}
-          </ConnectButton.Custom>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 rounded-xl px-4"
+            onClick={connectWallet}
+          >
+            {t("wallet.connect")}
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-4">
@@ -176,7 +164,8 @@ export function ProfileOnChainWalletBar() {
               variant="outline"
               size="sm"
               className="shrink-0 rounded-xl"
-              onClick={() => disconnect()}
+              disabled={isDisconnecting}
+              onClick={() => void disconnectWallet()}
             >
               <LogOutIcon className="size-4" aria-hidden />
               {t("profile.disconnect")}

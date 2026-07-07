@@ -42,6 +42,7 @@ import { formatBalance } from "@/lib/utils/format/balance";
 import { useErcs20Pagination } from "@/services/chain/hooks";
 import type { Ercs20Rsp } from "@/services/chain/types";
 import { useUserBalance } from "@/services/spot/accounts/hooks";
+import { resolveSpotBalanceTokenAddress } from "@/lib/tokens/spot-balance-token";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
@@ -115,18 +116,23 @@ export function ProfileDepositView() {
     selectedToken != null && isNativeUsdcDepositAddress(selectedToken.contract);
   const tokenDecimals = selectedToken?.decimals ?? 18;
 
+  const spotBalanceTokenAddress = useMemo(
+    () => resolveSpotBalanceTokenAddress(selectedToken?.contract),
+    [selectedToken?.contract]
+  );
+
   const {
     data: spotBalance,
     isLoading: isSpotBalanceLoading,
     isFetching: isSpotBalanceFetching,
     refetch: refetchSpotBalance,
-  } = useUserBalance(selectedToken?.contract);
+  } = useUserBalance(spotBalanceTokenAddress);
 
   useEffect(() => {
-    if (isAuthenticated && selectedToken?.contract) {
+    if (isAuthenticated && spotBalanceTokenAddress) {
       void refetchSpotBalance();
     }
-  }, [isAuthenticated, selectedToken?.contract, refetchSpotBalance]);
+  }, [isAuthenticated, spotBalanceTokenAddress, refetchSpotBalance]);
 
   const spotBalancePending =
     isSpotBalanceLoading || (isSpotBalanceFetching && !spotBalance);
