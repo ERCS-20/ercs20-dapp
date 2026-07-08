@@ -38,6 +38,7 @@ export const zhCN = {
     addressCopied: "已复制地址",
     copyFailed: "复制失败",
     viewProfile: "查看账户",
+    userRejected: "已在钱包中取消交易。",
   },
   profile: {
     title: "账户",
@@ -51,8 +52,8 @@ export const zhCN = {
     spotAccounts: "现货账户",
     futuresAccounts: "期货账户",
     spotAccountList: "账户列表",
-    spotDepositHistory: "充值记录",
-    spotWithdrawHistory: "提现记录",
+    spotDepositHistory: "充值",
+    spotWithdrawHistory: "提现",
     spotDepositHistoryEmpty: "暂无充值记录。",
     spotWithdrawHistoryEmpty: "暂无提现记录。",
     wallet: "钱包",
@@ -175,9 +176,6 @@ export const zhCN = {
     heroFeatureAmm: "现货",
     heroFeatureTrade: "期货",
     heroFeatureFees: "矿池",
-  },
-  wallet: {
-    userRejected: "已在钱包中取消交易。",
   },
   swap: {
     title: "兑换",

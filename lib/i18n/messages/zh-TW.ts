@@ -38,6 +38,7 @@ export const zhTW = {
     addressCopied: "已複製地址",
     copyFailed: "複製失敗",
     viewProfile: "查看帳戶",
+    userRejected: "已在錢包中取消交易。",
   },
   profile: {
     title: "帳戶",
@@ -51,8 +52,8 @@ export const zhTW = {
     spotAccounts: "現貨帳戶",
     futuresAccounts: "合約帳戶",
     spotAccountList: "帳戶列表",
-    spotDepositHistory: "充值紀錄",
-    spotWithdrawHistory: "提現紀錄",
+    spotDepositHistory: "充值",
+    spotWithdrawHistory: "提現",
     spotDepositHistoryEmpty: "暫無充值紀錄。",
     spotWithdrawHistoryEmpty: "暫無提現紀錄。",
     wallet: "錢包",
@@ -175,9 +176,6 @@ export const zhTW = {
     heroFeatureAmm: "現貨",
     heroFeatureTrade: "永續",
     heroFeatureFees: "礦池",
-  },
-  wallet: {
-    userRejected: "已在錢包中取消交易。",
   },
   swap: {
     title: "兌換",

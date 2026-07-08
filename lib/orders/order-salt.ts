@@ -1,5 +1,6 @@
 import { getAuthSession } from "@/lib/auth/session";
 import { request } from "@/lib/api/request";
+import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 import { SpotOrdersApi } from "@/services/spot/orders/paths";
 import type { OrderSaltRsp } from "@/services/spot/orders/types";
 
@@ -35,8 +36,12 @@ function writeCachedSalt(salt: bigint): void {
 }
 
 async function fetchRemoteOrderSalt(): Promise<bigint> {
-  const data = await request.post<{ salt: number | string }>(SpotOrdersApi.orderSalt);
-  return BigInt(String(data.salt));
+  const data = await request.post<{ salt: bigint | number | string }>(SpotOrdersApi.orderSalt);
+  const salt = parseApiBigInt(data.salt);
+  if (salt == null) {
+    throw new Error("Invalid order salt from API");
+  }
+  return salt;
 }
 
 function sequencePart(salt: bigint): bigint {

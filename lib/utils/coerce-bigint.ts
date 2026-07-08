@@ -1,8 +1,16 @@
-import type { ApiBigInt } from "@/services/spot/accounts/types";
+/** BigInteger fields from Java JSON (parsed via json-with-bigint). */
+export type ApiBigInt = string | number | bigint;
 
-/** Parse Java BigInteger / uint fields from spot API JSON (string or number). */
+export function apiBigIntToString(value: ApiBigInt): string {
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value === "number") return String(value);
+  return value;
+}
+
+/** Coerce API BigInteger / uint256 to bigint for contract calls. */
 export function parseApiBigInt(value: ApiBigInt | null | undefined): bigint | null {
   if (value == null) return null;
+  if (typeof value === "bigint") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return null;
     return BigInt(Math.trunc(value));
@@ -14,8 +22,4 @@ export function parseApiBigInt(value: ApiBigInt | null | undefined): bigint | nu
   } catch {
     return null;
   }
-}
-
-export function apiBigIntToString(value: ApiBigInt): string {
-  return typeof value === "number" ? String(value) : value;
 }

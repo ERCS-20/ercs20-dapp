@@ -18,6 +18,8 @@ export const publicEnv = {
   spotAssetVaultAddress: process.env.NEXT_PUBLIC_SPOT_ASSET_VAULT_ADDRESS ?? "",
   /** API origin only, e.g. `https://api.example.com` (no `/api/v1`). */
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
+  /** Block explorer base URL, e.g. `https://explorer.testnet.arc.network`. */
+  explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL ?? "",
   /** Global REST prefix, e.g. `/api/v1`. Overridable via env. */
   apiPathPrefix: process.env.NEXT_PUBLIC_API_PATH_PREFIX ?? "/api/v1",
 } as const;
@@ -31,4 +33,11 @@ export function getApiPathPrefix(): string {
   if (!raw) return "";
   const withLeading = raw.startsWith("/") ? raw : `/${raw}`;
   return withLeading.replace(/\/$/, "");
+}
+
+export function getExplorerTxUrl(txHash: string): string | null {
+  const base = publicEnv.explorerUrl.trim().replace(/\/$/, "");
+  const hash = txHash.trim();
+  if (!base || !hash) return null;
+  return `${base}/tx/${hash}`;
 }

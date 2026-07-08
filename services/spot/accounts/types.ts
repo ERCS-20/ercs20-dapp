@@ -1,4 +1,5 @@
 import type { PaginationCondition, PaginationRepertory } from "@/lib/api/pagination";
+import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 
 /** Mirrors `exchange.orbix.spot.users.dto.UserBalancesReq`. */
 export type UserBalancesReq = {
@@ -47,10 +48,7 @@ export type WithdrawalsPaginationCondition = {
   status?: string;
 };
 
-/** BigInteger fields from Java may serialize as string or number in JSON. */
-export type ApiBigInt = string | number;
-
-/** Mirrors `exchange.orbix.spot.users.dto.WithdrawalsRsp`. BigInteger → string in JSON. */
+/** Mirrors `exchange.orbix.spot.users.dto.WithdrawalsRsp`. BigInteger fields parsed as bigint via json-with-bigint. */
 export type WithdrawalsRsp = {
   id: number;
   userId: number;

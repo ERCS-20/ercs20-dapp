@@ -38,6 +38,7 @@ export const en = {
     addressCopied: "Address copied",
     copyFailed: "Could not copy",
     viewProfile: "View profile",
+    userRejected: "Transaction cancelled in wallet.",
   },
   profile: {
     title: "Profile",
@@ -51,8 +52,8 @@ export const en = {
     spotAccounts: "Spot accounts",
     futuresAccounts: "Futures accounts",
     spotAccountList: "Accounts",
-    spotDepositHistory: "Deposit history",
-    spotWithdrawHistory: "Withdrawal history",
+    spotDepositHistory: "Deposits",
+    spotWithdrawHistory: "Withdrawals",
     spotDepositHistoryEmpty: "No deposit records yet.",
     spotWithdrawHistoryEmpty: "No withdrawal records yet.",
     wallet: "Wallet",
@@ -175,9 +176,6 @@ export const en = {
     heroFeatureAmm: "Sport",
     heroFeatureTrade: "Futures",
     heroFeatureFees: "Pools",
-  },
-  wallet: {
-    userRejected: "Transaction cancelled in wallet.",
   },
   swap: {
     title: "Swap",

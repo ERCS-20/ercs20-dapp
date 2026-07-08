@@ -19,6 +19,7 @@ import { useWallet } from "@/hooks/use-wallet";
 import { ApiNetworkError, ApiRequestError, getApiErrorMessage } from "@/lib/api/errors";
 import { getWalletErrorMessage } from "@/lib/web3/contract-errors";
 import { getAssetVaultAddress, isAssetVaultConfigured } from "@/lib/config/asset-vault";
+import { getExplorerTxUrl } from "@/lib/config/public-env";
 import { getSwapTargetChainId } from "@/lib/config/swap-target";
 import { executeGlobalSpotVaultWithdraw } from "@/lib/contracts/global-spot-vault";
 import { formatBalance } from "@/lib/utils/format/balance";
@@ -203,6 +204,8 @@ function WithdrawalRow({
 }) {
   const { t } = useI18n();
   const status = row.status as WithdrawalStatus;
+  const txHash = row.txHash?.trim();
+  const explorerTxUrl = txHash ? getExplorerTxUrl(txHash) : null;
 
   return (
     <TableRow>
@@ -222,15 +225,6 @@ function WithdrawalRow({
       </TableCell>
       <TableCell className="text-brand-alt tabular-nums">
         {formatBalance(apiBigIntToString(row.amount))} {row.symbol}
-      </TableCell>
-      <TableCell>
-        {row.fromAddress?.trim() ? (
-          <span className="font-mono text-xs" title={row.fromAddress}>
-            {shortTokenAddress(row.fromAddress)}
-          </span>
-        ) : (
-          "—"
-        )}
       </TableCell>
       <TableCell>
         {row.toAddress?.trim() ? (
@@ -255,10 +249,22 @@ function WithdrawalRow({
         {formatUtcDateTime(row.createdAt)}
       </TableCell>
       <TableCell>
-        {row.txHash?.trim() ? (
-          <span className="font-mono text-xs" title={row.txHash}>
-            {shortTxHash(row.txHash)}
-          </span>
+        {txHash ? (
+          explorerTxUrl ? (
+            <a
+              href={explorerTxUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-alt font-mono text-xs hover:underline"
+              title={txHash}
+            >
+              {shortTxHash(txHash)}
+            </a>
+          ) : (
+            <span className="font-mono text-xs" title={txHash}>
+              {shortTxHash(txHash)}
+            </span>
+          )
         ) : (
           "—"
         )}
@@ -331,7 +337,7 @@ export function ProfileSpotWithdrawalsTable() {
       hasRows={rows.length > 0}
       hasFilters={hasFilters}
       emptyMessage={t("profile.spotWithdrawHistoryEmpty")}
-      footerColSpan={8}
+      footerColSpan={7}
       pageJumpId="withdrawal-page-jump"
       footerProps={pagination.buildFooterProps({
         totalPage: data?.totalPage ?? 0,
@@ -381,7 +387,6 @@ export function ProfileSpotWithdrawalsTable() {
           <TableRow className="hover:bg-transparent">
             <TableHead className="text-muted-foreground text-xs">{t("profile.asset")}</TableHead>
             <TableHead className="text-muted-foreground text-xs">{t("profile.amount")}</TableHead>
-            <TableHead className="text-muted-foreground text-xs">{t("profile.fromAddress")}</TableHead>
             <TableHead className="text-muted-foreground text-xs">{t("profile.toAddress")}</TableHead>
             <TableHead className="text-muted-foreground text-xs">{t("profile.balanceStatus")}</TableHead>
             <TableHead className="text-muted-foreground text-xs">{t("profile.createdAt")}</TableHead>

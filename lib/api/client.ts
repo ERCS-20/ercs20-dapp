@@ -7,6 +7,7 @@ import { requestLoginDialog } from "@/lib/auth/coordinator";
 import { refreshAuthSession } from "@/lib/auth/refresh";
 import { clearAuthSession, getAccessToken } from "@/lib/auth/session";
 import { ApiNetworkError, ApiRequestError } from "@/lib/api/errors";
+import { JSONParse, JSONStringify } from "@/lib/api/json-with-bigint";
 import {
   type ApiEnvelope,
   isApiSuccess,
@@ -72,7 +73,8 @@ async function readResponse<T>(response: Response, raw?: boolean): Promise<Parse
 
   let json: unknown;
   try {
-    json = await response.json();
+    const text = await response.text();
+    json = JSONParse(text);
   } catch {
     throw new ApiNetworkError("Invalid JSON response");
   }
@@ -141,7 +143,7 @@ async function executeFetch<T>(
           ? undefined
           : body instanceof FormData
             ? body
-            : JSON.stringify(body),
+            : JSONStringify(body),
     });
   } catch {
     throw new ApiNetworkError("Network request failed");
