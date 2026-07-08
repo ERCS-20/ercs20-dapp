@@ -4,8 +4,9 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { formatBalance } from "@/lib/utils/format/balance";
+import { profileTableSectionClass } from "@/lib/profile/table-filters";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalanceRsp, UserBalanceStatus } from "@/services/asset/types";
+import type { UserBalancesRsp } from "@/services/spot/accounts/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -37,7 +38,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-function statusLabel(t: (k: string) => string, status: UserBalanceStatus): string {
+function statusLabel(t: (k: string) => string, status: string): string {
   switch (status) {
     case "Active":
       return t("profile.balanceStatusActive");
@@ -50,7 +51,7 @@ function statusLabel(t: (k: string) => string, status: UserBalanceStatus): strin
   }
 }
 
-function statusBadgeClass(status: UserBalanceStatus): string {
+function statusBadgeClass(status: string): string {
   switch (status) {
     case "Active":
       return "border-brand text-brand";
@@ -63,17 +64,17 @@ function statusBadgeClass(status: UserBalanceStatus): string {
   }
 }
 
-export function ProfileAccountInfoCard({ account }: { account: UserBalanceRsp }) {
+export function ProfileAccountInfoCard({ account }: { account: UserBalancesRsp }) {
   const { t } = useI18n();
 
   return (
-    <section className="border-border/60 bg-card rounded-2xl border p-5 sm:p-6">
+    <section className={profileTableSectionClass}>
       <div className="flex flex-wrap items-center gap-4 sm:gap-6">
         <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
           <TokenIcon symbol={account.symbol} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-foreground text-lg font-medium">{account.name}</h2>
+              <h2 className="text-foreground text-lg font-medium">{account.symbol}</h2>
               <span
                 className={cn(
                   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",

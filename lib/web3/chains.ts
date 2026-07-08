@@ -1,10 +1,6 @@
 import { defineChain, type Chain } from "viem";
 import { hardhat, mainnet, sepolia } from "wagmi/chains";
 
-function envRpc(key: string): string | undefined {
-  return process.env[key]?.trim() || undefined;
-}
-
 /**
  * Target chain for swap / deploy (same as `NEXT_PUBLIC_CHAIN_ID` in `.env`).
  */
@@ -14,13 +10,10 @@ export function getAppChainId(): number | undefined {
   return Math.trunc(n);
 }
 
-const rpcMainnet = envRpc("NEXT_PUBLIC_RPC_MAINNET");
-const rpcSepolia = envRpc("NEXT_PUBLIC_RPC_SEPOLIA");
-const rpcHardhat =
-  envRpc("NEXT_PUBLIC_RPC_HARDHAT") ?? "http://127.0.0.1:8545";
-const rpcArcTestnet =
-  envRpc("NEXT_PUBLIC_RPC_ARC_TESTNET") ??
-  "https://rpc.testnet.arc.network";
+const rpcMainnet = process.env.NEXT_PUBLIC_RPC_MAINNET;
+const rpcSepolia = process.env.NEXT_PUBLIC_RPC_SEPOLIA;
+const rpcHardhat = process.env.NEXT_PUBLIC_RPC_HARDHAT ?? "";
+const rpcArcTestnet = process.env.NEXT_PUBLIC_RPC_ARC_TESTNET ?? "";
 
 /** Ethereum mainnet — optional `NEXT_PUBLIC_RPC_MAINNET`. */
 export const mainnetChain = defineChain({

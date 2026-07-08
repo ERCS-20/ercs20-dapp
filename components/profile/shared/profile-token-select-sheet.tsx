@@ -44,9 +44,9 @@ function TokenRowIcon({ symbol }: { symbol: string }) {
     <Image
       src={getTokenIconSrc(s)}
       alt=""
-      width={36}
-      height={36}
-      className="size-9 shrink-0 rounded-full ring-1 ring-border/60"
+      width={28}
+      height={28}
+      className="size-7 shrink-0 rounded-full ring-1 ring-border/60"
       unoptimized
     />
   );

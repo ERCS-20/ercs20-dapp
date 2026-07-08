@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DownloadIcon } from "lucide-react";
 import { formatUnits, parseUnits } from "viem";
@@ -16,7 +16,8 @@ import {
 
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
 import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
-import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
+import { profileDetailSectionClass } from "@/components/profile/shell/profile-shell";
+import { ProfileRoutes } from "@/lib/profile/routes";
 import { ProfileDepositApproveDialog } from "@/components/profile/shared/profile-deposit-approve-dialog";
 import { ProfileTransferAddressBlock } from "@/components/profile/shared/profile-transfer-dialog-parts";
 import { ProfileTokenSelectSheet } from "@/components/profile/shared/profile-token-select-sheet";
@@ -82,7 +83,6 @@ function TokenIcon({ symbol }: { symbol: string }) {
 export function ProfileDepositView() {
   const { t } = useI18n();
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { address, isConnected } = useWallet();
   const chainId = useChainId();
@@ -373,14 +373,6 @@ export function ProfileDepositView() {
     }
   }
 
-  function handleSectionChange(section: ProfileSection) {
-    if (section === "dashboard") {
-      router.push("/profile");
-      return;
-    }
-    router.push(`/profile?section=${section}`);
-  }
-
   function selectToken(token: Ercs20Rsp) {
     setSelectedToken(token);
     setAmount("");
@@ -403,7 +395,7 @@ export function ProfileDepositView() {
   const approveAmountLabel = amount.trim() || "0";
 
   return (
-    <ProfileShell section="dashboard" onSectionChange={handleSectionChange}>
+    <>
       <ProfileTokenSelectSheet
         open={tokenSheetOpen}
         onOpenChange={setTokenSheetOpen}
@@ -420,7 +412,7 @@ export function ProfileDepositView() {
       />
 
       <section className={profileDetailSectionClass}>
-        <ProfileBackLink href="/profile" label={t("profile.backToDashboard")} className="mb-4" />
+        <ProfileBackLink href={ProfileRoutes.dashboard} label={t("profile.backToDashboard")} className="mb-4" />
 
         <div className="mx-auto w-full max-w-[480px]">
           <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
@@ -547,6 +539,6 @@ export function ProfileDepositView() {
           </div>
         </div>
       </section>
-    </ProfileShell>
+    </>
   );
 }

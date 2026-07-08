@@ -1,53 +1,67 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { ProfileAccountInfoCard } from "@/components/profile/spot-accounts/profile-account-info-card";
 import { ProfileAccountLedgerTable } from "@/components/profile/spot-accounts/profile-account-ledger-table";
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
-import { ProfileShell, profileDetailSectionClass, type ProfileSection } from "@/components/profile/shell/profile-shell";
-import { getMockUserBalanceByTokenAddress } from "@/lib/profile/mock-user-balances";
+import { profileTableSectionClass } from "@/lib/profile/table-filters";
+import { ProfileRoutes } from "@/lib/profile/routes";
+import { useUserBalance } from "@/services/spot/accounts/hooks";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 
 export function ProfileAccountDetailView({ tokenAddress }: { tokenAddress: string }) {
   const { t } = useI18n();
-  const router = useRouter();
-  const account = getMockUserBalanceByTokenAddress(tokenAddress);
+  const { isAuthenticated } = useAuth();
+  const { data: account, isLoading, isError } = useUserBalance(tokenAddress, {
+    enabled: isAuthenticated,
+  });
 
-  function handleSectionChange(section: ProfileSection) {
-    if (section === "dashboard") {
-      router.push("/profile");
-      return;
-    }
-    router.push(`/profile?section=${section}`);
+  if (!isAuthenticated) {
+    return (
+      <section className={profileTableSectionClass}>
+        <p className="text-muted-foreground text-sm">{t("profile.accountNotFound")}</p>
+        <ProfileBackLink
+          href={ProfileRoutes.accounts}
+          label={t("profile.backToAccounts")}
+          className="mt-4"
+        />
+      </section>
+    );
   }
 
-  if (!account) {
+  if (isLoading) {
     return (
-      <ProfileShell section="spot-accounts" onSectionChange={handleSectionChange}>
-        <section className={profileDetailSectionClass}>
-          <p className="text-muted-foreground text-sm">{t("profile.accountNotFound")}</p>
-          <ProfileBackLink
-            href="/profile?section=spot-accounts"
-            label={t("profile.backToAccounts")}
-            className="mt-4"
-          />
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <ProfileBackLink
+          href={ProfileRoutes.accounts}
+          label={t("profile.backToAccounts")}
+        />
+        <section className={profileTableSectionClass}>
+          <p className="text-muted-foreground text-sm">{t("swap.loading")}</p>
         </section>
-      </ProfileShell>
+      </div>
+    );
+  }
+
+  if (isError || !account) {
+    return (
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <ProfileBackLink
+          href={ProfileRoutes.accounts}
+          label={t("profile.backToAccounts")}
+        />
+        <section className={profileTableSectionClass}>
+          <p className="text-muted-foreground text-sm">{t("profile.accountNotFound")}</p>
+        </section>
+      </div>
     );
   }
 
   return (
-    <ProfileShell section="spot-accounts" onSectionChange={handleSectionChange}>
-      <section className={profileDetailSectionClass}>
-        <ProfileBackLink
-          href="/profile?section=spot-accounts"
-          label={t("profile.backToAccounts")}
-          className="mb-4"
-        />
-        <ProfileAccountInfoCard account={account} />
-        <ProfileAccountLedgerTable tokenAddress={account.tokenAddress} symbol={account.symbol} />
-      </section>
-    </ProfileShell>
+    <div className="flex w-full min-w-0 flex-col gap-4 sm:gap-6">
+      <ProfileBackLink href={ProfileRoutes.accounts} label={t("profile.backToAccounts")} />
+      <ProfileAccountInfoCard account={account} />
+      <ProfileAccountLedgerTable tokenAddress={account.tokenAddress} symbol={account.symbol} />
+    </div>
   );
 }

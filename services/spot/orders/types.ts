@@ -19,3 +19,19 @@ export type PairRsp = {
   enginePriceDecimal: number;
   expiresAt: string;
 };
+
+/** Mirrors `exchange.orbix.spot.orders.dto.OrderSaltRsp`. */
+export type OrderSaltRsp = {
+  /** Order / withdraw anti-replay salt (uint64 as string). */
+  salt: string;
+};
+
+/** Mirrors `exchange.orbix.spot.orders.dto.WithdrawReq`. BigInteger → string in JSON. */
+export type WithdrawApplyReq = {
+  userBalancesId: number;
+  fromAddress: string;
+  tokenAddress: string;
+  amount: string;
+  salt: string;
+  signature: string;
+};

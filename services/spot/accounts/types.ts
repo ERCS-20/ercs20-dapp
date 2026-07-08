@@ -40,3 +40,61 @@ export type DepositsRsp = {
 
 export type DepositsPaginationReq = PaginationCondition<DepositsPaginationCondition>;
 export type DepositsPaginationRsp = PaginationRepertory<DepositsRsp>;
+
+/** Mirrors `exchange.orbix.spot.users.dto.WithdrawalsPaginationReq`. */
+export type WithdrawalsPaginationCondition = {
+  symbol?: string;
+  status?: string;
+};
+
+/** BigInteger fields from Java may serialize as string or number in JSON. */
+export type ApiBigInt = string | number;
+
+/** Mirrors `exchange.orbix.spot.users.dto.WithdrawalsRsp`. BigInteger → string in JSON. */
+export type WithdrawalsRsp = {
+  id: number;
+  userId: number;
+  tokenAddress: string;
+  symbol: string;
+  amount: ApiBigInt;
+  fromAddress: string;
+  toAddress: string;
+  status: string;
+  txHash: string;
+  /** On-chain `withdraw(orderId)` — same value used when DAO signed sysSignature. */
+  salt: ApiBigInt;
+  /** Backend withdrawDAO EIP-712 signature authorizing vault `withdraw`. */
+  sysSignature: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WithdrawalsPaginationReq = PaginationCondition<WithdrawalsPaginationCondition>;
+export type WithdrawalsPaginationRsp = PaginationRepertory<WithdrawalsRsp>;
+
+/** Mirrors `exchange.orbix.spot.users.dto.WithdrawalsDetailReq`. */
+export type WithdrawalsDetailReq = {
+  id: number;
+};
+
+/** Mirrors `exchange.orbix.spot.users.dto.AccountLedgerReq`. */
+export type AccountLedgerPaginationCondition = {
+  tokenAddress: string;
+  bizType?: string;
+  bizSubType?: string;
+};
+
+/** Mirrors `exchange.orbix.spot.users.dto.AccountLedgerRsp`. BigInteger → string in JSON. */
+export type AccountLedgerRsp = {
+  tokenAddress: string;
+  deltaAvailable: string;
+  deltaFrozen: string;
+  bizType: string;
+  bizSubType: string;
+  refId: string;
+  remark: string | null;
+  createdAt: string;
+};
+
+export type AccountLedgerPaginationReq = PaginationCondition<AccountLedgerPaginationCondition>;
+export type AccountLedgerPaginationRsp = PaginationRepertory<AccountLedgerRsp>;

@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { ProfilePaginatedTableSection } from "@/components/profile/shared/profile-paginated-table-section";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -11,19 +11,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatSignedBalanceDelta } from "@/lib/utils/format/balance";
-import { shortRefId } from "@/lib/utils/format/address";
 import { formatUtcDateTime } from "@/lib/utils/format/datetime";
-import { getMockAccountLedger } from "@/lib/profile/mock-account-ledger";
 import { profileTableFilterSelectClass } from "@/lib/profile/table-filters";
+import { useProfilePagination } from "@/lib/profile/use-profile-pagination";
 import type {
   AccountLedgerBizSubType,
   AccountLedgerBizType,
-  AccountLedgerRsp,
 } from "@/services/asset/types";
+import { useAccountLedgerPagination } from "@/services/spot/accounts/hooks";
+import type { AccountLedgerRsp } from "@/services/spot/accounts/types";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 
 const BIZ_TYPES: AccountLedgerBizType[] = ["Deposit", "Withdraw", "Order"];
+
+const SUB_TYPES_BY_BIZ: Record<AccountLedgerBizType, AccountLedgerBizSubType[]> = {
+  Deposit: ["Deposit"],
+  Withdraw: ["WithdrawFrozen", "WithdrawUnfrozen"],
+  Order: ["OrderFrozen", "OrderUnfrozen", "OrderDeduct", "OrderCredit", "OrderFee"],
+};
+
+const ALL_SUB_TYPES: AccountLedgerBizSubType[] = [
+  "Deposit",
+  "WithdrawFrozen",
+  "WithdrawUnfrozen",
+  "OrderFrozen",
+  "OrderUnfrozen",
+  "OrderDeduct",
+  "OrderCredit",
+  "OrderFee",
+];
 
 type BizFilter = AccountLedgerBizType | "all";
 type SubFilter = AccountLedgerBizSubType | "all";
@@ -39,7 +57,7 @@ function deltaTone(raw: string): string {
   }
 }
 
-function bizTypeLabel(t: (k: string) => string, bizType: AccountLedgerBizType): string {
+function bizTypeLabel(t: (k: string) => string, bizType: string): string {
   switch (bizType) {
     case "Deposit":
       return t("profile.ledgerBizDeposit");
@@ -52,10 +70,7 @@ function bizTypeLabel(t: (k: string) => string, bizType: AccountLedgerBizType): 
   }
 }
 
-function bizSubTypeLabel(
-  t: (k: string) => string,
-  bizSubType: AccountLedgerBizSubType
-): string {
+function bizSubTypeLabel(t: (k: string) => string, bizSubType: string): string {
   switch (bizSubType) {
     case "Deposit":
       return t("profile.ledgerBizSubDeposit");
@@ -91,14 +106,6 @@ function LedgerRow({ row, symbol }: { row: AccountLedgerRsp; symbol: string }) {
       </TableCell>
       <TableCell>{bizTypeLabel(t, row.bizType)}</TableCell>
       <TableCell>{bizSubTypeLabel(t, row.bizSubType)}</TableCell>
-      <TableCell>
-        <span className="font-mono text-xs" title={row.refId}>
-          {shortRefId(row.refId)}
-        </span>
-      </TableCell>
-      <TableCell className="max-w-[10rem] truncate text-muted-foreground text-xs">
-        {row.remark ?? "—"}
-      </TableCell>
       <TableCell className="text-muted-foreground text-xs">
         {formatUtcDateTime(row.createdAt)}
       </TableCell>
@@ -114,128 +121,142 @@ export function ProfileAccountLedgerTable({
   symbol: string;
 }) {
   const { t } = useI18n();
-  const rows = useMemo(() => getMockAccountLedger(tokenAddress), [tokenAddress]);
+  const { isAuthenticated } = useAuth();
   const [bizFilter, setBizFilter] = useState<BizFilter>("all");
   const [subFilter, setSubFilter] = useState<SubFilter>("all");
+  const pagination = useProfilePagination();
 
   const subTypeOptions = useMemo(() => {
-    const pool = bizFilter === "all" ? rows : rows.filter((r) => r.bizType === bizFilter);
-    return [...new Set(pool.map((r) => r.bizSubType))].sort();
-  }, [rows, bizFilter]);
+    if (bizFilter === "all") return ALL_SUB_TYPES;
+    return SUB_TYPES_BY_BIZ[bizFilter];
+  }, [bizFilter]);
 
-  const filteredRows = useMemo(() => {
-    return rows.filter((row) => {
-      if (bizFilter !== "all" && row.bizType !== bizFilter) return false;
-      if (subFilter !== "all" && row.bizSubType !== subFilter) return false;
-      return true;
-    });
-  }, [rows, bizFilter, subFilter]);
+  const paginationReq = useMemo(
+    () => ({
+      currentPage: pagination.currentPage,
+      pageSize: pagination.pageSize,
+      condition: {
+        tokenAddress,
+        ...(bizFilter !== "all" ? { bizType: bizFilter } : {}),
+        ...(subFilter !== "all" ? { bizSubType: subFilter } : {}),
+      },
+    }),
+    [pagination.currentPage, pagination.pageSize, tokenAddress, bizFilter, subFilter]
+  );
+
+  const { data, isLoading, isFetching } = useAccountLedgerPagination(paginationReq, {
+    enabled: isAuthenticated,
+  });
+
+  const rows = data?.pageItems ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const hasFilters = bizFilter !== "all" || subFilter !== "all";
+  const showFilters = isAuthenticated && (totalCount > 0 || hasFilters);
 
   function handleBizFilterChange(value: string) {
     const next = value as BizFilter;
     setBizFilter(next);
     if (subFilter !== "all") {
-      const pool = next === "all" ? rows : rows.filter((r) => r.bizType === next);
-      if (!pool.some((r) => r.bizSubType === subFilter)) {
+      const pool = next === "all" ? ALL_SUB_TYPES : SUB_TYPES_BY_BIZ[next];
+      if (!pool.includes(subFilter)) {
         setSubFilter("all");
       }
     }
+    pagination.resetPage();
+  }
+
+  function handleSubFilterChange(value: SubFilter) {
+    setSubFilter(value);
+    pagination.resetPage();
   }
 
   return (
-    <section className="border-border/60 bg-card mt-4 rounded-2xl border p-5 sm:mt-6 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-foreground text-base font-medium">{t("profile.accountLedger")}</h3>
-        {rows.length > 0 && (
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground shrink-0 text-xs">
-                {t("profile.ledgerBizType")}
-              </span>
-              <select
-                className={profileTableFilterSelectClass}
-                value={bizFilter}
-                onChange={(e) => handleBizFilterChange(e.target.value)}
-                aria-label={t("profile.ledgerBizType")}
-              >
-                <option value="all">{t("profile.ledgerFilterAll")}</option>
-                {BIZ_TYPES.map((biz) => (
-                  <option key={biz} value={biz}>
-                    {bizTypeLabel(t, biz)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground shrink-0 text-xs">
-                {t("profile.ledgerBizSubType")}
-              </span>
-              <select
-                className={profileTableFilterSelectClass}
-                value={subFilter}
-                onChange={(e) => setSubFilter(e.target.value as SubFilter)}
-                aria-label={t("profile.ledgerBizSubType")}
-              >
-                <option value="all">{t("profile.ledgerFilterAll")}</option>
-                {subTypeOptions.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {bizSubTypeLabel(t, sub)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-      </div>
-
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground mt-6 text-sm">{t("profile.accountLedgerEmpty")}</p>
-      ) : (
-        <>
-          {filteredRows.length === 0 ? (
-            <p className="text-muted-foreground mt-6 text-sm">{t("profile.accountLedgerFilterEmpty")}</p>
-          ) : (
-            <div className="mt-4">
-              <Table className="min-w-[44rem]">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerDeltaAvailable")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerDeltaFrozen")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerBizType")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerBizSubType")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerRefId")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.ledgerRemark")}
-                    </TableHead>
-                    <TableHead className="text-muted-foreground text-xs">
-                      {t("profile.createdAt")}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRows.map((row, index) => (
-                    <LedgerRow
-                      key={`${row.refId}-${row.bizSubType}-${index}`}
-                      row={row}
-                      symbol={symbol}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+    <ProfilePaginatedTableSection
+      title={t("profile.accountLedger")}
+      showFilters={showFilters}
+      isLoading={isLoading}
+      totalCount={totalCount}
+      hasRows={rows.length > 0}
+      hasFilters={hasFilters}
+      emptyMessage={t("profile.accountLedgerEmpty")}
+      footerColSpan={5}
+      pageJumpId="ledger-page-jump"
+      footerProps={pagination.buildFooterProps({
+        totalPage: data?.totalPage ?? 0,
+        totalCount,
+        isFetching,
+      })}
+      filters={
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground shrink-0 text-xs">
+              {t("profile.ledgerBizType")}
+            </span>
+            <select
+              className={profileTableFilterSelectClass}
+              value={bizFilter}
+              onChange={(e) => handleBizFilterChange(e.target.value)}
+              aria-label={t("profile.ledgerBizType")}
+            >
+              <option value="all">{t("profile.ledgerFilterAll")}</option>
+              {BIZ_TYPES.map((biz) => (
+                <option key={biz} value={biz}>
+                  {bizTypeLabel(t, biz)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground shrink-0 text-xs">
+              {t("profile.ledgerBizSubType")}
+            </span>
+            <select
+              className={profileTableFilterSelectClass}
+              value={subFilter}
+              onChange={(e) => handleSubFilterChange(e.target.value as SubFilter)}
+              aria-label={t("profile.ledgerBizSubType")}
+            >
+              <option value="all">{t("profile.ledgerFilterAll")}</option>
+              {subTypeOptions.map((sub) => (
+                <option key={sub} value={sub}>
+                  {bizSubTypeLabel(t, sub)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      }
+      header={
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="text-muted-foreground text-xs">
+              {t("profile.ledgerDeltaAvailable")}
+            </TableHead>
+            <TableHead className="text-muted-foreground text-xs">
+              {t("profile.ledgerDeltaFrozen")}
+            </TableHead>
+            <TableHead className="text-muted-foreground text-xs">
+              {t("profile.ledgerBizType")}
+            </TableHead>
+            <TableHead className="text-muted-foreground text-xs">
+              {t("profile.ledgerBizSubType")}
+            </TableHead>
+            <TableHead className="text-muted-foreground text-xs">
+              {t("profile.createdAt")}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+      }
+    >
+      <TableBody>
+        {rows.map((row, index) => (
+          <LedgerRow
+            key={`${row.refId}-${row.bizSubType}-${index}`}
+            row={row}
+            symbol={symbol}
+          />
+        ))}
+      </TableBody>
+    </ProfilePaginatedTableSection>
   );
 }

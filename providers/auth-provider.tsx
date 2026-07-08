@@ -21,6 +21,8 @@ import { logoutAuth } from "@/services/auth/api";
 
 type AuthContextValue = {
   session: AuthSession | null;
+  /** False until client reads persisted session (SSR/hydration safe). */
+  authReady: boolean;
   isAuthenticated: boolean;
   openLoginDialog: () => void;
   closeLoginDialog: () => void;
@@ -32,10 +34,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loginOpen, setLoginOpen] = useState(false);
-  const [session, setSession] = useState<AuthSession | null>(() => getAuthSession());
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   const refreshSession = useCallback(() => {
     setSession(getAuthSession());
+  }, []);
+
+  useEffect(() => {
+    setSession(getAuthSession());
+    setAuthReady(true);
   }, []);
 
   useEffect(() => {
@@ -60,13 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       session,
+      authReady,
       isAuthenticated: session != null,
       openLoginDialog,
       closeLoginDialog,
       refreshSession,
       signOut,
     }),
-    [session, openLoginDialog, closeLoginDialog, refreshSession, signOut]
+    [session, authReady, openLoginDialog, closeLoginDialog, refreshSession, signOut]
   );
 
   return (

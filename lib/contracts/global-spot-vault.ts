@@ -85,3 +85,43 @@ export async function executeGlobalSpotVaultDeposit(params: {
     chainId,
   });
 }
+
+/** GlobalSpotVault `withdraw(orderId, token, amount, signature)` — claim awaiting withdrawal. */
+export async function executeGlobalSpotVaultWithdraw(params: {
+  publicClient?: PublicClient;
+  account?: `0x${string}`;
+  writeContractAsync: WriteContractAsync;
+  vaultAddress: `0x${string}`;
+  orderId: bigint;
+  tokenAddress: `0x${string}`;
+  amount: bigint;
+  signature: `0x${string}`;
+  chainId: number;
+}): Promise<`0x${string}`> {
+  const {
+    publicClient,
+    account,
+    writeContractAsync,
+    vaultAddress,
+    orderId,
+    tokenAddress,
+    amount,
+    signature,
+    chainId,
+  } = params;
+
+  const request = {
+    address: vaultAddress,
+    abi: globalSpotVaultAbi,
+    functionName: "withdraw" as const,
+    args: [orderId, tokenAddress, amount, signature] as const,
+    chainId,
+    account,
+  };
+
+  if (publicClient && account) {
+    await publicClient.simulateContract(request);
+  }
+
+  return writeContractAsync(request);
+}

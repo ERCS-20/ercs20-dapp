@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,10 +15,13 @@ import {
 } from "@/components/ui/table";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { shortTokenAddress } from "@/lib/utils/format/address";
-import { getMockUserBalances } from "@/lib/profile/mock-user-balances";
+import { profileTableClass, profileTableSectionClass, profileTableWrapClass } from "@/lib/profile/table-filters";
+import { ProfileRoutes } from "@/lib/profile/routes";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalanceRsp, UserBalanceStatus } from "@/services/asset/types";
+import { useUserBalancesList } from "@/services/spot/accounts/hooks";
+import type { UserBalancesRsp } from "@/services/spot/accounts/types";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 
 function TokenBalanceIcon({ symbol }: { symbol: string }) {
@@ -28,7 +31,7 @@ function TokenBalanceIcon({ symbol }: { symbol: string }) {
   if (failed) {
     return (
       <span
-        className="bg-muted text-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1 ring-border/60"
+        className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ring-1 ring-border/60"
         aria-hidden
       >
         {label.slice(0, 2)}
@@ -40,16 +43,16 @@ function TokenBalanceIcon({ symbol }: { symbol: string }) {
     <Image
       src={getTokenIconSrc(label)}
       alt=""
-      width={36}
-      height={36}
-      className="size-9 shrink-0 rounded-full ring-1 ring-border/60"
+      width={28}
+      height={28}
+      className="size-7 shrink-0 rounded-full ring-1 ring-border/60"
       onError={() => setFailed(true)}
       unoptimized
     />
   );
 }
 
-function statusLabel(t: (k: string) => string, status: UserBalanceStatus): string {
+function statusLabel(t: (k: string) => string, status: string): string {
   switch (status) {
     case "Active":
       return t("profile.balanceStatusActive");
@@ -62,7 +65,7 @@ function statusLabel(t: (k: string) => string, status: UserBalanceStatus): strin
   }
 }
 
-function statusBadgeClass(status: UserBalanceStatus): string {
+function statusBadgeClass(status: string): string {
   switch (status) {
     case "Active":
       return "border-brand text-brand";
@@ -75,16 +78,16 @@ function statusBadgeClass(status: UserBalanceStatus): string {
   }
 }
 
-function BalanceRow({ row }: { row: UserBalanceRsp }) {
+function BalanceRow({ row }: { row: UserBalancesRsp }) {
   const { t } = useI18n();
 
   return (
     <TableRow>
       <TableCell className="min-w-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <TokenBalanceIcon symbol={row.symbol} />
           <div className="min-w-0">
-            <p className="text-foreground truncate font-medium">{row.name}</p>
+            <p className="text-foreground truncate font-medium">{row.symbol}</p>
             <p
               className="text-muted-foreground mt-0.5 truncate font-mono text-xs"
               title={row.tokenAddress}
@@ -94,11 +97,15 @@ function BalanceRow({ row }: { row: UserBalanceRsp }) {
           </div>
         </div>
       </TableCell>
-      <TableCell className="text-brand tabular-nums">
-        {formatBalance(row.availableBalance)} {row.symbol}
+      <TableCell className="text-brand min-w-[7.5rem] max-w-[11rem] tabular-nums">
+        <span className="block truncate" title={`${formatBalance(row.availableBalance)} ${row.symbol}`}>
+          {formatBalance(row.availableBalance)} {row.symbol}
+        </span>
       </TableCell>
-      <TableCell className="text-brand-alt tabular-nums">
-        {formatBalance(row.frozenBalance)} {row.symbol}
+      <TableCell className="text-brand-alt min-w-[7.5rem] max-w-[11rem] tabular-nums">
+        <span className="block truncate" title={`${formatBalance(row.frozenBalance)} ${row.symbol}`}>
+          {formatBalance(row.frozenBalance)} {row.symbol}
+        </span>
       </TableCell>
       <TableCell>
         <span
@@ -111,17 +118,15 @@ function BalanceRow({ row }: { row: UserBalanceRsp }) {
         </span>
       </TableCell>
       <TableCell>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 rounded-lg px-2.5 text-xs"
-          asChild
+        <Link
+          href={ProfileRoutes.accountDetail(row.tokenAddress)}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "inline-flex h-8 rounded-lg px-2.5 text-xs"
+          )}
         >
-          <Link href={`/profile/accounts/${encodeURIComponent(row.tokenAddress)}`}>
-            {t("profile.details")}
-          </Link>
-        </Button>
+          {t("profile.details")}
+        </Link>
       </TableCell>
     </TableRow>
   );
@@ -130,37 +135,41 @@ function BalanceRow({ row }: { row: UserBalanceRsp }) {
 export function ProfileSpotBalancesTable({
   titleKey = "profile.accounts",
   emptyKey = "profile.emptySpotBalances",
-  balances: balancesProp,
 }: {
   titleKey?: string;
   emptyKey?: string;
-  balances?: UserBalanceRsp[];
 }) {
   const { t } = useI18n();
-  const balances = useMemo(
-    () => balancesProp ?? getMockUserBalances(),
-    [balancesProp]
-  );
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading } = useUserBalancesList({ enabled: isAuthenticated });
+
+  const balances = data ?? [];
 
   return (
-    <section className="border-border/60 bg-card rounded-2xl border p-5 sm:p-6">
+    <section className={profileTableSectionClass}>
       <h2 className="text-foreground text-base font-medium">{t(titleKey)}</h2>
 
-      {balances.length === 0 ? (
+      {!isAuthenticated ? (
+        <p className="text-muted-foreground mt-6 text-sm">{t(emptyKey)}</p>
+      ) : isLoading ? (
+        <p className="text-muted-foreground mt-6 text-sm">{t("swap.loading")}</p>
+      ) : balances.length === 0 ? (
         <p className="text-muted-foreground mt-6 text-sm">{t(emptyKey)}</p>
       ) : (
-        <div className="mt-4">
-          <Table className="min-w-[32rem] table-fixed">
+        <div className={profileTableWrapClass}>
+          <Table className={profileTableClass}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-muted-foreground text-xs">{t("profile.asset")}</TableHead>
-                <TableHead className="text-muted-foreground w-[10rem] text-xs">
+                <TableHead className="text-muted-foreground min-w-[10rem] text-xs">
+                  {t("profile.asset")}
+                </TableHead>
+                <TableHead className="text-muted-foreground min-w-[7.5rem] text-xs">
                   {t("profile.availableBalance")}
                 </TableHead>
-                <TableHead className="text-muted-foreground w-[10rem] text-xs">
+                <TableHead className="text-muted-foreground min-w-[7.5rem] text-xs">
                   {t("profile.frozenBalance")}
                 </TableHead>
-                <TableHead className="text-muted-foreground w-[5.5rem] text-xs">
+                <TableHead className="text-muted-foreground min-w-[5.5rem] text-xs">
                   {t("profile.balanceStatus")}
                 </TableHead>
                 <TableHead className="text-muted-foreground w-[6rem] text-xs">
