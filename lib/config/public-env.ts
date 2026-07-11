@@ -16,6 +16,11 @@ export const publicEnv = {
     "",
   defaultErcs20Token: process.env.NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN ?? "",
   spotAssetVaultAddress: process.env.NEXT_PUBLIC_SPOT_ASSET_VAULT_ADDRESS ?? "",
+  spotPairFactoryAddress: process.env.NEXT_PUBLIC_SPOT_PAIR_FACTORY ?? "",
+  spotDefaultBaseTokenSymbol:
+    process.env.NEXT_PUBLIC_SPOT_DEFAULT_BASE_TOKEN_SYMBOL?.trim() || "OBX",
+  spotDefaultQuoteTokenSymbol:
+    process.env.NEXT_PUBLIC_SPOT_DEFAULT_QUOTE_TOKEN_SYMBOL?.trim() || "USDC",
   /** API origin only, e.g. `https://api.example.com` (no `/api/v1`). */
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
   /** Block explorer base URL, e.g. `https://explorer.testnet.arc.network`. */

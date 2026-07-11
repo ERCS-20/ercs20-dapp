@@ -3,12 +3,37 @@
 import { useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
-import { formatSpotPct, formatSpotPrice, formatSpotSize } from "@/lib/spot/format";
-import type { OrderBookLevel, SpotOrderBook } from "@/lib/spot/types";
+import { useCachedOrderBook } from "@/hooks/use-cached-order-book";
+import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/spot/order-book-cache";
+import { formatPercentChange, formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
+import type { OrderBookLevel } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
-type LevelWithTotal = OrderBookLevel & { total: number };
+type LevelWithTotal = OrderBookLevel & { total: number; placeholder?: boolean };
+
+const EMPTY_LEVEL: LevelWithTotal = {
+  price: 0,
+  size: 0,
+  total: 0,
+  placeholder: true,
+};
+
+function padAsks(rows: LevelWithTotal[], depth: number): LevelWithTotal[] {
+  if (rows.length >= depth) return rows;
+  return [
+    ...Array.from({ length: depth - rows.length }, () => EMPTY_LEVEL),
+    ...rows,
+  ];
+}
+
+function padBids(rows: LevelWithTotal[], depth: number): LevelWithTotal[] {
+  if (rows.length >= depth) return rows;
+  return [
+    ...rows,
+    ...Array.from({ length: depth - rows.length }, () => EMPTY_LEVEL),
+  ];
+}
 
 function withTotals(levels: OrderBookLevel[], fromEnd: boolean): LevelWithTotal[] {
   let acc = 0;
@@ -20,17 +45,19 @@ function withTotals(levels: OrderBookLevel[], fromEnd: boolean): LevelWithTotal[
   return fromEnd ? mapped.reverse() : mapped;
 }
 
-export const ORDER_BOOK_DEPTH = 10;
+export const ORDER_BOOK_DEPTH = ORDER_BOOK_DISPLAY_DEPTH;
 
 export function SpotOrderBook({
-  book,
+  pairId,
+  enginePriceDecimal,
   quoteSymbol,
   lastPrice,
   change24hPct,
   onLevelClick,
   className,
 }: {
-  book: SpotOrderBook;
+  pairId: number | undefined;
+  enginePriceDecimal: number | undefined;
   quoteSymbol: string;
   lastPrice: number;
   change24hPct: number;
@@ -38,19 +65,20 @@ export function SpotOrderBook({
   className?: string;
 }) {
   const { t } = useI18n();
+  const { bids, asks, isLoading } = useCachedOrderBook(pairId, enginePriceDecimal);
 
-  const asks = useMemo(
-    () => withTotals(book.asks, true).slice(-ORDER_BOOK_DEPTH),
-    [book.asks]
+  const askRows = useMemo(
+    () => padAsks(withTotals(asks, true).slice(-ORDER_BOOK_DEPTH), ORDER_BOOK_DEPTH),
+    [asks]
   );
-  const bids = useMemo(
-    () => withTotals(book.bids, false).slice(0, ORDER_BOOK_DEPTH),
-    [book.bids]
+  const bidRows = useMemo(
+    () => padBids(withTotals(bids, false).slice(0, ORDER_BOOK_DEPTH), ORDER_BOOK_DEPTH),
+    [bids]
   );
 
   const maxTotal = Math.max(
-    asks[0]?.total ?? 0,
-    bids[bids.length - 1]?.total ?? 1
+    askRows[0]?.total ?? 0,
+    bidRows[bidRows.length - 1]?.total ?? 1
   );
 
   const up = change24hPct >= 0;
@@ -76,13 +104,17 @@ export function SpotOrderBook({
       </div>
 
       <div className="scrollbar-none shrink-0 px-1 sm:px-2">
-        {asks.map((row, i) => (
+        {askRows.map((row, i) => (
           <OrderBookRow
-            key={`a-${i}`}
+            key={`a-${row.placeholder ? "empty" : row.price}-${i}`}
             row={row}
             side="ask"
             maxTotal={maxTotal}
-            onClick={() => onLevelClick(row.price, row.size)}
+            onClick={
+              row.placeholder
+                ? undefined
+                : () => onLevelClick(row.price, row.size)
+            }
           />
         ))}
         <div
@@ -91,21 +123,31 @@ export function SpotOrderBook({
             changeTone
           )}
         >
-          <span>{formatSpotPrice(lastPrice)}</span>
-          {up ? (
-            <ChevronUpIcon className="size-3.5 shrink-0" aria-hidden />
+          {isLoading ? (
+            <span className="text-muted-foreground font-normal">{t("swap.loading")}</span>
           ) : (
-            <ChevronDownIcon className="size-3.5 shrink-0" aria-hidden />
+            <>
+              <span>{formatSubscriptPrice(lastPrice, enginePriceDecimal ?? 8)}</span>
+              {up ? (
+                <ChevronUpIcon className="size-3.5 shrink-0" aria-hidden />
+              ) : (
+                <ChevronDownIcon className="size-3.5 shrink-0" aria-hidden />
+              )}
+              <span className="text-xs sm:text-sm">{formatPercentChange(change24hPct)}</span>
+            </>
           )}
-          <span className="text-xs sm:text-sm">{formatSpotPct(change24hPct)}</span>
         </div>
-        {bids.map((row, i) => (
+        {bidRows.map((row, i) => (
           <OrderBookRow
-            key={`b-${i}`}
+            key={`b-${row.placeholder ? "empty" : row.price}-${i}`}
             row={row}
             side="bid"
             maxTotal={maxTotal}
-            onClick={() => onLevelClick(row.price, row.size)}
+            onClick={
+              row.placeholder
+                ? undefined
+                : () => onLevelClick(row.price, row.size)
+            }
           />
         ))}
       </div>
@@ -122,16 +164,13 @@ function OrderBookRow({
   row: LevelWithTotal;
   side: "ask" | "bid";
   maxTotal: number;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
-  const depthPct = maxTotal > 0 ? (row.total / maxTotal) * 100 : 0;
+  const depthPct =
+    row.placeholder || maxTotal <= 0 ? 0 : (row.total / maxTotal) * 100;
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="hover:bg-muted/50 relative grid w-full grid-cols-2 gap-2 px-2 py-0.5 text-left text-[11px] sm:text-xs"
-    >
+  const content = (
+    <>
       <span
         className={cn(
           "absolute inset-y-0 opacity-20",
@@ -143,12 +182,44 @@ function OrderBookRow({
       <span
         className={cn(
           "relative tabular-nums",
-          side === "ask" ? "text-brand-alt" : "text-brand"
+          row.placeholder
+            ? "text-muted-foreground/40"
+            : side === "ask"
+              ? "text-brand-alt"
+              : "text-brand"
         )}
       >
-        {formatSpotPrice(row.price)}
+        {row.placeholder ? "—" : formatSubscriptPrice(row.price)}
       </span>
-      <span className="relative text-right tabular-nums">{formatSpotSize(row.size)}</span>
+      <span
+        className={cn(
+          "relative text-right tabular-nums",
+          row.placeholder && "text-muted-foreground/40"
+        )}
+      >
+        {row.placeholder ? "—" : formatQuantity(row.size)}
+      </span>
+    </>
+  );
+
+  if (row.placeholder || !onClick) {
+    return (
+      <div
+        className="relative grid w-full grid-cols-2 gap-2 px-2 py-0.5 text-[11px] sm:text-xs"
+        aria-hidden
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hover:bg-muted/50 relative grid w-full grid-cols-2 gap-2 px-2 py-0.5 text-left text-[11px] sm:text-xs"
+    >
+      {content}
     </button>
   );
 }

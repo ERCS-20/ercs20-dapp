@@ -1,0 +1,442 @@
+"use client";
+
+import { useMemo } from "react";
+
+import {
+  formatOpenOrderStatus,
+  formatOrderHistoryStatus,
+  formatTradeStatus,
+  ordersHistoryRspToRow,
+  ordersRspToOpenOrderRow,
+  ordersTradeHistoryRspToRow,
+} from "@/lib/spot/open-orders-format";
+import {
+  formatQuantity,
+  formatQuoteAmount,
+  formatSubscriptPrice,
+} from "@/lib/utils/price";
+import { shortTxHash } from "@/lib/utils/format/address";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
+import { useI18n } from "@/providers/i18n-provider";
+import {
+  useOrdersHistoryPagination,
+  useOrdersPagination,
+  useOrdersTradeHistoryPagination,
+} from "@/services/spot/orders/hooks";
+
+export type SpotOrdersTab = "open" | "history" | "trades";
+
+const ORDERS_PAGE_SIZE = 50;
+
+export function SpotOrdersTabs({
+  tab,
+  onTabChange,
+  className,
+}: {
+  tab: SpotOrdersTab;
+  onTabChange: (t: SpotOrdersTab) => void;
+  className?: string;
+}) {
+  const { t } = useI18n();
+  const tabs: { id: SpotOrdersTab; label: string }[] = [
+    { id: "open", label: t("spot.openOrders") },
+    { id: "history", label: t("spot.orderHistory") },
+    { id: "trades", label: t("spot.tradeHistory") },
+  ];
+
+  return (
+    <section
+      className={cn(
+        "border-border/60 bg-card flex min-h-0 flex-col overflow-hidden rounded-xl border",
+        className
+      )}
+    >
+      <div className="border-border/60 flex gap-1 overflow-x-auto border-b px-2 pt-2 sm:px-3">
+        {tabs.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onTabChange(id)}
+            className={cn(
+              "relative shrink-0 px-3 py-2 text-sm font-medium transition-colors",
+              tab === id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+            {tab === id && (
+              <span className="bg-primary absolute inset-x-3 -bottom-px h-0.5 rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4">
+        {tab === "open" && <OpenOrdersTable />}
+        {tab === "history" && <HistoryOrdersTable />}
+        {tab === "trades" && <TradeHistoryTable />}
+      </div>
+    </section>
+  );
+}
+
+function OrdersTableMessageRow({
+  colSpan,
+  message,
+}: {
+  colSpan: number;
+  message: string;
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="text-muted-foreground py-8 text-center text-sm">
+        {message}
+      </td>
+    </tr>
+  );
+}
+
+function resolveOrdersTableMessage({
+  authReady,
+  isAuthenticated,
+  isLoading,
+  isFetching,
+  hasRows,
+  loadingMessage,
+  loginMessage,
+  emptyMessage,
+}: {
+  authReady: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isFetching: boolean;
+  hasRows: boolean;
+  loadingMessage: string;
+  loginMessage: string;
+  emptyMessage: string;
+}): string | null {
+  if (!authReady || (isAuthenticated && (isLoading || (isFetching && !hasRows)))) {
+    return loadingMessage;
+  }
+  if (!isAuthenticated) return loginMessage;
+  if (!hasRows) return emptyMessage;
+  return null;
+}
+
+function OpenOrdersTable() {
+  const { t } = useI18n();
+  const { isAuthenticated, authReady } = useAuth();
+
+  const paginationReq = useMemo(
+    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
+    []
+  );
+
+  const { data, isLoading, isFetching } = useOrdersPagination(paginationReq, {
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+
+  const rows = useMemo(
+    () => (data?.pageItems ?? []).map(ordersRspToOpenOrderRow),
+    [data?.pageItems]
+  );
+
+  const colSpan = 8;
+  const emptyMessage = resolveOrdersTableMessage({
+    authReady,
+    isAuthenticated,
+    isLoading,
+    isFetching,
+    hasRows: rows.length > 0,
+    loadingMessage: t("swap.loading"),
+    loginMessage: t("spot.loginToViewOrders"),
+    emptyMessage: t("spot.emptyOpenOrders"),
+  });
+
+  return (
+    <table className="w-full min-w-[960px] table-fixed text-sm">
+      <colgroup>
+        <col className="w-[12%]" />
+        <col className="w-[18%]" />
+        <col className="w-[12%]" />
+        <col className="w-[8%]" />
+        <col className="w-[12%]" />
+        <col className="w-[12%]" />
+        <col className="w-[12%]" />
+        <col className="w-[14%]" />
+      </colgroup>
+      <thead>
+        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.time")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.price")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.filledPct")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.status")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {emptyMessage ? (
+          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+        ) : (
+          rows.map((row) => (
+            <tr key={row.orderId} className="border-border/40 border-b last:border-0">
+              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
+                {row.orderId}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {new Date(row.placedAt).toLocaleString()}
+              </td>
+              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
+              <td
+                className={cn(
+                  "py-2.5 pr-4 font-medium whitespace-nowrap",
+                  row.side ? sideClass(row.side) : "text-muted-foreground"
+                )}
+              >
+                {row.side === "buy"
+                  ? t("spot.buy")
+                  : row.side === "sell"
+                    ? t("spot.sell")
+                    : "—"}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {formatQuantity(row.quantity)}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {row.fillPercent.toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                })}
+                %
+              </td>
+              <td className="text-muted-foreground py-2.5 whitespace-nowrap">
+                {formatOpenOrderStatus(row.status, t)}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function HistoryOrdersTable() {
+  const { t } = useI18n();
+  const { isAuthenticated, authReady } = useAuth();
+
+  const paginationReq = useMemo(
+    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
+    []
+  );
+
+  const { data, isLoading, isFetching } = useOrdersHistoryPagination(paginationReq, {
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+
+  const rows = useMemo(
+    () => (data?.pageItems ?? []).map(ordersHistoryRspToRow),
+    [data?.pageItems]
+  );
+
+  const colSpan = 9;
+  const emptyMessage = resolveOrdersTableMessage({
+    authReady,
+    isAuthenticated,
+    isLoading,
+    isFetching,
+    hasRows: rows.length > 0,
+    loadingMessage: t("swap.loading"),
+    loginMessage: t("spot.loginToViewOrders"),
+    emptyMessage: t("spot.emptyHistory"),
+  });
+
+  return (
+    <table className="w-full min-w-[1080px] table-fixed text-sm">
+      <colgroup>
+        <col className="w-[11%]" />
+        <col className="w-[10%]" />
+        <col className="w-[7%]" />
+        <col className="w-[10%]" />
+        <col className="w-[10%]" />
+        <col className="w-[12%]" />
+        <col className="w-[10%]" />
+        <col className="w-[15%]" />
+        <col className="w-[15%]" />
+      </colgroup>
+      <thead>
+        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.average")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.status")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.fee")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.placedAt")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.completedAt")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {emptyMessage ? (
+          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+        ) : (
+          rows.map((row) => (
+            <tr key={row.orderId} className="border-border/40 border-b last:border-0">
+              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
+                {row.orderId}
+              </td>
+              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
+              <td
+                className={cn(
+                  "py-2.5 pr-4 font-medium whitespace-nowrap",
+                  row.side ? sideClass(row.side) : "text-muted-foreground"
+                )}
+              >
+                {row.side === "buy"
+                  ? t("spot.buy")
+                  : row.side === "sell"
+                    ? t("spot.sell")
+                    : "—"}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {row.averagePrice != null
+                  ? formatSubscriptPrice(row.averagePrice, row.enginePriceDecimal)
+                  : "—"}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {formatQuantity(row.quantity)}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
+                {formatOrderHistoryStatus(row.status, t)}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {new Date(row.placedAt).toLocaleString()}
+              </td>
+              <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
+                {new Date(row.completedAt).toLocaleString()}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function TradeHistoryTable() {
+  const { t } = useI18n();
+  const { isAuthenticated, authReady } = useAuth();
+
+  const paginationReq = useMemo(
+    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
+    []
+  );
+
+  const { data, isLoading, isFetching } = useOrdersTradeHistoryPagination(paginationReq, {
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+
+  const rows = useMemo(
+    () => (data?.pageItems ?? []).map(ordersTradeHistoryRspToRow),
+    [data?.pageItems]
+  );
+
+  const colSpan = 8;
+  const emptyMessage = resolveOrdersTableMessage({
+    authReady,
+    isAuthenticated,
+    isLoading,
+    isFetching,
+    hasRows: rows.length > 0,
+    loadingMessage: t("swap.loading"),
+    loginMessage: t("spot.loginToViewOrders"),
+    emptyMessage: t("spot.emptyTrades"),
+  });
+
+  return (
+    <table className="w-full min-w-[960px] table-fixed text-sm">
+      <colgroup>
+        <col className="w-[12%]" />
+        <col className="w-[12%]" />
+        <col className="w-[8%]" />
+        <col className="w-[12%]" />
+        <col className="w-[12%]" />
+        <col className="w-[16%]" />
+        <col className="w-[14%]" />
+        <col className="w-[14%]" />
+      </colgroup>
+      <thead>
+        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.price")}</th>
+          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.time")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.status")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.txHash")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {emptyMessage ? (
+          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+        ) : (
+          rows.map((row, i) => (
+            <tr
+              key={`${row.orderId}-${row.tradeTime}-${row.txHash}-${i}`}
+              className="border-border/40 border-b last:border-0"
+            >
+              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
+                {row.orderId}
+              </td>
+              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
+              <td
+                className={cn(
+                  "py-2.5 pr-4 font-medium whitespace-nowrap",
+                  row.placeSide ? sideClass(row.placeSide) : "text-muted-foreground"
+                )}
+              >
+                {row.placeSide === "buy"
+                  ? t("spot.buy")
+                  : row.placeSide === "sell"
+                    ? t("spot.sell")
+                    : "—"}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
+              </td>
+              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+                {formatQuantity(row.quantity)}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {new Date(row.tradeTime).toLocaleString()}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
+                {formatTradeStatus(row.tradeStatus, t)}
+              </td>
+              <td className="text-muted-foreground py-2.5 font-mono text-xs whitespace-nowrap">
+                {row.txHash ? shortTxHash(row.txHash) : "—"}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function sideClass(side: "buy" | "sell") {
+  return side === "buy" ? "text-brand" : "text-brand-alt";
+}

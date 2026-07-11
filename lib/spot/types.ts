@@ -7,6 +7,8 @@ export type SpotOrderStatus = "open" | "filled" | "cancelled" | "partial";
 export type SpotCancelStatus = "normal" | "cancelling" | "cancelClaim";
 
 export type SpotPair = {
+  pairId?: number;
+  enginePriceDecimal?: number;
   baseSymbol: string;
   baseName: string;
   baseAddress: `0x${string}`;

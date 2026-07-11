@@ -3,19 +3,13 @@
 import { SpotMarketTrades } from "@/components/spot/spot-market-trades";
 import { SpotOrderBook } from "@/components/spot/spot-order-book";
 import { SpotOrderForm } from "@/components/spot/spot-order-form";
-import type {
-  SpotMarketTrade,
-  SpotOrder,
-  SpotOrderBook as SpotOrderBookData,
-  SpotPair,
-  SpotSide,
-} from "@/lib/spot/types";
+import type { SpotOrder, SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 
 export function SpotTradePanel({
   pair,
-  book,
-  trades,
+  pairId,
+  enginePriceDecimal,
   side,
   price,
   quantity,
@@ -31,8 +25,8 @@ export function SpotTradePanel({
   className,
 }: {
   pair: SpotPair;
-  book: SpotOrderBookData;
-  trades: SpotMarketTrade[];
+  pairId: number | undefined;
+  enginePriceDecimal: number | undefined;
   side: SpotSide;
   price: string;
   quantity: string;
@@ -52,14 +46,20 @@ export function SpotTradePanel({
       <div className="flex min-h-0 flex-1 gap-1">
         <div className="flex min-h-0 w-[45%] flex-col gap-1">
           <SpotOrderBook
-            book={book}
+            pairId={pairId}
+            enginePriceDecimal={enginePriceDecimal}
             quoteSymbol={pair.quoteSymbol}
             lastPrice={lastPrice}
             change24hPct={change24hPct}
             onLevelClick={onLevelClick}
             className="shrink-0"
           />
-          <SpotMarketTrades trades={trades} pair={pair} className="min-h-0 flex-1" />
+          <SpotMarketTrades
+            pairId={pairId}
+            enginePriceDecimal={enginePriceDecimal}
+            pair={pair}
+            className="min-h-0 flex-1"
+          />
         </div>
         <SpotOrderForm
           pair={pair}

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 
 import { SpotFavoriteButton } from "@/components/spot/spot-favorite-button";
@@ -14,14 +14,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  formatSpotChangeAmount,
-  formatSpotPct,
-  formatSpotPrice,
-} from "@/lib/spot/format";
-import { pairLabel } from "@/lib/spot/mock-market";
+  formatPercentChange,
+  formatSubscriptPrice,
+} from "@/lib/utils/price";
+import { calcOpenCloseChange, marketKlineToStats } from "@/lib/spot/market-stats";
+import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/spot/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { SpotMarketStats, SpotPair } from "@/lib/spot/types";
+import type { SpotPair } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
+import { useKlineCurrentDay, useMarketPairsPagination } from "@/services/spot/market/hooks";
 import { useI18n } from "@/providers/i18n-provider";
 
 function SpotBaseIcon({ symbol }: { symbol: string }) {
@@ -53,18 +54,19 @@ function SpotBaseIcon({ symbol }: { symbol: string }) {
 }
 
 function PairSelector({
-  pairs,
   pair,
   onPairChange,
   className,
   compact = false,
 }: {
-  pairs: SpotPair[];
   pair: SpotPair;
-  onPairChange: (p: SpotPair) => void;
+  onPairChange: (path: string) => void;
   className?: string;
   compact?: boolean;
 }) {
+  const { data } = useMarketPairsPagination({ currentPage: 1, pageSize: 100 });
+  const pairs = data?.pageItems ?? [];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -91,15 +93,15 @@ function PairSelector({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-44">
         <DropdownMenuRadioGroup
-          value={pair.baseAddress}
-          onValueChange={(addr) => {
-            const next = pairs.find((p) => p.baseAddress === addr);
-            if (next) onPairChange(next);
+          value={String(pair.pairId ?? "")}
+          onValueChange={(id) => {
+            const next = pairs.find((p) => String(p.pairId) === id);
+            if (next) onPairChange(pairPathFromCode(next.code));
           }}
         >
           {pairs.map((p) => (
-            <DropdownMenuRadioItem key={p.baseAddress} value={p.baseAddress}>
-              {pairLabel(p)}
+            <DropdownMenuRadioItem key={p.pairId} value={String(p.pairId)}>
+              {pairLabelFromCode(p.code)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -109,24 +111,46 @@ function PairSelector({
 }
 
 export function SpotToolbar({
-  pairs,
   pair,
-  stats,
+  pairId,
+  enginePriceDecimal,
   onPairChange,
   hidePairSelectorOnWide = false,
   className,
 }: {
-  pairs: SpotPair[];
   pair: SpotPair;
-  stats: SpotMarketStats;
-  onPairChange: (p: SpotPair) => void;
+  pairId: number | undefined;
+  enginePriceDecimal: number | undefined;
+  onPairChange: (path: string) => void;
   hidePairSelectorOnWide?: boolean;
   className?: string;
 }) {
   const { t } = useI18n();
+  const { data: kline, isLoading } = useKlineCurrentDay(pairId);
+
+  const stats = useMemo(() => {
+    if (!kline || enginePriceDecimal == null) {
+      return {
+        lastPrice: 0,
+        change24hPct: 0,
+        changeAmount: 0,
+        high24h: 0,
+        low24h: 0,
+        volumeBase: 0,
+        volume24h: 0,
+      };
+    }
+    const klineStats = marketKlineToStats(kline, enginePriceDecimal);
+    const { changeAmount } = calcOpenCloseChange(kline.open, kline.close, enginePriceDecimal);
+    return { ...klineStats, changeAmount };
+  }, [kline, enginePriceDecimal]);
+
   const up = stats.change24hPct >= 0;
   const changeTone = up ? "text-brand" : "text-brand-alt";
-  const changeAmount = formatSpotChangeAmount(stats.lastPrice, stats.change24hPct);
+  const changeAmountLabel =
+    stats.changeAmount === 0 && isLoading
+      ? "…"
+      : `${stats.changeAmount >= 0 ? "+" : ""}${formatSubscriptPrice(stats.changeAmount, enginePriceDecimal)}`;
 
   return (
     <div
@@ -141,7 +165,7 @@ export function SpotToolbar({
 
         <div className="min-w-0">
           <p className="text-foreground text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
-            {formatSpotPrice(stats.lastPrice)}
+            {isLoading && stats.lastPrice === 0 ? "…" : formatSubscriptPrice(stats.lastPrice, enginePriceDecimal)}
           </p>
           <div
             className={cn(
@@ -149,52 +173,48 @@ export function SpotToolbar({
               changeTone
             )}
           >
-            <span>{formatSpotPct(stats.change24hPct)}</span>
-            <span>{changeAmount}</span>
+            <span>{formatPercentChange(stats.change24hPct)}</span>
+            <span>{changeAmountLabel}</span>
           </div>
         </div>
 
         {hidePairSelectorOnWide ? (
           <PairSelector
-            pairs={pairs}
             pair={pair}
             onPairChange={onPairChange}
             compact
             className="2xl:hidden"
           />
         ) : (
-          <PairSelector
-            pairs={pairs}
-            pair={pair}
-            onPairChange={onPairChange}
-            compact
-          />
+          <PairSelector pair={pair} onPairChange={onPairChange} compact />
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <SpotFavoriteButton pairAddress={pair.baseAddress} />
+        <SpotFavoriteButton
+          pairAddress={pair.pairId != null ? `pair-${pair.pairId}` : pair.baseAddress}
+        />
         <dl className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4 sm:gap-x-5 sm:text-sm lg:gap-x-6">
-        <div>
-          <dt>{t("spot.high24h")}</dt>
-          <dd className="text-foreground tabular-nums">{formatSpotPrice(stats.high24h)}</dd>
-        </div>
-        <div>
-          <dt>{t("spot.low24h")}</dt>
-          <dd className="text-foreground tabular-nums">{formatSpotPrice(stats.low24h)}</dd>
-        </div>
-        <div>
-          <dt>{t("spot.vol24hSymbol").replace("{symbol}", pair.baseSymbol)}</dt>
-          <dd className="text-foreground tabular-nums">
-            {stats.volumeBase.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </dd>
-        </div>
-        <div>
-          <dt>{t("spot.vol24hSymbol").replace("{symbol}", pair.quoteSymbol)}</dt>
-          <dd className="text-foreground tabular-nums">
-            {stats.volume24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </dd>
-        </div>
+          <div>
+            <dt>{t("spot.high24h")}</dt>
+            <dd className="text-foreground tabular-nums">{formatSubscriptPrice(stats.high24h, enginePriceDecimal)}</dd>
+          </div>
+          <div>
+            <dt>{t("spot.low24h")}</dt>
+            <dd className="text-foreground tabular-nums">{formatSubscriptPrice(stats.low24h, enginePriceDecimal)}</dd>
+          </div>
+          <div>
+            <dt>{t("spot.vol24hSymbol").replace("{symbol}", pair.baseSymbol)}</dt>
+            <dd className="text-foreground tabular-nums">
+              {stats.volumeBase.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("spot.vol24hSymbol").replace("{symbol}", pair.quoteSymbol)}</dt>
+            <dd className="text-foreground tabular-nums">
+              {stats.volume24h.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+            </dd>
+          </div>
         </dl>
       </div>
     </div>

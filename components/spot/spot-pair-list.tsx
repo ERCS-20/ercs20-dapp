@@ -7,34 +7,39 @@ import { SearchIcon } from "lucide-react";
 import { SpotFavoriteButton, useSpotFavorites } from "@/components/spot/spot-favorite-button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatSpotPct, formatSpotPrice } from "@/lib/spot/format";
+import { calcOpenCloseChange } from "@/lib/spot/market-stats";
+import { formatPercentChange, formatSubscriptPrice } from "@/lib/utils/price";
 import {
-  getMockMarketStats,
-  pairLabel,
-  pairPath,
-} from "@/lib/spot/mock-market";
+  pairLabelFromCode,
+  pairPathFromCode,
+} from "@/lib/spot/pair-api";
 import type { SpotPair } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
+import { useMarketPairsPagination } from "@/services/spot/market/hooks";
+import type { MarketPairRsp } from "@/services/spot/market/types";
+import { usePairEnginePriceDecimalMap } from "@/services/spot/orders/hooks";
 import { useI18n } from "@/providers/i18n-provider";
 
-function filterPairs(pairs: SpotPair[], query: string): SpotPair[] {
+const MARKET_PAIR_PAGE_SIZE = 100;
+
+function filterMarketPairs(pairs: MarketPairRsp[], query: string): MarketPairRsp[] {
   const q = query.trim().toLowerCase();
   if (!q) return pairs;
-  return pairs.filter(
-    (p) =>
-      p.baseSymbol.toLowerCase().includes(q) ||
-      p.baseName.toLowerCase().includes(q) ||
-      p.pairCode.toLowerCase().includes(q)
-  );
+  return pairs.filter((p) => {
+    const label = pairLabelFromCode(p.code).toLowerCase();
+    return label.includes(q) || p.code.toLowerCase().includes(q);
+  });
 }
 
 function PairListItems({
   pairs,
   activePair,
+  enginePriceDecimalMap,
   emptyMessage,
 }: {
-  pairs: SpotPair[];
+  pairs: MarketPairRsp[];
   activePair: SpotPair;
+  enginePriceDecimalMap: Map<number, number>;
   emptyMessage: string;
 }) {
   if (pairs.length === 0) {
@@ -46,29 +51,58 @@ function PairListItems({
   return (
     <ul className="p-1.5">
       {pairs.map((p) => {
-        const stats = getMockMarketStats(p);
-        const active = p.baseAddress === activePair.baseAddress;
-        const up = stats.change24hPct >= 0;
+        const enginePriceDecimal =
+          enginePriceDecimalMap.get(p.pairId) ??
+          (p.pairId === activePair.pairId ? activePair.enginePriceDecimal : undefined);
+
+        const parsed = pairLabelFromCode(p.code).split("/");
+        const quoteSymbol = parsed[1] ?? activePair.quoteSymbol;
+        const active = p.pairId === activePair.pairId;
+        const favoriteKey = `pair-${p.pairId}`;
+
+        if (enginePriceDecimal == null) {
+          return (
+            <li
+              key={p.pairId}
+              className={cn(
+                "flex items-center gap-0.5 rounded-lg px-2 py-2",
+                active && "bg-muted/80"
+              )}
+            >
+              <span className="text-foreground truncate text-sm font-medium">
+                {pairLabelFromCode(p.code)}
+              </span>
+              <span className="text-muted-foreground ml-auto text-xs">…</span>
+            </li>
+          );
+        }
+
+        const { lastPrice, change24hPct } = calcOpenCloseChange(
+          p.open,
+          p.close,
+          enginePriceDecimal
+        );
+        const up = change24hPct >= 0;
 
         return (
           <li
-            key={p.baseAddress}
+            key={p.pairId}
             className={cn(
               "flex items-center gap-0.5 rounded-lg",
               active && "bg-muted/80"
             )}
           >
             <SpotFavoriteButton
-              pairAddress={p.baseAddress}
+              pairAddress={favoriteKey}
               className="size-7 shrink-0 rounded-md [&_svg]:size-3.5"
             />
             <Link
-              href={`/spot/${pairPath(p)}`}
+              href={`/spot/${pairPathFromCode(p.code)}`}
               className="hover:bg-muted/60 min-w-0 flex-1 rounded-lg py-2 pr-2 pl-0.5 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-foreground truncate text-sm font-medium">
-                  {pairLabel(p)}
+                  {pairLabelFromCode(p.code)}
                 </span>
                 <span
                   className={cn(
@@ -76,11 +110,11 @@ function PairListItems({
                     up ? "text-brand" : "text-brand-alt"
                   )}
                 >
-                  {formatSpotPct(stats.change24hPct)}
+                  {formatPercentChange(change24hPct)}
                 </span>
               </div>
               <span className="text-muted-foreground text-xs tabular-nums">
-                {formatSpotPrice(stats.lastPrice)} {p.quoteSymbol}
+                {formatSubscriptPrice(lastPrice, enginePriceDecimal)} {quoteSymbol}
               </span>
             </Link>
           </li>
@@ -91,11 +125,9 @@ function PairListItems({
 }
 
 export function SpotPairList({
-  pairs,
   activePair,
   className,
 }: {
-  pairs: SpotPair[];
   activePair: SpotPair;
   className?: string;
 }) {
@@ -103,12 +135,21 @@ export function SpotPairList({
   const [query, setQuery] = useState("");
   const favorites = useSpotFavorites();
 
-  const allFiltered = useMemo(() => filterPairs(pairs, query), [pairs, query]);
+  const paginationReq = useMemo(
+    () => ({ currentPage: 1, pageSize: MARKET_PAIR_PAGE_SIZE }),
+    []
+  );
+
+  const { data, isLoading } = useMarketPairsPagination(paginationReq);
+  const pairs = data?.pageItems ?? [];
+  const enginePriceDecimalMap = usePairEnginePriceDecimalMap(pairs);
+
+  const allFiltered = useMemo(() => filterMarketPairs(pairs, query), [pairs, query]);
 
   const favoritesFiltered = useMemo(
     () =>
-      filterPairs(
-        pairs.filter((p) => favorites.has(p.baseAddress.toLowerCase())),
+      filterMarketPairs(
+        pairs.filter((p) => favorites.has(`pair-${p.pairId}`)),
         query
       ),
     [pairs, query, favorites]
@@ -146,28 +187,36 @@ export function SpotPairList({
           </TabsList>
         </div>
 
-        <TabsContent
-          value="favorites"
-          className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
-        >
-          <PairListItems
-            pairs={favoritesFiltered}
-            activePair={activePair}
-            emptyMessage={
-              query.trim() ? t("spot.noPairsFound") : t("spot.emptyFavorites")
-            }
-          />
-        </TabsContent>
-        <TabsContent
-          value="all"
-          className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
-        >
-          <PairListItems
-            pairs={allFiltered}
-            activePair={activePair}
-            emptyMessage={t("spot.noPairsFound")}
-          />
-        </TabsContent>
+        {isLoading ? (
+          <p className="text-muted-foreground px-3 py-6 text-center text-xs">{t("swap.loading")}</p>
+        ) : (
+          <>
+            <TabsContent
+              value="favorites"
+              className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
+            >
+              <PairListItems
+                pairs={favoritesFiltered}
+                activePair={activePair}
+                enginePriceDecimalMap={enginePriceDecimalMap}
+                emptyMessage={
+                  query.trim() ? t("spot.noPairsFound") : t("spot.emptyFavorites")
+                }
+              />
+            </TabsContent>
+            <TabsContent
+              value="all"
+              className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
+            >
+              <PairListItems
+                pairs={allFiltered}
+                activePair={activePair}
+                enginePriceDecimalMap={enginePriceDecimalMap}
+                emptyMessage={t("spot.noPairsFound")}
+              />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </aside>
   );

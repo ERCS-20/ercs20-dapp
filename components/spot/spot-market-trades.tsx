@@ -1,20 +1,36 @@
 "use client";
 
-import { formatSpotPrice, formatSpotSize } from "@/lib/spot/format";
-import type { SpotMarketTrade, SpotPair } from "@/lib/spot/types";
+import { useMemo } from "react";
+
+import { marketTradesToSpotTrades } from "@/lib/spot/market-trades-parse";
+import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
+import type { SpotPair } from "@/lib/spot/types";
+import { formatUtcTime } from "@/lib/utils/format/datetime";
 import { cn } from "@/lib/utils";
+import { useMarketTrades } from "@/services/spot/market/hooks";
 import { useI18n } from "@/providers/i18n-provider";
 
 export function SpotMarketTrades({
-  trades,
+  pairId,
+  enginePriceDecimal,
   pair,
   className,
 }: {
-  trades: SpotMarketTrade[];
+  pairId: number | undefined;
+  enginePriceDecimal: number | undefined;
   pair: SpotPair;
   className?: string;
 }) {
   const { t } = useI18n();
+  const { data, isLoading } = useMarketTrades(pairId);
+
+  const trades = useMemo(
+    () =>
+      enginePriceDecimal != null
+        ? marketTradesToSpotTrades(data, enginePriceDecimal)
+        : [],
+    [data, enginePriceDecimal]
+  );
 
   return (
     <section
@@ -35,29 +51,33 @@ export function SpotMarketTrades({
       </div>
 
       <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto px-1 pb-2 sm:px-2">
-        <table className="w-full text-[11px] sm:text-xs">
-          <tbody>
-            {trades.map((trade) => (
-              <tr key={trade.id} className="hover:bg-muted/40">
-                <td
-                  className={cn(
-                    "py-0.5 tabular-nums",
-                    trade.isBuy ? "text-brand" : "text-brand-alt"
-                  )}
-                >
-                  {formatSpotPrice(trade.price)}
-                </td>
-                <td className="text-foreground py-0.5 text-center tabular-nums">
-                  {formatSpotSize(trade.quantity)}
-                </td>
-                <td className="text-muted-foreground py-0.5 text-right tabular-nums">
-                  {new Date(trade.time).toLocaleTimeString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {trades.length === 0 && (
+        {isLoading ? (
+          <p className="text-muted-foreground py-6 text-center text-xs">{t("swap.loading")}</p>
+        ) : (
+          <table className="w-full text-[11px] sm:text-xs">
+            <tbody>
+              {trades.map((trade) => (
+                <tr key={trade.id} className="hover:bg-muted/40">
+                  <td
+                    className={cn(
+                      "py-0.5 tabular-nums",
+                      trade.isBuy ? "text-brand" : "text-brand-alt"
+                    )}
+                  >
+                    {formatSubscriptPrice(trade.price, enginePriceDecimal ?? 8)}
+                  </td>
+                  <td className="text-foreground py-0.5 text-center tabular-nums">
+                    {formatQuantity(trade.quantity)}
+                  </td>
+                  <td className="text-muted-foreground py-0.5 text-right tabular-nums">
+                    {formatUtcTime(trade.time)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {!isLoading && trades.length === 0 && (
           <p className="text-muted-foreground py-6 text-center text-xs">{t("spot.emptyTrades")}</p>
         )}
       </div>

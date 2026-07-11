@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MIN_ORDER_TOTAL } from "@/lib/spot/mock-market";
-import { formatSpotPrice, formatSpotTotal } from "@/lib/spot/format";
+import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
 import type { SpotOrder, SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
@@ -152,7 +152,7 @@ export function SpotOrderForm({
             inputMode="decimal"
             value={price}
             onChange={(e) => onPriceChange(sanitizeDecimal(e.target.value))}
-            placeholder={formatSpotPrice(lastPrice)}
+            placeholder={formatSubscriptPrice(lastPrice)}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
         </div>
@@ -212,7 +212,7 @@ export function SpotOrderForm({
           <Input
             id="spot-total"
             readOnly
-            value={total > 0 ? formatSpotTotal(total) : ""}
+            value={total > 0 ? formatQuoteAmount(total) : ""}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
         </div>

@@ -3,10 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBalance, useChainId, useReadContract } from "wagmi";
-import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { SpotBottomPanel, type BottomTab } from "@/components/spot/spot-bottom-panel";
+import { SpotOrdersTabs, type SpotOrdersTab } from "@/components/spot/spot-orders-tabs";
 import { SpotChartPanel } from "@/components/spot/spot-chart-panel";
 import { SpotMarketTrades } from "@/components/spot/spot-market-trades";
 import { SpotOrderBook } from "@/components/spot/spot-order-book";
@@ -15,32 +14,39 @@ import { SpotPairList } from "@/components/spot/spot-pair-list";
 import { SpotToolbar } from "@/components/spot/spot-toolbar";
 import { SpotTradePanel } from "@/components/spot/spot-trade-panel";
 import { erc20Abi } from "@/lib/contracts/abis";
+import { getSpotDefaultPairPath } from "@/lib/config/spot-default-pair";
 import { getSwapTargetChainId, isSwapEnvConfigured } from "@/lib/config/swap-target";
-import {
-  findPairByPath,
-  getMockMarketStats,
-  getMockMarketTrades,
-  getMockOrderBook,
-  getMockUserTradeHistory,
-  getSpotPairs,
-  pairPath,
-} from "@/lib/spot/mock-market";
+import { marketKlineToStats } from "@/lib/spot/market-stats";
+import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type {
   ChartTimeframe,
   SpotOrder,
   SpotPair,
   SpotSide,
-  SpotUserTrade,
 } from "@/lib/spot/types";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@/hooks/use-wallet";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
-import { formatBalanceDisplay } from "@/components/spot/spot-bottom-panel";
+import { formatBalanceDisplay } from "@/lib/spot/format-balance";
+import { useKlineCurrentDay } from "@/services/spot/market/hooks";
+import { usePairByCode } from "@/services/spot/orders/hooks";
 
 type MobilePanel = "chart" | "book" | "trade" | "orders";
 
 const NATIVE_DECIMALS = 18;
+
+function placeholderPairFromUrl(token0: string, token1: string): SpotPair {
+  const base = token0.toUpperCase();
+  const quote = token1.toUpperCase();
+  return {
+    baseSymbol: base,
+    baseName: base,
+    baseAddress: "0x0000000000000000000000000000000000000000",
+    quoteSymbol: quote,
+    pairCode: `${base}/${quote}`,
+  };
+}
 
 export function SpotView({
   token0,
@@ -56,40 +62,55 @@ export function SpotView({
   const targetChainId = getSwapTargetChainId();
   const configured = isSwapEnvConfigured();
 
-  const pairs = useMemo(() => getSpotPairs(), []);
-  const pair = useMemo(() => {
-    const found = findPairByPath(pairs, token0, token1);
-    return found ?? pairs[0]!;
-  }, [pairs, token0, token1]);
+  const defaultPath = getSpotDefaultPairPath();
+  const currentPath = `${token0.toLowerCase()}/${token1.toLowerCase()}`;
+
+  const {
+    data: pairRsp,
+    isError: pairError,
+    isFetched: pairFetched,
+    isLoading: pairLoading,
+  } = usePairByCode(token0, token1);
 
   useEffect(() => {
-    const found = findPairByPath(pairs, token0, token1);
-    if (!found && pairs[0]) {
-      router.replace(`/spot/${pairPath(pairs[0])}`);
+    if (!pairFetched) return;
+    if (pairError || !pairRsp) {
+      if (currentPath !== defaultPath) {
+        router.replace(`/spot/${defaultPath}`);
+      }
     }
-  }, [pairs, token0, token1, router]);
+  }, [pairFetched, pairError, pairRsp, currentPath, defaultPath, router]);
 
-  const stats = useMemo(() => getMockMarketStats(pair), [pair]);
-  const book = useMemo(() => getMockOrderBook(pair), [pair]);
-  const marketTrades = useMemo(() => getMockMarketTrades(pair), [pair]);
-  const seedTradeHistory = useMemo(() => getMockUserTradeHistory(pair), [pair]);
+  const pair = useMemo(
+    () => (pairRsp ? pairRspToSpotPair(pairRsp) : placeholderPairFromUrl(token0, token1)),
+    [pairRsp, token0, token1]
+  );
+
+  const pairId = pairRsp?.id;
+  const enginePriceDecimal = pairRsp?.enginePriceDecimal;
+  const pairReady = Boolean(pairRsp);
+
+  const { data: kline } = useKlineCurrentDay(pairId, { enabled: pairId != null });
+
+  const marketStats = useMemo(() => {
+    if (!kline || enginePriceDecimal == null) {
+      return { lastPrice: 0, change24hPct: 0 };
+    }
+    const stats = marketKlineToStats(kline, enginePriceDecimal);
+    return { lastPrice: stats.lastPrice, change24hPct: stats.change24hPct };
+  }, [kline, enginePriceDecimal]);
 
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1h");
   const [side, setSide] = useState<SpotSide>("buy");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
-  const [openOrders, setOpenOrders] = useState<SpotOrder[]>([]);
-  const [historyOrders, setHistoryOrders] = useState<SpotOrder[]>([]);
-  const [userTrades, setUserTrades] = useState<SpotUserTrade[]>([]);
-
   useEffect(() => {
-    setUserTrades(seedTradeHistory);
     setPrice("");
     setQuantity("");
-  }, [pair.baseAddress, seedTradeHistory]);
+  }, [pair.baseAddress]);
 
-  const [bottomTab, setBottomTab] = useState<BottomTab>("open");
+  const [ordersTab, setOrdersTab] = useState<SpotOrdersTab>("open");
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("chart");
 
   const effectiveChainId = targetChainId ?? chainId;
@@ -104,7 +125,7 @@ export function SpotView({
     token: pair.baseAddress,
     address,
     chainId: effectiveChainId,
-    query: { enabled: Boolean(address && configured) },
+    query: { enabled: Boolean(address && configured && pairReady) },
   });
 
   const { data: tokenDecimals } = useReadContract({
@@ -112,7 +133,7 @@ export function SpotView({
     abi: erc20Abi,
     functionName: "decimals",
     chainId: effectiveChainId,
-    query: { enabled: configured },
+    query: { enabled: configured && pairReady },
   });
 
   const decimals = Number(tokenDecimals ?? 18);
@@ -128,8 +149,8 @@ export function SpotView({
   }, [tokenBal, decimals]);
 
   const handlePairChange = useCallback(
-    (p: SpotPair) => {
-      router.push(`/spot/${pairPath(p)}`);
+    (path: string) => {
+      router.push(`/spot/${path}`);
     },
     [router]
   );
@@ -140,47 +161,12 @@ export function SpotView({
   }, []);
 
   const handlePlaceOrder = useCallback(
-    (partial: Omit<SpotOrder, "id" | "createdAt" | "status">) => {
-      const order: SpotOrder = {
-        ...partial,
-        id: `sim-${Date.now()}`,
-        createdAt: Date.now(),
-        status: "open",
-      };
-      setOpenOrders((prev) => [order, ...prev]);
+    (_partial: Omit<SpotOrder, "id" | "createdAt" | "status">) => {
       setQuantity("");
-      setBottomTab("open");
+      setOrdersTab("open");
       setMobilePanel("orders");
     },
     []
-  );
-
-  const handleCancelOrder = useCallback(
-    (id: string) => {
-      setOpenOrders((prev) =>
-        prev.map((o) =>
-          o.id === id ? { ...o, cancelStatus: "cancelling" as const } : o
-        )
-      );
-      toast.message(t("spot.cancelPending"));
-    },
-    [t]
-  );
-
-  const handleClaimCancel = useCallback(
-    (id: string) => {
-      setOpenOrders((prev) => {
-        const target = prev.find((o) => o.id === id);
-        if (!target) return prev;
-        setHistoryOrders((h) => [
-          { ...target, status: "cancelled", cancelStatus: "normal" },
-          ...h,
-        ]);
-        toast.success(t("spot.orderCancelled"));
-        return prev.filter((o) => o.id !== id);
-      });
-    },
-    [t]
   );
 
   const mobileTabs: { id: MobilePanel; label: string }[] = [
@@ -200,13 +186,33 @@ export function SpotView({
     );
   }
 
+  if (pairLoading || (!pairReady && currentPath !== defaultPath)) {
+    return (
+      <PageShell>
+        <div className="mx-auto max-w-lg py-16 text-center">
+          <p className="text-muted-foreground text-sm">{t("swap.loading")}</p>
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!pairReady && currentPath === defaultPath) {
+    return (
+      <PageShell>
+        <div className="mx-auto max-w-lg py-16 text-center">
+          <p className="text-muted-foreground text-sm">{t("spot.pairNotFound")}</p>
+        </div>
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
       {/* Mobile toolbar */}
       <SpotToolbar
-        pairs={pairs}
         pair={pair}
-        stats={stats}
+        pairId={pairId}
+        enginePriceDecimal={enginePriceDecimal}
         onPairChange={handlePairChange}
         className="lg:hidden"
       />
@@ -236,15 +242,14 @@ export function SpotView({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-h-0 flex-[7] gap-1">
               <SpotPairList
-                pairs={pairs}
                 activePair={pair}
                 className="hidden h-full min-h-0 rounded-none 2xl:flex"
               />
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
                 <SpotToolbar
-                  pairs={pairs}
                   pair={pair}
-                  stats={stats}
+                  pairId={pairId}
+                  enginePriceDecimal={enginePriceDecimal}
                   onPairChange={handlePairChange}
                   hidePairSelectorOnWide
                   className="shrink-0 rounded-none border-x-0 border-t-0"
@@ -257,26 +262,21 @@ export function SpotView({
                 />
               </div>
             </div>
-            <SpotBottomPanel
-              tab={bottomTab}
-              onTabChange={setBottomTab}
-              openOrders={openOrders}
-              historyOrders={historyOrders}
-              tradeHistory={userTrades}
-              onCancelOrder={handleCancelOrder}
-              onClaimCancel={handleClaimCancel}
+            <SpotOrdersTabs
+              tab={ordersTab}
+              onTabChange={setOrdersTab}
               className="min-h-0 flex-[3] rounded-none"
             />
           </div>
           <SpotTradePanel
             pair={pair}
-            book={book}
-            trades={marketTrades}
+            pairId={pairId}
+            enginePriceDecimal={enginePriceDecimal}
             side={side}
             price={price}
             quantity={quantity}
-            lastPrice={stats.lastPrice}
-            change24hPct={stats.change24hPct}
+            lastPrice={marketStats.lastPrice}
+            change24hPct={marketStats.change24hPct}
             availableBase={availableBase}
             availableQuote={availableQuote}
             onSideChange={setSide}
@@ -301,17 +301,23 @@ export function SpotView({
         {mobilePanel === "book" && (
           <div className="space-y-3">
             <SpotOrderBook
-              book={book}
+              pairId={pairId}
+              enginePriceDecimal={enginePriceDecimal}
               quoteSymbol={pair.quoteSymbol}
-              lastPrice={stats.lastPrice}
-              change24hPct={stats.change24hPct}
+              lastPrice={marketStats.lastPrice}
+              change24hPct={marketStats.change24hPct}
               onLevelClick={(p, s) => {
                 handleLevelClick(p, s);
                 setMobilePanel("trade");
               }}
               className="min-h-[320px]"
             />
-            <SpotMarketTrades trades={marketTrades} pair={pair} className="min-h-[200px]" />
+            <SpotMarketTrades
+              pairId={pairId}
+              enginePriceDecimal={enginePriceDecimal}
+              pair={pair}
+              className="min-h-[200px]"
+            />
           </div>
         )}
         {mobilePanel === "trade" && (
@@ -320,7 +326,7 @@ export function SpotView({
             side={side}
             price={price}
             quantity={quantity}
-            lastPrice={stats.lastPrice}
+            lastPrice={marketStats.lastPrice}
             availableBase={availableBase}
             availableQuote={availableQuote}
             onSideChange={setSide}
@@ -330,15 +336,7 @@ export function SpotView({
           />
         )}
         {mobilePanel === "orders" && (
-          <SpotBottomPanel
-            tab={bottomTab}
-            onTabChange={setBottomTab}
-            openOrders={openOrders}
-            historyOrders={historyOrders}
-            tradeHistory={userTrades}
-            onCancelOrder={handleCancelOrder}
-            onClaimCancel={handleClaimCancel}
-          />
+          <SpotOrdersTabs tab={ordersTab} onTabChange={setOrdersTab} />
         )}
       </div>
     </PageShell>

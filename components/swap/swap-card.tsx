@@ -28,7 +28,9 @@ import {
   isSwapEnvConfigured,
 } from "@/lib/config/swap-target";
 import { minOutAfterSlippage, swapDeadlineTimestamp } from "@/lib/swap/min-out";
+import { quotePerTokenFromReserves } from "@/lib/swap/pool-price";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
+import { formatSubscriptPrice } from "@/lib/utils/price";
 import { findErcs20ListMetaByAddress } from "@/lib/tokens/ercs20-search";
 import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
 import { cn } from "@/lib/utils";
@@ -297,51 +299,30 @@ export function SwapCard() {
   const outputAmountStr =
     expectedOut != null ? formatUnits(expectedOut, outputDecimals) : "";
 
-  /** Fixed-notional pool quote via public RPC (no wallet). Buys: 1 unit quote in; sells: 1 full token in. */
-  const spotRefAmountIn = useMemo(() => {
-    try {
-      return buyMode
-        ? parseUnits("1", NATIVE_DECIMALS)
-        : parseUnits("1", tokenDecimals);
-    } catch {
-      return BigInt(0);
-    }
-  }, [buyMode, tokenDecimals]);
+  const reservesQueryEnabled = !!token && targetChainId != null && configured;
 
-  const spotQuoteEnabled =
-    !!token &&
-    targetChainId != null &&
-    configured &&
-    spotRefAmountIn > BigInt(0);
-
-  const { data: spotQuoteOut } = useReadContract({
+  const { data: reserves } = useReadContract({
     address: token,
     abi: ercs20TokenAbi,
-    functionName: "getAmountOut",
-    args: spotQuoteEnabled ? [spotRefAmountIn, buyMode] : undefined,
+    functionName: "getReserves",
     chainId: targetChainId ?? undefined,
-    query: { enabled: spotQuoteEnabled },
+    query: { enabled: reservesQueryEnabled },
   });
 
-  const spotExpectedOut =
-    spotQuoteOut && Array.isArray(spotQuoteOut)
-      ? (spotQuoteOut[0] as bigint)
-      : undefined;
-
-  /** Same convention as the form: buy → tokens received per 1 unit pay; sell → quote received per 1 token sold. */
-  const spotPriceStr = useMemo(() => {
-    if (
-      spotExpectedOut == null ||
-      spotExpectedOut <= BigInt(0) ||
-      spotRefAmountIn <= BigInt(0)
-    ) {
-      return null;
-    }
-    if (buyMode) {
-      return trimDecimalInput(formatUnits(spotExpectedOut, tokenDecimals));
-    }
-    return trimDecimalInput(formatUnits(spotExpectedOut, NATIVE_DECIMALS));
-  }, [buyMode, spotRefAmountIn, spotExpectedOut, tokenDecimals]);
+  /** Mid price from pool reserves (1 TOKEN = X quote), excludes the 0.2% swap fee. */
+  const currentPriceLabel = useMemo(() => {
+    if (!reserves || !Array.isArray(reserves)) return null;
+    const tokenReserve = reserves[0] as bigint;
+    const quoteReserve = reserves[1] as bigint;
+    const price = quotePerTokenFromReserves(
+      tokenReserve,
+      quoteReserve,
+      tokenDecimals,
+      NATIVE_DECIMALS
+    );
+    if (price == null) return null;
+    return `${formatSubscriptPrice(price, 8)} ${t("swap.native")}`;
+  }, [reserves, tokenDecimals, t]);
 
   const {
     writeContract,
@@ -598,7 +579,9 @@ export function SwapCard() {
             <div className="flex justify-between gap-4">
               <dt>{t("swap.currentPrice")}</dt>
               <dd className="max-w-[min(100%,18rem)] text-right font-medium break-words tabular-nums sm:max-w-[22rem]">
-                {token && spotPriceStr != null ? spotPriceStr : DISCONNECTED}
+                {token && currentPriceLabel != null
+                  ? `${currentPriceLabel} / ${displaySymbol}`
+                  : DISCONNECTED}
               </dd>
             </div>
             <div className="flex justify-between gap-4">

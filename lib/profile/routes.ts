@@ -3,6 +3,7 @@ export const ProfileRoutes = {
   accounts: "/profile/accounts",
   deposits: "/profile/deposits",
   deposit: "/profile/deposit",
+  applyList: "/profile/apply-list",
   withdrawals: "/profile/withdrawals",
   withdraw: "/profile/withdraw",
   accountDetail: (tokenAddress: string) =>
