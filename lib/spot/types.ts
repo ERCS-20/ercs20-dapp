@@ -13,7 +13,10 @@ export type SpotPair = {
   baseName: string;
   baseAddress: `0x${string}`;
   quoteSymbol: string;
+  quoteAddress: `0x${string}`;
   pairCode: string;
+  /** Minimum order total in quote token base units (18 decimals). */
+  minTradeAmount?: bigint;
 };
 
 export type SpotMarketStats = {

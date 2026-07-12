@@ -1,6 +1,7 @@
 import defaultList from "@/lib/tokens/ercs20-default-list.json";
 import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
 import { getDefaultErcs20TokenAddress } from "@/lib/config/swap-target";
+import { getWusdcAddress } from "@/lib/config/wusdc";
 
 import type {
   ChartTimeframe,
@@ -13,6 +14,8 @@ import type {
 } from "./types";
 
 const QUOTE_SYMBOL = "USDC";
+const DEFAULT_QUOTE_ADDRESS =
+  getWusdcAddress() ?? ("0x0000000000000000000000000000000000000000" as `0x${string}`);
 
 function hashSeed(input: string): number {
   let h = 0;
@@ -47,6 +50,7 @@ export function getSpotPairs(): SpotPair[] {
             baseName: "Token",
             baseAddress: envDefault,
             quoteSymbol: QUOTE_SYMBOL,
+            quoteAddress: DEFAULT_QUOTE_ADDRESS,
             pairCode: `TOKEN/${QUOTE_SYMBOL}`,
           }
     );
@@ -58,6 +62,7 @@ export function getSpotPairs(): SpotPair[] {
       baseName: "Orbix DAO",
       baseAddress: "0xa16E02E87b7454126E5E10d957A927A7F5B5d2be",
       quoteSymbol: QUOTE_SYMBOL,
+      quoteAddress: DEFAULT_QUOTE_ADDRESS,
       pairCode: "OBX/USDC",
     });
   }
@@ -71,6 +76,7 @@ function toPair(t: Ercs20TokenMeta): SpotPair {
     baseName: t.name,
     baseAddress: t.address,
     quoteSymbol: QUOTE_SYMBOL,
+    quoteAddress: DEFAULT_QUOTE_ADDRESS,
     pairCode: `${t.symbol}/${QUOTE_SYMBOL}`,
   };
 }
@@ -192,5 +198,3 @@ export function getMockChartBars(
   }
   return bars;
 }
-
-export const MIN_ORDER_TOTAL = 1;

@@ -3,7 +3,7 @@
 import { SpotMarketTrades } from "@/components/spot/spot-market-trades";
 import { SpotOrderBook } from "@/components/spot/spot-order-book";
 import { SpotOrderForm } from "@/components/spot/spot-order-form";
-import type { SpotOrder, SpotPair, SpotSide } from "@/lib/spot/types";
+import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 
 export function SpotTradePanel({
@@ -15,13 +15,11 @@ export function SpotTradePanel({
   quantity,
   lastPrice,
   change24hPct,
-  availableBase,
-  availableQuote,
   onSideChange,
   onPriceChange,
   onQuantityChange,
   onLevelClick,
-  onPlaceOrder,
+  onOrderPlaced,
   className,
 }: {
   pair: SpotPair;
@@ -32,13 +30,11 @@ export function SpotTradePanel({
   quantity: string;
   lastPrice: number;
   change24hPct: number;
-  availableBase: string;
-  availableQuote: string;
   onSideChange: (s: SpotSide) => void;
   onPriceChange: (v: string) => void;
   onQuantityChange: (v: string) => void;
   onLevelClick: (price: number, size: number) => void;
-  onPlaceOrder: (order: Omit<SpotOrder, "id" | "createdAt" | "status">) => void;
+  onOrderPlaced?: () => void;
   className?: string;
 }) {
   return (
@@ -67,12 +63,10 @@ export function SpotTradePanel({
           price={price}
           quantity={quantity}
           lastPrice={lastPrice}
-          availableBase={availableBase}
-          availableQuote={availableQuote}
           onSideChange={onSideChange}
           onPriceChange={onPriceChange}
           onQuantityChange={onQuantityChange}
-          onPlaceOrder={onPlaceOrder}
+          onOrderPlaced={onOrderPlaced}
           className="min-h-0 h-full w-[55%] overflow-y-auto"
         />
       </div>

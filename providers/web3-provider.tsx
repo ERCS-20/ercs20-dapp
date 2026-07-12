@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { WagmiProvider } from "wagmi";
 
+import { WalletChainCacheSync } from "@/components/wallet/wallet-chain-cache-sync";
 import { wagmiConfig } from "@/lib/wagmi/wagmi-config";
 
 export function Web3Provider({ children }: { children: ReactNode }) {
@@ -31,7 +32,10 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={rkTheme}>{children}</RainbowKitProvider>
+        <RainbowKitProvider theme={rkTheme}>
+          <WalletChainCacheSync />
+          {children}
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

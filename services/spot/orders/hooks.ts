@@ -5,7 +5,7 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { parsePairCode } from "@/lib/spot/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
-import { applyWithdraw, getOrderSalt, getPairByCode, paginationOrders, paginationOrdersHistory, paginationOrdersTradeHistory } from "@/services/spot/orders/api";
+import { applyWithdraw, getOrderSalt, getOrdersUserBalance, getPairBalances, getPairByCode, paginationOrders, paginationOrdersHistory, paginationOrdersTradeHistory, placeOrder } from "@/services/spot/orders/api";
 import type { MarketPairRsp } from "@/services/spot/market/types";
 import type {
   OrderSaltRsp,
@@ -15,7 +15,10 @@ import type {
   OrdersPaginationRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
+  OrdersUserBalanceRsp,
+  OrdersUserBalancesPairRsp,
   PairRsp,
+  PlaceOrderReq,
   WithdrawApplyReq,
 } from "@/services/spot/orders/types";
 
@@ -132,6 +135,63 @@ export function useOrdersTradeHistoryPagination(
   });
 }
 
+export function ordersUserBalanceQueryKey(tokenAddress: string) {
+  return ["spot", "orders", "user-balance", tokenAddress.toLowerCase()] as const;
+}
+
+export function ordersPairBalancesQueryKey(
+  baseTokenAddress: string,
+  quoteTokenAddress: string
+) {
+  return [
+    "spot",
+    "orders",
+    "user-balances-pair",
+    baseTokenAddress.toLowerCase(),
+    quoteTokenAddress.toLowerCase(),
+  ] as const;
+}
+
+/** Single-token spot balance (orders service in-memory cache). */
+export function useOrdersUserBalance(
+  tokenAddress: string | undefined,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<OrdersUserBalanceRsp>({
+    queryKey: ordersUserBalanceQueryKey(tokenAddress ?? ""),
+    queryFn: () =>
+      getOrdersUserBalance({
+        tokenAddress: tokenAddress!,
+      }),
+    enabled: enabled && Boolean(tokenAddress),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+/** Pair base/quote spot balances for trading (orders service in-memory cache). */
+export function usePairBalances(
+  baseTokenAddress: string | undefined,
+  quoteTokenAddress: string | undefined,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<OrdersUserBalancesPairRsp>({
+    queryKey: ordersPairBalancesQueryKey(baseTokenAddress ?? "", quoteTokenAddress ?? ""),
+    queryFn: () =>
+      getPairBalances({
+        baseTokenAddress: baseTokenAddress!,
+        quoteTokenAddress: quoteTokenAddress!,
+      }),
+    enabled: enabled && Boolean(baseTokenAddress && quoteTokenAddress),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
 export function useApplyWithdraw() {
   const queryClient = useQueryClient();
 
@@ -139,6 +199,18 @@ export function useApplyWithdraw() {
     mutationFn: (req) => applyWithdraw(req),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["spot", "accounts"] });
+    },
+  });
+}
+
+export function usePlaceOrder() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, PlaceOrderReq>({
+    mutationFn: (req) => placeOrder(req),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "open"] });
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "user-balances-pair"] });
     },
   });
 }

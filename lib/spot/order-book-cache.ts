@@ -54,21 +54,25 @@ export class OrderBookSideCache {
 export class OrderBookCache {
   readonly bids = new OrderBookSideCache(false);
   readonly asks = new OrderBookSideCache(true);
-  private sequence = 0;
+  /** Start below 0 so the first REST snapshot with sequence 0 is accepted. */
+  private sequence = -1;
 
   applySnapshot(rsp: MarketOrderBookListRsp): boolean {
-    if (rsp.sequence <= this.sequence) return false;
+    // Backend REST snapshots often use sequence 0; only skip strictly older deltas.
+    if (rsp.sequence > 0 && rsp.sequence <= this.sequence) return false;
 
     this.bids.applyLevels(rsp.bidsAndAsks?.bids);
     this.asks.applyLevels(rsp.bidsAndAsks?.asks);
-    this.sequence = rsp.sequence;
+    if (rsp.sequence > this.sequence) {
+      this.sequence = rsp.sequence;
+    }
     return true;
   }
 
   reset() {
     this.bids.clear();
     this.asks.clear();
-    this.sequence = 0;
+    this.sequence = -1;
   }
 
   /** For future WS deltas: set qty to 0n to drop a level from cache. */

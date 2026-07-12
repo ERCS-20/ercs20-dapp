@@ -15,9 +15,13 @@ export function buildAuthLoginRequest(
   };
 }
 
-export function getLoginSignTypedData(walletAddress: `0x${string}`, timestamp: number) {
+export function getLoginSignTypedData(
+  walletAddress: `0x${string}`,
+  timestamp: number,
+  chainId: number
+) {
   return {
-    domain: getLoginEip712Domain(),
+    domain: getLoginEip712Domain(chainId),
     types: LOGIN_EIP712_TYPES,
     primaryType: "UserLogin" as const,
     message: {

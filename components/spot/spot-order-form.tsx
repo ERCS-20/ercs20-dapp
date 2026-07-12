@@ -1,19 +1,31 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useSignTypedData } from "wagmi";
 
 import { SpotSideSwitch } from "@/components/spot/spot-side-switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MIN_ORDER_TOTAL } from "@/lib/spot/mock-market";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
+import { buildPlaceOrderFields } from "@/lib/orders/build-place-order";
+import { getPlaceOrderSignTypedData } from "@/lib/orders/place-order-eip712";
+import { debugPlaceOrder } from "@/lib/spot/place-order-debug";
+import { orderQuoteAmountBaseUnits } from "@/lib/spot/pair-api";
+import { parseEnginePrice } from "@/lib/spot/order-place-amounts";
 import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
-import type { SpotOrder, SpotPair, SpotSide } from "@/lib/spot/types";
+import { formatBalance } from "@/lib/utils/format/balance";
+import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
+import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
+import { useOrderSalt, usePairBalances, usePlaceOrder } from "@/services/spot/orders/hooks";
+
+const SPOT_BALANCE_DECIMALS = 18;
 
 function sanitizeDecimal(raw: string): string {
   let x = raw.replace(/[^\d.]/g, "");
@@ -24,18 +36,39 @@ function sanitizeDecimal(raw: string): string {
   return x;
 }
 
+function parseAvailableBalance(raw: string): number {
+  const n = Number(raw.replace(/,/g, "").trim());
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function formatInputDecimal(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return sanitizeDecimal(
+    value.toLocaleString(undefined, { maximumFractionDigits: 8, useGrouping: false })
+  );
+}
+
+/** Price for submit: typed input first, else last market price (same as effectivePrice). */
+function resolveSubmitPriceString(priceInput: string, fallbackPrice: number): string | null {
+  const trimmed = sanitizeDecimal(priceInput);
+  const p = Number(trimmed);
+  if (Number.isFinite(p) && p > 0) return trimmed;
+  if (Number.isFinite(fallbackPrice) && fallbackPrice > 0) {
+    return formatInputDecimal(fallbackPrice) || null;
+  }
+  return null;
+}
+
 export function SpotOrderForm({
   pair,
   side,
   price,
   quantity,
   lastPrice,
-  availableBase,
-  availableQuote,
   onSideChange,
   onPriceChange,
   onQuantityChange,
-  onPlaceOrder,
+  onOrderPlaced,
   className,
 }: {
   pair: SpotPair;
@@ -43,17 +76,47 @@ export function SpotOrderForm({
   price: string;
   quantity: string;
   lastPrice: number;
-  availableBase: string;
-  availableQuote: string;
   onSideChange: (s: SpotSide) => void;
   onPriceChange: (v: string) => void;
   onQuantityChange: (v: string) => void;
-  onPlaceOrder: (order: Omit<SpotOrder, "id" | "createdAt" | "status">) => void;
+  onOrderPlaced?: () => void;
   className?: string;
 }) {
   const { t } = useI18n();
-  const { isConnected } = useWallet();
+  const { address, isConnected, chainId } = useWallet();
+  const { isAuthenticated } = useAuth();
+  const { signTypedDataAsync, isPending: isSigning } = useSignTypedData();
+  const { mutateAsync: fetchOrderSalt, isPending: isSaltPending } = useOrderSalt();
+  const { mutateAsync: submitPlaceOrder, isPending: isSubmitPending } = usePlaceOrder();
   const [sliderPct, setSliderPct] = useState(0);
+
+  const busy = isSigning || isSaltPending || isSubmitPending;
+
+  const {
+    data: pairBalances,
+    isLoading: isBalancesLoading,
+    isFetching: isBalancesFetching,
+  } = usePairBalances(pair.baseAddress, pair.quoteAddress, {
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+
+  const balancesPending =
+    isBalancesLoading || (isBalancesFetching && pairBalances == null);
+
+  const availableBase = useMemo(() => {
+    if (!isAuthenticated) return "—";
+    if (balancesPending) return "…";
+    if (!pairBalances) return "0";
+    return formatBalance(pairBalances.baseBalance, SPOT_BALANCE_DECIMALS);
+  }, [balancesPending, isAuthenticated, pairBalances]);
+
+  const availableQuote = useMemo(() => {
+    if (!isAuthenticated) return "—";
+    if (balancesPending) return "…";
+    if (!pairBalances) return "0";
+    return formatBalance(pairBalances.quoteBalance, SPOT_BALANCE_DECIMALS);
+  }, [balancesPending, isAuthenticated, pairBalances]);
 
   const effectivePrice = useMemo(() => {
     const p = Number(price);
@@ -68,55 +131,193 @@ export function SpotOrderForm({
 
   function applyPct(pct: number) {
     setSliderPct(pct);
-    const avail = side === "buy" ? Number(availableQuote) : Number(availableBase);
-    if (!Number.isFinite(avail) || avail <= 0) return;
-    const p = Number(price);
+    if (effectivePrice <= 0) return;
+
+    const ratio = pct / 100;
+
     if (side === "buy") {
-      const usePrice = Number.isFinite(p) && p > 0 ? p : lastPrice;
-      if (usePrice <= 0) return;
-      onQuantityChange(sanitizeDecimal(String((avail / usePrice) * (pct / 100))));
-    } else {
-      onQuantityChange(sanitizeDecimal(String(avail * (pct / 100))));
+      const quoteAvail = parseAvailableBalance(availableQuote);
+      if (quoteAvail <= 0) return;
+      const quoteUse = quoteAvail * ratio;
+      const amount = quoteUse / effectivePrice;
+      onQuantityChange(formatInputDecimal(amount));
+      return;
     }
+
+    const baseAvail = parseAvailableBalance(availableBase);
+    if (baseAvail <= 0) return;
+    const baseUse = baseAvail * ratio;
+    const totalQuote = baseUse * effectivePrice;
+    const amount = totalQuote / effectivePrice;
+    onQuantityChange(formatInputDecimal(amount));
   }
 
   function handleSubmit() {
-    if (!isConnected) {
+    debugPlaceOrder("submit:start", {
+      side,
+      priceRaw: price,
+      quantityRaw: quantity,
+      priceNumber: Number(price),
+      quantityNumber: Number(quantity),
+      lastPrice,
+      effectivePrice,
+      enginePriceDecimal: pair.enginePriceDecimal,
+      sliderPct,
+      pairId: pair.pairId,
+      chainId,
+    });
+
+    if (!isConnected || !address) {
       toast.message(t("spot.connectToTrade"));
       return;
     }
+    if (!isAuthenticated) {
+      toast.error(t("auth.loginTitle"));
+      return;
+    }
+    if (!isSpotExchangeConfigured()) {
+      toast.error(t("spot.exchangeNotConfigured"));
+      return;
+    }
+    if (pair.pairId == null || pair.enginePriceDecimal == null) {
+      toast.error(t("spot.orderFailed"));
+      return;
+    }
+    if (chainId == null) {
+      toast.error(t("spot.orderFailed"));
+      return;
+    }
+
     const q = Number(quantity);
-    const p = Number(price);
+    const submitPrice = resolveSubmitPriceString(price, lastPrice);
+    const p = submitPrice != null ? Number(submitPrice) : NaN;
     if (!Number.isFinite(q) || q <= 0) {
+      debugPlaceOrder("submit:reject", { reason: "invalidAmount", quantity, q });
       toast.error(t("spot.invalidAmount"));
       return;
     }
-    if (!Number.isFinite(p) || p <= 0) {
+    if (submitPrice == null || !Number.isFinite(p) || p <= 0) {
+      debugPlaceOrder("submit:reject", {
+        reason: "invalidPrice",
+        price,
+        submitPrice,
+        p,
+        lastPrice,
+        effectivePrice,
+      });
       toast.error(t("spot.invalidPrice"));
       return;
     }
-    if (p * q < MIN_ORDER_TOTAL) {
-      toast.error(t("spot.minTotal").replace("{min}", String(MIN_ORDER_TOTAL)));
+
+    const enginePriceDecimal = pair.enginePriceDecimal;
+    debugPlaceOrder("submit:parseEnginePrice", {
+      submitPrice,
+      priceInput: price,
+      enginePrice: parseEnginePrice(submitPrice, enginePriceDecimal)?.toString(),
+      enginePriceDecimal,
+    });
+
+    let quoteBudget: bigint | undefined;
+    if (side === "buy" && sliderPct > 0 && pairBalances) {
+      const quoteBal = parseApiBigInt(pairBalances.quoteBalance);
+      if (quoteBal != null && quoteBal > BigInt(0)) {
+        quoteBudget = (quoteBal * BigInt(sliderPct)) / BigInt(100);
+      }
+    }
+
+    const quoteAmount = orderQuoteAmountBaseUnits(
+      quantity,
+      submitPrice,
+      enginePriceDecimal,
+      side,
+      quoteBudget
+    );
+    debugPlaceOrder("submit:normalizedQuote", {
+      quoteBudget: quoteBudget?.toString(),
+      quoteAmount: quoteAmount?.toString(),
+    });
+    const minTrade = pair.minTradeAmount;
+    if (
+      minTrade != null &&
+      minTrade > BigInt(0) &&
+      (quoteAmount == null || quoteAmount < minTrade)
+    ) {
+      toast.error(
+        t("spot.minTotal")
+          .replace("{min}", formatBalance(minTrade, SPOT_BALANCE_DECIMALS))
+          .replace("{symbol}", pair.quoteSymbol)
+      );
       return;
     }
 
-    const orderId = `ord-${Date.now()}`;
-    const txHash = `0x${Date.now().toString(16).padStart(64, "0")}`;
+    void (async () => {
+      try {
+        const { salt } = await fetchOrderSalt();
+        const fields = buildPlaceOrderFields({
+          pairId: pair.pairId!,
+          side,
+          price: submitPrice,
+          quantity,
+          enginePriceDecimal,
+          baseTokenAddress: pair.baseAddress,
+          quoteTokenAddress: pair.quoteAddress,
+          maker: address,
+          salt: BigInt(salt),
+          quoteBudget,
+        });
 
-    onPlaceOrder({
-      orderId,
-      pairLabel: `${pair.baseSymbol}/${pair.quoteSymbol}`,
-      side,
-      price: p,
-      amount: q,
-      filled: 0,
-      average: 0,
-      fee: 0,
-      cancelStatus: "normal",
-      txHash,
-    });
-    toast.success(t("spot.orderPlaced"));
-    setSliderPct(0);
+        debugPlaceOrder("submit:fields", {
+          makerAmount: fields.makerAmount.toString(),
+          takerAmount: fields.takerAmount.toString(),
+          makerToken: fields.makerToken,
+          takerToken: fields.takerToken,
+          expiry: fields.expiry.toString(),
+          salt: fields.salt.toString(),
+        });
+
+        const signature = await signTypedDataAsync(
+          getPlaceOrderSignTypedData(
+            {
+              maker: fields.maker,
+              makerToken: fields.makerToken,
+              takerToken: fields.takerToken,
+              makerAmount: fields.makerAmount,
+              takerAmount: fields.takerAmount,
+              expiry: fields.expiry,
+              salt: fields.salt,
+              timeInForce: fields.timeInForce,
+            },
+            chainId
+          )
+        );
+
+        await submitPlaceOrder({
+          pairId: fields.pairId,
+          maker: fields.maker,
+          makerToken: fields.makerToken,
+          takerToken: fields.takerToken,
+          makerAmount: fields.makerAmount,
+          takerAmount: fields.takerAmount,
+          timeInForce: fields.timeInForce,
+          expiry: fields.expiry,
+          salt: fields.salt,
+          signature,
+        });
+
+        debugPlaceOrder("submit:success");
+
+        toast.success(t("spot.orderPlaced"));
+        setSliderPct(0);
+        onOrderPlaced?.();
+      } catch (error) {
+        debugPlaceOrder("submit:error", {
+          error,
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        toast.error(getApiErrorMessage(error, t("spot.orderFailed")));
+      }
+    })();
   }
 
   const placeLabel =
@@ -241,16 +442,17 @@ export function SpotOrderForm({
             ? "bg-brand hover:bg-brand/90 text-brand-on"
             : "bg-brand-alt hover:bg-brand-alt/90 text-brand-alt-on"
         )}
-        onClick={handleSubmit}
+        onClick={() => {
+          debugPlaceOrder("button:click");
+          handleSubmit();
+        }}
+        disabled={busy}
       >
-        {isConnected ? placeLabel : t("spot.connectToTrade")}
-      </Button>
-
-      <p className="text-muted-foreground mt-3 text-[11px] leading-relaxed">
-        {t("spot.phase2Notice")}
-      </p>
-      <Button variant="link" className="mt-1 h-auto p-0 text-xs" asChild>
-        <Link href="/swap">{t("spot.goSwap")}</Link>
+        {busy
+          ? t("spot.placingOrder")
+          : isConnected
+            ? placeLabel
+            : t("spot.connectToTrade")}
       </Button>
     </section>
   );

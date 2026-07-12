@@ -98,7 +98,7 @@ export type OpenOrderRow = {
 
 export function ordersRspToOpenOrderRow(order: OrdersRsp): OpenOrderRow {
   return {
-    orderId: formatOrderId(order.salt),
+    orderId: String(order.id),
     placedAt: order.placedAt,
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
@@ -125,7 +125,7 @@ export type OrderHistoryRow = {
 
 export function ordersHistoryRspToRow(order: OrdersHistoryRsp): OrderHistoryRow {
   return {
-    orderId: formatOrderId(order.salt),
+    orderId: String(order.id),
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
     averagePrice: orderAveragePrice(

@@ -60,6 +60,7 @@ export function ConnectWalletButton() {
           >
             <Link
               href="/profile"
+              prefetch={false}
               title={t("wallet.viewProfile")}
               aria-label={t("wallet.viewProfile")}
               className="inline-flex min-w-0 items-center gap-1.5"

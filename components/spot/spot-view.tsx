@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useBalance, useChainId, useReadContract } from "wagmi";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { SpotOrdersTabs, type SpotOrdersTab } from "@/components/spot/spot-orders-tabs";
@@ -13,28 +12,21 @@ import { SpotOrderForm } from "@/components/spot/spot-order-form";
 import { SpotPairList } from "@/components/spot/spot-pair-list";
 import { SpotToolbar } from "@/components/spot/spot-toolbar";
 import { SpotTradePanel } from "@/components/spot/spot-trade-panel";
-import { erc20Abi } from "@/lib/contracts/abis";
 import { getSpotDefaultPairPath } from "@/lib/config/spot-default-pair";
-import { getSwapTargetChainId, isSwapEnvConfigured } from "@/lib/config/swap-target";
+import { isSwapEnvConfigured } from "@/lib/config/swap-target";
 import { marketKlineToStats } from "@/lib/spot/market-stats";
 import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type {
   ChartTimeframe,
-  SpotOrder,
   SpotPair,
   SpotSide,
 } from "@/lib/spot/types";
-import { useTokenBalance } from "@/hooks/use-token-balance";
-import { useWallet } from "@/hooks/use-wallet";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
-import { formatBalanceDisplay } from "@/lib/spot/format-balance";
 import { useKlineCurrentDay } from "@/services/spot/market/hooks";
 import { usePairByCode } from "@/services/spot/orders/hooks";
 
 type MobilePanel = "chart" | "book" | "trade" | "orders";
-
-const NATIVE_DECIMALS = 18;
 
 function placeholderPairFromUrl(token0: string, token1: string): SpotPair {
   const base = token0.toUpperCase();
@@ -44,6 +36,7 @@ function placeholderPairFromUrl(token0: string, token1: string): SpotPair {
     baseName: base,
     baseAddress: "0x0000000000000000000000000000000000000000",
     quoteSymbol: quote,
+    quoteAddress: "0x0000000000000000000000000000000000000000",
     pairCode: `${base}/${quote}`,
   };
 }
@@ -57,9 +50,6 @@ export function SpotView({
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const { address } = useWallet();
-  const chainId = useChainId();
-  const targetChainId = getSwapTargetChainId();
   const configured = isSwapEnvConfigured();
 
   const defaultPath = getSpotDefaultPairPath();
@@ -113,41 +103,6 @@ export function SpotView({
   const [ordersTab, setOrdersTab] = useState<SpotOrdersTab>("open");
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("chart");
 
-  const effectiveChainId = targetChainId ?? chainId;
-
-  const { data: nativeBal } = useBalance({
-    address,
-    chainId: effectiveChainId,
-    query: { enabled: Boolean(address && effectiveChainId) },
-  });
-
-  const { data: tokenBal } = useTokenBalance({
-    token: pair.baseAddress,
-    address,
-    chainId: effectiveChainId,
-    query: { enabled: Boolean(address && configured && pairReady) },
-  });
-
-  const { data: tokenDecimals } = useReadContract({
-    address: pair.baseAddress,
-    abi: erc20Abi,
-    functionName: "decimals",
-    chainId: effectiveChainId,
-    query: { enabled: configured && pairReady },
-  });
-
-  const decimals = Number(tokenDecimals ?? 18);
-
-  const availableQuote = useMemo(() => {
-    if (!nativeBal) return "0";
-    return formatBalanceDisplay(nativeBal.value, NATIVE_DECIMALS);
-  }, [nativeBal]);
-
-  const availableBase = useMemo(() => {
-    if (!tokenBal) return "0";
-    return formatBalanceDisplay(tokenBal, decimals);
-  }, [tokenBal, decimals]);
-
   const handlePairChange = useCallback(
     (path: string) => {
       router.push(`/spot/${path}`);
@@ -160,14 +115,11 @@ export function SpotView({
     setQuantity(String(Math.round(size * 100) / 100));
   }, []);
 
-  const handlePlaceOrder = useCallback(
-    (_partial: Omit<SpotOrder, "id" | "createdAt" | "status">) => {
-      setQuantity("");
-      setOrdersTab("open");
-      setMobilePanel("orders");
-    },
-    []
-  );
+  const handleOrderPlaced = useCallback(() => {
+    setQuantity("");
+    setOrdersTab("open");
+    setMobilePanel("orders");
+  }, []);
 
   const mobileTabs: { id: MobilePanel; label: string }[] = [
     { id: "chart", label: t("spot.mobileChart") },
@@ -277,13 +229,11 @@ export function SpotView({
             quantity={quantity}
             lastPrice={marketStats.lastPrice}
             change24hPct={marketStats.change24hPct}
-            availableBase={availableBase}
-            availableQuote={availableQuote}
             onSideChange={setSide}
             onPriceChange={setPrice}
             onQuantityChange={setQuantity}
             onLevelClick={handleLevelClick}
-            onPlaceOrder={handlePlaceOrder}
+            onOrderPlaced={handleOrderPlaced}
             className="h-full min-h-0 w-[min(820px,42%)] shrink-0 [&_section]:rounded-none"
           />
         </div>
@@ -327,12 +277,10 @@ export function SpotView({
             price={price}
             quantity={quantity}
             lastPrice={marketStats.lastPrice}
-            availableBase={availableBase}
-            availableQuote={availableQuote}
             onSideChange={setSide}
             onPriceChange={setPrice}
             onQuantityChange={setQuantity}
-            onPlaceOrder={handlePlaceOrder}
+            onOrderPlaced={handleOrderPlaced}
           />
         )}
         {mobilePanel === "orders" && (

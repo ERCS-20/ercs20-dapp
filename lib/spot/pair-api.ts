@@ -1,5 +1,7 @@
 import type { PairRsp } from "@/services/spot/orders/types";
-import type { SpotPair } from "@/lib/spot/types";
+import type { SpotPair, SpotSide } from "@/lib/spot/types";
+import { normalizePlaceOrderAmounts } from "@/lib/spot/order-place-amounts";
+import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 
 /** Parse orders/market pair code `BASE_QUOTE`. */
 export function parsePairCode(code: string): { base: string; quote: string } | null {
@@ -39,8 +41,31 @@ export function pairRspToSpotPair(pair: PairRsp): SpotPair {
     baseName: baseSymbol,
     baseAddress: pair.baseTokenAddress.toLowerCase() as `0x${string}`,
     quoteSymbol,
+    quoteAddress: pair.quoteTokenAddress.toLowerCase() as `0x${string}`,
     pairCode: `${baseSymbol}/${quoteSymbol}`,
+    minTradeAmount: parseApiBigInt(pair.minTradeAmount) ?? undefined,
   };
+}
+
+/**
+ * Quote-side total after base truncation + price realignment (see `normalizePlaceOrderAmounts`).
+ */
+export function orderQuoteAmountBaseUnits(
+  quantity: string,
+  price: string,
+  enginePriceDecimal: number,
+  side: SpotSide = "sell",
+  quoteBudget?: bigint
+): bigint | null {
+  return (
+    normalizePlaceOrderAmounts({
+      side,
+      price,
+      enginePriceDecimal,
+      quantity,
+      quoteBudget,
+    })?.quoteAmount ?? null
+  );
 }
 
 export function pairPath(pair: SpotPair): string {

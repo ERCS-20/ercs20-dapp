@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useAccount, useDisconnect, useSignTypedData } from "wagmi";
 
+import { useResolvedChainId } from "@/hooks/use-resolved-chain-id";
+
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { signInWithWallet } from "@/lib/auth/sign-in-with-wallet";
 import { useAuth } from "@/providers/auth-provider";
@@ -21,7 +23,8 @@ export function useWalletConnectAuth(options: Options = {}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const { isAuthenticated, openLoginDialog, refreshSession, signOut } = useAuth();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
+  const chainId = useResolvedChainId();
   const { openConnectModal } = useConnectModal();
   const { signTypedDataAsync } = useSignTypedData();
   const { disconnect, isPending: isDisconnecting } = useDisconnect({
@@ -34,10 +37,11 @@ export function useWalletConnectAuth(options: Options = {}) {
   const signingInRef = useRef(false);
 
   const runSignIn = useCallback(async () => {
-    if (!address || signingInRef.current) return false;
+    if (!address || chainId == null || signingInRef.current) return false;
+    if (status === "connecting") return false;
     signingInRef.current = true;
     try {
-      await signInWithWallet(address, signTypedDataAsync);
+      await signInWithWallet(address, signTypedDataAsync, chainId);
       await queryClient.invalidateQueries({ queryKey: ["spot", "accounts"] });
       refreshSession();
       return true;
@@ -50,6 +54,8 @@ export function useWalletConnectAuth(options: Options = {}) {
     }
   }, [
     address,
+    chainId,
+    status,
     openLoginDialog,
     queryClient,
     refreshSession,

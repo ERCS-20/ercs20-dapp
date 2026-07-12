@@ -17,6 +17,7 @@ export const publicEnv = {
   defaultErcs20Token: process.env.NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN ?? "",
   spotAssetVaultAddress: process.env.NEXT_PUBLIC_SPOT_ASSET_VAULT_ADDRESS ?? "",
   spotPairFactoryAddress: process.env.NEXT_PUBLIC_SPOT_PAIR_FACTORY ?? "",
+  spotExchangeAddress: process.env.NEXT_PUBLIC_SPOT_EXCHANGE_ADDRESS ?? "",
   spotDefaultBaseTokenSymbol:
     process.env.NEXT_PUBLIC_SPOT_DEFAULT_BASE_TOKEN_SYMBOL?.trim() || "OBX",
   spotDefaultQuoteTokenSymbol:
@@ -28,6 +29,12 @@ export const publicEnv = {
   /** Global REST prefix, e.g. `/api/v1`. Overridable via env. */
   apiPathPrefix: process.env.NEXT_PUBLIC_API_PATH_PREFIX ?? "/api/v1",
 } as const;
+
+/** Default ERC-20 / spot amount decimals (`NEXT_PUBLIC_DEFAULT_DECIMALS`, default 18). */
+export function getDefaultDecimals(): number {
+  const n = Number(process.env.NEXT_PUBLIC_DEFAULT_DECIMALS ?? "18");
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 18;
+}
 
 export function getApiBaseUrl(): string {
   return publicEnv.apiBaseUrl.replace(/\/$/, "");

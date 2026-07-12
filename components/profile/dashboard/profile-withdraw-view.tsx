@@ -28,8 +28,7 @@ import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import { resolveSpotBalanceTokenAddress } from "@/lib/tokens/spot-balance-token";
 import { useErcs20Pagination } from "@/services/chain/hooks";
 import type { Ercs20Rsp } from "@/services/chain/types";
-import { useUserBalance } from "@/services/spot/accounts/hooks";
-import { useApplyWithdraw, useOrderSalt } from "@/services/spot/orders/hooks";
+import { useApplyWithdraw, useOrderSalt, useOrdersUserBalance } from "@/services/spot/orders/hooks";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
@@ -58,7 +57,7 @@ export function ProfileWithdrawView() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { address, isConnected } = useWallet();
+  const { address, isConnected, chainId } = useWallet();
   const { signTypedDataAsync, isPending: isSigning } = useSignTypedData();
   const { mutateAsync: fetchOrderSalt, isPending: isSaltPending } = useOrderSalt();
   const { mutateAsync: submitWithdraw, isPending: isSubmitPending } = useApplyWithdraw();
@@ -88,7 +87,7 @@ export function ProfileWithdrawView() {
     isLoading: isSpotBalanceLoading,
     isFetching: isSpotBalanceFetching,
     refetch: refetchSpotBalance,
-  } = useUserBalance(spotBalanceTokenAddress, { enabled: isAuthenticated });
+  } = useOrdersUserBalance(spotBalanceTokenAddress, { enabled: isAuthenticated });
 
   useEffect(() => {
     if (isAuthenticated && spotBalanceTokenAddress) {
@@ -104,7 +103,7 @@ export function ProfileWithdrawView() {
   const availableWei = useMemo(() => {
     if (!spotBalance) return undefined;
     try {
-      const v = BigInt(spotBalance.availableBalance);
+      const v = BigInt(spotBalance.balance);
       return v > BigInt(0) ? v : undefined;
     } catch {
       return undefined;
@@ -141,6 +140,10 @@ export function ProfileWithdrawView() {
       toast.error(t("auth.loginTitle"));
       return;
     }
+    if (chainId == null) {
+      toast.error(t("profile.withdrawFailed"));
+      return;
+    }
 
     const trimmed = amount.trim();
     if (!trimmed) {
@@ -166,7 +169,7 @@ export function ProfileWithdrawView() {
       return;
     }
 
-    if (parsedAmount > BigInt(spotBalance.availableBalance)) {
+    if (parsedAmount > BigInt(spotBalance.balance)) {
       toast.error(t("profile.insufficientBalance"));
       return;
     }
@@ -181,16 +184,18 @@ export function ProfileWithdrawView() {
       const { salt } = await fetchOrderSalt();
 
       const signature = await signTypedDataAsync(
-        getWithdrawSignTypedData({
-          fromAddress: address,
-          tokenAddress: ledgerTokenAddress as `0x${string}`,
-          amount: parsedAmount,
-          salt: BigInt(salt),
-        })
+        getWithdrawSignTypedData(
+          {
+            fromAddress: address,
+            tokenAddress: ledgerTokenAddress as `0x${string}`,
+            amount: parsedAmount,
+            salt: BigInt(salt),
+          },
+          chainId
+        )
       );
 
       await submitWithdraw({
-        userBalancesId: spotBalance.id,
         fromAddress: address,
         tokenAddress: selectedToken.contract,
         amount: parsedAmount.toString(),
@@ -216,7 +221,7 @@ export function ProfileWithdrawView() {
     if (!selectedToken) return "—";
     if (spotBalancePending) return "…";
     if (!spotBalance) return "—";
-    return formatBalance(spotBalance.availableBalance, tokenDecimals);
+    return formatBalance(spotBalance.balance, tokenDecimals);
   }, [selectedToken, spotBalancePending, spotBalance, tokenDecimals]);
 
   const canSubmit =

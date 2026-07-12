@@ -9,7 +9,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
+
+import { useResolvedChainId } from "@/hooks/use-resolved-chain-id";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,8 +46,8 @@ export function useWrongNetworkGate(): WrongNetworkGateContextValue {
 
 export function WrongNetworkGateProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const chainId = useChainId();
-  const { isConnected } = useAccount();
+  const chainId = useResolvedChainId();
+  const { isConnected, status } = useAccount();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
 
   const targetChainId = getSwapTargetChainId();
@@ -56,9 +58,11 @@ export function WrongNetworkGateProvider({ children }: { children: ReactNode }) 
     () =>
       configured &&
       isConnected &&
+      status === "connected" &&
       targetChainId != null &&
+      chainId != null &&
       chainId !== targetChainId,
-    [configured, isConnected, targetChainId, chainId]
+    [configured, isConnected, status, targetChainId, chainId]
   );
 
   const [closedWhileWrong, setClosedWhileWrong] = useState(false);

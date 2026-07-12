@@ -16,7 +16,7 @@ export type PairRsp = {
   txHash: string;
   baseTokenAddress: string;
   quoteTokenAddress: string;
-  minTradeAmount: string;
+  minTradeAmount: ApiBigInt;
   maxPriceFluctuation: number;
   issuePrice: string;
   enginePriceDecimal: number;
@@ -29,9 +29,22 @@ export type OrderSaltRsp = {
   salt: string;
 };
 
+/** Mirrors `exchange.orbix.spot.orders.dto.PlaceOrderReq`. BigInteger → string in JSON. */
+export type PlaceOrderReq = {
+  pairId: number;
+  maker: string;
+  makerToken: string;
+  takerToken: string;
+  makerAmount: ApiBigInt;
+  takerAmount: ApiBigInt;
+  timeInForce: number;
+  expiry: ApiBigInt;
+  salt: ApiBigInt;
+  signature: string;
+};
+
 /** Mirrors `exchange.orbix.spot.orders.dto.WithdrawReq`. BigInteger → string in JSON. */
 export type WithdrawApplyReq = {
-  userBalancesId: number;
   fromAddress: string;
   tokenAddress: string;
   amount: string;
@@ -41,6 +54,7 @@ export type WithdrawApplyReq = {
 
 /** Mirrors `exchange.orbix.spot.orders.dto.OrdersRsp`. BigInteger → string in JSON. */
 export type OrdersRsp = {
+  id: number;
   pairId: number;
   pairCode: string;
   makerAmount: ApiBigInt;
@@ -92,3 +106,25 @@ export type OrdersTradeHistoryRsp = {
 /** Mirrors `PaginationCondition<Void>` for trade history pagination. */
 export type OrdersTradeHistoryPaginationReq = PaginationCondition<Record<string, never>>;
 export type OrdersTradeHistoryPaginationRsp = PaginationRepertory<OrdersTradeHistoryRsp>;
+
+/** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesReq`. */
+export type OrdersUserBalanceReq = {
+  tokenAddress: string;
+};
+
+/** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesRsp`. BigInteger → string in JSON. */
+export type OrdersUserBalanceRsp = {
+  balance: ApiBigInt;
+};
+
+/** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesPairReq`. */
+export type OrdersUserBalancesPairReq = {
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+};
+
+/** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesPairRsp`. BigInteger → string in JSON. */
+export type OrdersUserBalancesPairRsp = {
+  baseBalance: ApiBigInt;
+  quoteBalance: ApiBigInt;
+};

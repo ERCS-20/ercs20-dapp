@@ -13,6 +13,8 @@ import { useCallback, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useAccount, useSignTypedData } from "wagmi";
 
+import { useResolvedChainId } from "@/hooks/use-resolved-chain-id";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -72,6 +74,7 @@ export function LoginDialog({ open, onOpenChange, onLoggedIn }: Props) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const { address, isConnected } = useAccount();
+  const chainId = useResolvedChainId();
   const { openConnectModal } = useConnectModal();
   const { signTypedDataAsync, isPending: isSigning } = useSignTypedData();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,10 +92,14 @@ export function LoginDialog({ open, onOpenChange, onLoggedIn }: Props) {
       openConnectModal?.();
       return;
     }
+    if (chainId == null) {
+      toast.error(t("auth.loginFailed"));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await signInWithWallet(address, signTypedDataAsync);
+      await signInWithWallet(address, signTypedDataAsync, chainId);
       await queryClient.invalidateQueries({ queryKey: ["spot", "accounts"] });
       onLoggedIn?.();
       onOpenChange(false);
@@ -101,7 +108,7 @@ export function LoginDialog({ open, onOpenChange, onLoggedIn }: Props) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [address, onLoggedIn, onOpenChange, openConnectModal, queryClient, signTypedDataAsync, t]);
+  }, [address, chainId, onLoggedIn, onOpenChange, openConnectModal, queryClient, signTypedDataAsync, t]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

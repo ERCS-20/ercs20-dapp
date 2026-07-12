@@ -7,10 +7,11 @@ import { loginAuth } from "@/services/auth/api";
 /** EIP-712 wallet sign-in → POST /auth/login → persist session. */
 export async function signInWithWallet(
   address: `0x${string}`,
-  signTypedDataAsync: SignTypedDataMutateAsync<unknown>
+  signTypedDataAsync: SignTypedDataMutateAsync<unknown>,
+  chainId: number
 ): Promise<AuthSession> {
   const timestamp = Math.floor(Date.now() / 1000);
-  const typedData = getLoginSignTypedData(address, timestamp);
+  const typedData = getLoginSignTypedData(address, timestamp, chainId);
   const signature = await signTypedDataAsync(typedData);
   const data = await loginAuth(buildAuthLoginRequest(address, signature, timestamp));
 

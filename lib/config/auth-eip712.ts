@@ -1,10 +1,5 @@
-import { getAppChainId } from "@/lib/web3/chains";
-
 /** Align with `spot.users.eip712.login` in spot-users `application.yml`. */
-export function getLoginEip712Domain() {
-  const chainId =
-    Number(process.env.NEXT_PUBLIC_EIP712_LOGIN_CHAIN_ID) || getAppChainId() || 31337;
-
+export function getLoginEip712Domain(chainId: number) {
   return {
     name: process.env.NEXT_PUBLIC_EIP712_LOGIN_NAME?.trim() || "Orbix exchange",
     version: process.env.NEXT_PUBLIC_EIP712_LOGIN_VERSION?.trim() || "1",
