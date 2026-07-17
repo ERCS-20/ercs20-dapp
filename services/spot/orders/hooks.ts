@@ -5,9 +5,10 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { parsePairCode } from "@/lib/spot/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
-import { applyWithdraw, getOrderSalt, getOrdersUserBalance, getPairBalances, getPairByCode, paginationOrders, paginationOrdersHistory, paginationOrdersTradeHistory, placeOrder } from "@/services/spot/orders/api";
+import { applyWithdraw, cancelOrder, getOrderSalt, getOrdersUserBalance, getPairBalances, getPairByCode, paginationOrders, paginationOrdersHistory, paginationOrdersTradeHistory, placeOrder } from "@/services/spot/orders/api";
 import type { MarketPairRsp } from "@/services/spot/market/types";
 import type {
+  CancelOrderReq,
   OrderSaltRsp,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
@@ -208,9 +209,25 @@ export function usePlaceOrder() {
 
   return useApiMutation<void, Error, PlaceOrderReq>({
     mutationFn: (req) => placeOrder(req),
+    // Form maps ErrorCode → i18n (e.g. INSUFFICIENT_BALANCE → 余额不足).
+    notifyError: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "open"] });
       void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "user-balances-pair"] });
+    },
+  });
+}
+
+export function useCancelOrder() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, CancelOrderReq>({
+    mutationFn: (req) => cancelOrder(req),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "open"] });
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "history"] });
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "user-balances-pair"] });
+      void queryClient.invalidateQueries({ queryKey: ["spot", "orders", "user-balance"] });
     },
   });
 }

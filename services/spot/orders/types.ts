@@ -31,6 +31,8 @@ export type OrderSaltRsp = {
 
 /** Mirrors `exchange.orbix.spot.orders.dto.PlaceOrderReq`. BigInteger → string in JSON. */
 export type PlaceOrderReq = {
+  /** Gateway routing / maker shard key — must match makerToken balance id. */
+  userBalanceId: number;
   pairId: number;
   maker: string;
   makerToken: string;
@@ -43,8 +45,20 @@ export type PlaceOrderReq = {
   signature: string;
 };
 
+/** Mirrors `exchange.orbix.spot.orders.dto.CancelOrderReq`. BigInteger → string in JSON. */
+export type CancelOrderReq = {
+  /** Gateway routing / ledger shard key — must match order makerToken balance id. */
+  userBalanceId: number;
+  orderId: ApiBigInt;
+  tokenAddress: string;
+  salt: ApiBigInt;
+  signature: string;
+};
+
 /** Mirrors `exchange.orbix.spot.orders.dto.WithdrawReq`. BigInteger → string in JSON. */
 export type WithdrawApplyReq = {
+  /** Gateway routing / ledger shard key — must match tokenAddress balance id. */
+  userBalanceId: number;
   fromAddress: string;
   tokenAddress: string;
   amount: string;
@@ -114,6 +128,8 @@ export type OrdersUserBalanceReq = {
 
 /** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesRsp`. BigInteger → string in JSON. */
 export type OrdersUserBalanceRsp = {
+  /** Ledger id for this token — required for withdraw / cancel routing. */
+  userBalanceId: number | null;
   balance: ApiBigInt;
 };
 
@@ -125,6 +141,10 @@ export type OrdersUserBalancesPairReq = {
 
 /** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesPairRsp`. BigInteger → string in JSON. */
 export type OrdersUserBalancesPairRsp = {
+  /** Ledger id for base token — used as `userBalanceId` when selling. */
+  baseUserBalanceId: number | null;
   baseBalance: ApiBigInt;
+  /** Ledger id for quote token — used as `userBalanceId` when buying. */
+  quoteUserBalanceId: number | null;
   quoteBalance: ApiBigInt;
 };

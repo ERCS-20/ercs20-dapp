@@ -98,6 +98,8 @@ export function ProfileWithdrawView() {
   const spotBalancePending =
     isSpotBalanceLoading || (isSpotBalanceFetching && !spotBalance);
 
+  const userBalanceId = spotBalance?.userBalanceId ?? undefined;
+
   const tokenDecimals = selectedToken?.decimals ?? 18;
 
   const availableWei = useMemo(() => {
@@ -169,6 +171,11 @@ export function ProfileWithdrawView() {
       return;
     }
 
+    if (userBalanceId == null) {
+      toast.error(t("profile.withdrawFailed"));
+      return;
+    }
+
     if (parsedAmount > BigInt(spotBalance.balance)) {
       toast.error(t("profile.insufficientBalance"));
       return;
@@ -196,6 +203,7 @@ export function ProfileWithdrawView() {
       );
 
       await submitWithdraw({
+        userBalanceId,
         fromAddress: address,
         tokenAddress: selectedToken.contract,
         amount: parsedAmount.toString(),
@@ -230,6 +238,7 @@ export function ProfileWithdrawView() {
     Boolean(address) &&
     Boolean(selectedToken) &&
     Boolean(spotBalance) &&
+    userBalanceId != null &&
     !spotBalancePending &&
     !busy;
 

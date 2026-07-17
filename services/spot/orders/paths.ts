@@ -7,6 +7,7 @@ export const SpotOrdersApi = {
   ordersHistoryPagination: "/orders/orders-history/pagination",
   ordersTradeHistoryPagination: "/orders/orders-trade-history/pagination",
   ordersPlace: "/orders/orders/place",
+  ordersCancel: "/orders/orders/cancel",
   userBalance: "/orders/user-balances/balance",
   userBalancesPair: "/orders/user-balances/balances-pair",
   withdrawalsApply: "/orders/withdrawals/apply",

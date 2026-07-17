@@ -191,9 +191,7 @@ export function SpotToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <SpotFavoriteButton
-          pairAddress={pair.pairId != null ? `pair-${pair.pairId}` : pair.baseAddress}
-        />
+        <SpotFavoriteButton pairId={pair.pairId} />
         <dl className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4 sm:gap-x-5 sm:text-sm lg:gap-x-6">
           <div>
             <dt>{t("spot.high24h")}</dt>

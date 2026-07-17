@@ -1,86 +1,64 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { StarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
-
-const FAVORITES_KEY = "spot-favorite-pairs";
-export const SPOT_FAVORITES_CHANGED = "spot-favorites-changed";
-
-function readFavorites(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY);
-    if (!raw) return new Set();
-    const list = JSON.parse(raw) as string[];
-    return new Set(list);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeFavorites(set: Set<string>) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...set]));
-  window.dispatchEvent(new Event(SPOT_FAVORITES_CHANGED));
-}
-
-export function isPairFavorited(pairAddress: string): boolean {
-  return readFavorites().has(pairAddress.toLowerCase());
-}
-
-export function useSpotFavorites(): Set<string> {
-  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
-
-  useEffect(() => {
-    const sync = () => setFavorites(readFavorites());
-    sync();
-    window.addEventListener(SPOT_FAVORITES_CHANGED, sync);
-    return () => window.removeEventListener(SPOT_FAVORITES_CHANGED, sync);
-  }, []);
-
-  return favorites;
-}
+import {
+  useAddUserPair,
+  useDeleteUserPair,
+  useUserPairs,
+} from "@/services/spot/user/hooks";
 
 export function SpotFavoriteButton({
-  pairAddress,
+  pairId,
   className,
 }: {
-  pairAddress: string;
+  pairId: number | undefined;
   className?: string;
 }) {
   const { t } = useI18n();
-  const [favorited, setFavorited] = useState(false);
+  const { isAuthenticated, openLoginDialog } = useAuth();
+  const { data: userPairs } = useUserPairs({
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+  const { mutateAsync: addPair, isPending: isAdding } = useAddUserPair();
+  const { mutateAsync: deletePair, isPending: isDeleting } = useDeleteUserPair();
 
-  const sync = useCallback(() => {
-    setFavorited(readFavorites().has(pairAddress.toLowerCase()));
-  }, [pairAddress]);
+  const favorited = useMemo(() => {
+    if (pairId == null || !userPairs?.pairs?.length) return false;
+    return userPairs.pairs.some((p) => p.pairId === pairId);
+  }, [pairId, userPairs?.pairs]);
 
-  useEffect(() => {
-    sync();
-    window.addEventListener(SPOT_FAVORITES_CHANGED, sync);
-    return () => window.removeEventListener(SPOT_FAVORITES_CHANGED, sync);
-  }, [sync]);
+  const busy = isAdding || isDeleting;
 
-  const toggle = useCallback(() => {
-    const next = readFavorites();
-    const key = pairAddress.toLowerCase();
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    writeFavorites(next);
-    setFavorited(next.has(key));
-  }, [pairAddress]);
+  async function toggle() {
+    if (!isAuthenticated) {
+      openLoginDialog();
+      return;
+    }
+    if (pairId == null || busy) return;
+
+    if (favorited) {
+      await deletePair({ pairId });
+      return;
+    }
+    await addPair({ pairId });
+  }
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon-sm"
+      disabled={pairId == null || busy}
       onClick={(e) => {
         e.stopPropagation();
-        toggle();
+        void toggle();
       }}
       onPointerDown={(e) => e.stopPropagation()}
       aria-label={favorited ? t("spot.removeFavorite") : t("spot.addFavorite")}

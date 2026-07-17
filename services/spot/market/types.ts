@@ -17,9 +17,37 @@ export type MarketPairsPaginationReq = PaginationCondition<Record<string, never>
 
 export type MarketPairsPaginationRsp = PaginationRepertory<MarketPairRsp>;
 
+/** Mirrors `exchange.orbix.spot.market.store.dto.PairsUserReq`. */
+export type MarketPairsUserReq = {
+  pairIds: number[];
+};
+
+/** Mirrors `exchange.orbix.spot.market.store.dto.PairsRsp`. */
+export type MarketPairsRsp = {
+  pairs: MarketPairRsp[];
+};
+
 /** Mirrors `exchange.orbix.spot.market.store.dto.KlineCurrentDayReq`. */
 export type KlineCurrentDayReq = {
   pairId: number;
+};
+
+/** Mirrors `exchange.orbix.spot.market.store.dto.KlineListReq`. */
+export type KlineListReq = {
+  pairId: number;
+  interval: string;
+  /** Default server-side (`kline-first-screen-limit`, typically 200). */
+  limit?: number;
+  /** ISO-8601 UTC; fetch bars with `openTime` strictly before this instant. */
+  beforeOpenTime?: string;
+};
+
+/** Mirrors `exchange.orbix.spot.market.store.dto.KlineListRsp`. */
+export type KlineListRsp = {
+  pairId: number;
+  bars: MarketKlineRsp[];
+  /** Close of the latest closed bar before this page's oldest bar; null if none. */
+  prevClose: ApiBigInt | null;
 };
 
 /** Mirrors `exchange.orbix.spot.components.market.entity.MarketKline`. */

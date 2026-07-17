@@ -15,7 +15,10 @@ type ApiMutationOptions<TData, TError, TVariables, TContext> = UseMutationOption
   TError,
   TVariables,
   TContext
->;
+> & {
+  /** When false, skip the default error toast (caller handles UX). Default true. */
+  notifyError?: boolean;
+};
 
 /** TanStack Query mutation; failed requests toast backend `msg` only. */
 export function useApiMutation<
@@ -26,12 +29,14 @@ export function useApiMutation<
 >(
   options: ApiMutationOptions<TData, TError, TVariables, TContext>
 ) {
-  const { onError, ...rest } = options;
+  const { onError, notifyError = true, ...rest } = options;
 
   return useMutation({
     ...rest,
     onError: (error, variables, onMutateResult, context) => {
-      notifyApiError(error);
+      if (notifyError) {
+        notifyApiError(error);
+      }
       onError?.(error, variables, onMutateResult, context);
     },
   });

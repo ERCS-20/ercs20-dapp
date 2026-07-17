@@ -16,11 +16,11 @@ import { getSpotDefaultPairPath } from "@/lib/config/spot-default-pair";
 import { isSwapEnvConfigured } from "@/lib/config/swap-target";
 import { marketKlineToStats } from "@/lib/spot/market-stats";
 import { pairRspToSpotPair } from "@/lib/spot/pair-api";
-import type {
-  ChartTimeframe,
-  SpotPair,
-  SpotSide,
-} from "@/lib/spot/types";
+import {
+  DEFAULT_CHART_VIEW,
+  type ChartView,
+} from "@/lib/spot/chart-interval";
+import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 import { useKlineCurrentDay } from "@/services/spot/market/hooks";
@@ -90,7 +90,7 @@ export function SpotView({
     return { lastPrice: stats.lastPrice, change24hPct: stats.change24hPct };
   }, [kline, enginePriceDecimal]);
 
-  const [timeframe, setTimeframe] = useState<ChartTimeframe>("1h");
+  const [chartView, setChartView] = useState<ChartView>(DEFAULT_CHART_VIEW);
   const [side, setSide] = useState<SpotSide>("buy");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -207,9 +207,10 @@ export function SpotView({
                   className="shrink-0 rounded-none border-x-0 border-t-0"
                 />
                 <SpotChartPanel
-                  pair={pair}
-                  timeframe={timeframe}
-                  onTimeframeChange={setTimeframe}
+                  pairId={pairId}
+                  enginePriceDecimal={enginePriceDecimal}
+                  view={chartView}
+                  onViewChange={setChartView}
                   className="min-h-0 flex-1 rounded-none"
                 />
               </div>
@@ -243,9 +244,10 @@ export function SpotView({
       <div className="mt-2 space-y-3 lg:hidden">
         {mobilePanel === "chart" && (
           <SpotChartPanel
-            pair={pair}
-            timeframe={timeframe}
-            onTimeframeChange={setTimeframe}
+            pairId={pairId}
+            enginePriceDecimal={enginePriceDecimal}
+            view={chartView}
+            onViewChange={setChartView}
           />
         )}
         {mobilePanel === "book" && (

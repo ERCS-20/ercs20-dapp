@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useSignTypedData } from "wagmi";
 
 import {
   formatOpenOrderStatus,
@@ -9,7 +11,12 @@ import {
   ordersHistoryRspToRow,
   ordersRspToOpenOrderRow,
   ordersTradeHistoryRspToRow,
+  type OpenOrderRow,
 } from "@/lib/spot/open-orders-format";
+import { parsePairCode } from "@/lib/spot/pair-api";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { getCancelOrderSignTypedData } from "@/lib/orders/cancel-order-eip712";
+import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
 import {
   formatQuantity,
   formatQuoteAmount,
@@ -17,9 +24,12 @@ import {
 } from "@/lib/utils/price";
 import { shortTxHash } from "@/lib/utils/format/address";
 import { cn } from "@/lib/utils";
+import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
+import { getOrderSalt, getOrdersUserBalance, getPairByCode } from "@/services/spot/orders/api";
 import {
+  useCancelOrder,
   useOrdersHistoryPagination,
   useOrdersPagination,
   useOrdersTradeHistoryPagination,
@@ -126,6 +136,10 @@ function resolveOrdersTableMessage({
 function OpenOrdersTable() {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
+  const { address, chainId, isConnected } = useWallet();
+  const { signTypedDataAsync } = useSignTypedData();
+  const { mutateAsync: submitCancel } = useCancelOrder();
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
   const paginationReq = useMemo(
     () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
@@ -142,7 +156,63 @@ function OpenOrdersTable() {
     [data?.pageItems]
   );
 
-  const colSpan = 8;
+  async function handleCancel(row: OpenOrderRow) {
+    if (!isAuthenticated || !isConnected || !address || chainId == null || row.side == null) {
+      return;
+    }
+    if (!isSpotExchangeConfigured()) {
+      toast.error(t("spot.exchangeNotConfigured"));
+      return;
+    }
+    if (row.status === "Cancelling" || cancellingOrderId != null) return;
+
+    const parsed = parsePairCode(row.pairCode);
+    if (!parsed) {
+      toast.error(t("spot.cancelFailed"));
+      return;
+    }
+
+    setCancellingOrderId(row.orderId);
+    try {
+      const pair = await getPairByCode({
+        baseToken: parsed.base,
+        quoteToken: parsed.quote,
+      });
+      // Cancel must use makerToken: buy pays quote, sell pays base.
+      const tokenAddress =
+        row.side === "buy" ? pair.quoteTokenAddress : pair.baseTokenAddress;
+
+      const balanceRsp = await getOrdersUserBalance({ tokenAddress });
+      if (balanceRsp.userBalanceId == null) {
+        toast.error(t("spot.cancelFailed"));
+        return;
+      }
+
+      const { salt } = await getOrderSalt();
+      const orderId = BigInt(row.orderId);
+      const saltBi = BigInt(salt);
+
+      const signature = await signTypedDataAsync(
+        getCancelOrderSignTypedData({ orderId, salt: saltBi }, chainId)
+      );
+
+      await submitCancel({
+        userBalanceId: balanceRsp.userBalanceId,
+        orderId,
+        tokenAddress,
+        salt: saltBi,
+        signature,
+      });
+
+      toast.success(t("spot.orderCancelled"));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, t("spot.cancelFailed")));
+    } finally {
+      setCancellingOrderId(null);
+    }
+  }
+
+  const colSpan = 10;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -155,72 +225,95 @@ function OpenOrdersTable() {
   });
 
   return (
-    <table className="w-full min-w-[960px] table-fixed text-sm">
-      <colgroup>
-        <col className="w-[12%]" />
-        <col className="w-[18%]" />
-        <col className="w-[12%]" />
-        <col className="w-[8%]" />
-        <col className="w-[12%]" />
-        <col className="w-[12%]" />
-        <col className="w-[12%]" />
-        <col className="w-[14%]" />
-      </colgroup>
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.time")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.price")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.filledPct")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.status")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderPrice")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderAmount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderTotal")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.filledPct")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.status")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.action")}</th>
         </tr>
       </thead>
       <tbody>
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
-          rows.map((row) => (
-            <tr key={row.orderId} className="border-border/40 border-b last:border-0">
-              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
-                {row.orderId}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {new Date(row.placedAt).toLocaleString()}
-              </td>
-              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
-              <td
-                className={cn(
-                  "py-2.5 pr-4 font-medium whitespace-nowrap",
-                  row.side ? sideClass(row.side) : "text-muted-foreground"
-                )}
-              >
-                {row.side === "buy"
-                  ? t("spot.buy")
-                  : row.side === "sell"
-                    ? t("spot.sell")
-                    : "—"}
-              </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
-                {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
-              </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
-                {formatQuantity(row.quantity)}
-              </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
-                {row.fillPercent.toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2,
-                })}
-                %
-              </td>
-              <td className="text-muted-foreground py-2.5 whitespace-nowrap">
-                {formatOpenOrderStatus(row.status, t)}
-              </td>
-            </tr>
-          ))
+          rows.map((row) => {
+            const rowBusy = cancellingOrderId === row.orderId;
+            const canCancel =
+              isAuthenticated &&
+              isConnected &&
+              Boolean(address) &&
+              chainId != null &&
+              row.side != null &&
+              row.status !== "Cancelling" &&
+              cancellingOrderId == null;
+
+            return (
+              <tr key={row.orderId} className="border-border/40 border-b last:border-0">
+                <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
+                  {row.orderId}
+                </td>
+                <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                  {new Date(row.placedAt).toLocaleString()}
+                </td>
+                <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
+                <td
+                  className={cn(
+                    "py-2.5 pr-4 font-medium whitespace-nowrap",
+                    row.side ? sideClass(row.side) : "text-muted-foreground"
+                  )}
+                >
+                  {row.side === "buy"
+                    ? t("spot.buy")
+                    : row.side === "sell"
+                      ? t("spot.sell")
+                      : "—"}
+                </td>
+                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                  {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
+                </td>
+                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                  {formatQuantity(row.quantity)}
+                </td>
+                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                  {formatQuoteAmount(row.total)}
+                </td>
+                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                  {row.fillPercent.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}
+                  %
+                </td>
+                <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
+                  {formatOpenOrderStatus(row.status, t)}
+                </td>
+                <td className="py-2.5 whitespace-nowrap">
+                  {row.status === "Cancelling" ? (
+                    <span className="text-muted-foreground text-xs">
+                      {t("spot.cancelling")}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!canCancel || rowBusy}
+                      onClick={() => void handleCancel(row)}
+                      className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 disabled:text-muted-foreground inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium disabled:cursor-not-allowed"
+                    >
+                      {rowBusy ? t("spot.cancelling") : t("spot.cancel")}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })
         )}
       </tbody>
     </table>
@@ -246,7 +339,7 @@ function HistoryOrdersTable() {
     [data?.pageItems]
   );
 
-  const colSpan = 9;
+  const colSpan = 12;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -259,29 +352,21 @@ function HistoryOrdersTable() {
   });
 
   return (
-    <table className="w-full min-w-[1080px] table-fixed text-sm">
-      <colgroup>
-        <col className="w-[11%]" />
-        <col className="w-[10%]" />
-        <col className="w-[7%]" />
-        <col className="w-[10%]" />
-        <col className="w-[10%]" />
-        <col className="w-[12%]" />
-        <col className="w-[10%]" />
-        <col className="w-[15%]" />
-        <col className="w-[15%]" />
-      </colgroup>
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.average")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.status")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.fee")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderPrice")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.average")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderAmount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.filledAmount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderTotal")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.fee")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.placedAt")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.completedAt")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.completedAt")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("spot.status")}</th>
         </tr>
       </thead>
       <tbody>
@@ -290,7 +375,7 @@ function HistoryOrdersTable() {
         ) : (
           rows.map((row) => (
             <tr key={row.orderId} className="border-border/40 border-b last:border-0">
-              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
                 {row.orderId}
               </td>
               <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
@@ -306,25 +391,34 @@ function HistoryOrdersTable() {
                     ? t("spot.sell")
                     : "—"}
               </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.averagePrice != null
                   ? formatSubscriptPrice(row.averagePrice, row.enginePriceDecimal)
                   : "—"}
               </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatQuantity(row.quantity)}
               </td>
-              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
-                {formatOrderHistoryStatus(row.status, t)}
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatQuantity(row.filledQuantity)}
               </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {row.total != null ? formatQuoteAmount(row.total) : "—"}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {new Date(row.placedAt).toLocaleString()}
               </td>
-              <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {new Date(row.completedAt).toLocaleString()}
+              </td>
+              <td className="text-muted-foreground py-2.5 whitespace-nowrap">
+                {formatOrderHistoryStatus(row.status, t)}
               </td>
             </tr>
           ))
@@ -366,24 +460,14 @@ function TradeHistoryTable() {
   });
 
   return (
-    <table className="w-full min-w-[960px] table-fixed text-sm">
-      <colgroup>
-        <col className="w-[12%]" />
-        <col className="w-[12%]" />
-        <col className="w-[8%]" />
-        <col className="w-[12%]" />
-        <col className="w-[12%]" />
-        <col className="w-[16%]" />
-        <col className="w-[14%]" />
-        <col className="w-[14%]" />
-      </colgroup>
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.orderId")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.side")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.price")}</th>
-          <th className="pb-2 pr-4  font-medium whitespace-nowrap">{t("spot.amount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.price")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.amount")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.time")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("spot.status")}</th>
           <th className="pb-2 font-medium whitespace-nowrap">{t("spot.txHash")}</th>
@@ -398,7 +482,7 @@ function TradeHistoryTable() {
               key={`${row.orderId}-${row.tradeTime}-${row.txHash}-${i}`}
               className="border-border/40 border-b last:border-0"
             >
-              <td className="text-muted-foreground py-2.5 pr-4 font-mono text-xs tabular-nums whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
                 {row.orderId}
               </td>
               <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>

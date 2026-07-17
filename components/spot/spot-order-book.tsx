@@ -110,6 +110,7 @@ export function SpotOrderBook({
             row={row}
             side="ask"
             maxTotal={maxTotal}
+            enginePriceDecimal={enginePriceDecimal}
             onClick={
               row.placeholder
                 ? undefined
@@ -143,6 +144,7 @@ export function SpotOrderBook({
             row={row}
             side="bid"
             maxTotal={maxTotal}
+            enginePriceDecimal={enginePriceDecimal}
             onClick={
               row.placeholder
                 ? undefined
@@ -159,15 +161,22 @@ function OrderBookRow({
   row,
   side,
   maxTotal,
+  enginePriceDecimal,
   onClick,
 }: {
   row: LevelWithTotal;
   side: "ask" | "bid";
   maxTotal: number;
+  enginePriceDecimal: number | undefined;
   onClick?: () => void;
 }) {
   const depthPct =
     row.placeholder || maxTotal <= 0 ? 0 : (row.total / maxTotal) * 100;
+
+  const priceLabel =
+    row.placeholder || enginePriceDecimal == null
+      ? "—"
+      : formatSubscriptPrice(row.price, enginePriceDecimal);
 
   const content = (
     <>
@@ -189,7 +198,7 @@ function OrderBookRow({
               : "text-brand"
         )}
       >
-        {row.placeholder ? "—" : formatSubscriptPrice(row.price)}
+        {priceLabel}
       </span>
       <span
         className={cn(

@@ -29,6 +29,19 @@ export function formatOrderQuantity(raw: ApiBigInt): number {
   return Number(bi) / 10 ** BASE_QUANTITY_DECIMALS;
 }
 
+/**
+ * Filled base quantity by side.
+ * BUY: filledTakerAmount (taker = base); SELL: filledMakerAmount (maker = base).
+ */
+export function orderFilledBaseQuantity(
+  side: number,
+  filledMakerAmount: ApiBigInt,
+  filledTakerAmount: ApiBigInt
+): number {
+  const raw = side === ORDER_SIDE_BUY ? filledTakerAmount : filledMakerAmount;
+  return formatOrderQuantity(raw);
+}
+
 export function formatOrderId(salt: ApiBigInt): string {
   return apiBigIntToString(salt);
 }
@@ -86,24 +99,33 @@ export function formatOrderHistoryStatus(
 
 export type OpenOrderRow = {
   orderId: string;
+  pairCode: string;
+  pairId: number;
   placedAt: string;
   pairLabel: string;
   side: "buy" | "sell" | null;
   price: number;
   quantity: number;
+  /** Quote notional: price × quantity. */
+  total: number;
   fillPercent: number;
   status: string;
   enginePriceDecimal: number;
 };
 
 export function ordersRspToOpenOrderRow(order: OrdersRsp): OpenOrderRow {
+  const price = enginePriceToNumber(order.enginePrice, order.enginePriceDecimal);
+  const quantity = formatOrderQuantity(order.quantity);
   return {
     orderId: String(order.id),
+    pairCode: order.pairCode,
+    pairId: order.pairId,
     placedAt: order.placedAt,
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
-    price: enginePriceToNumber(order.enginePrice, order.enginePriceDecimal),
-    quantity: formatOrderQuantity(order.quantity),
+    price,
+    quantity,
+    total: price * quantity,
     fillPercent: orderFillPercent(order.filledMakerAmount, order.makerAmount),
     status: order.status,
     enginePriceDecimal: order.enginePriceDecimal,
@@ -114,8 +136,14 @@ export type OrderHistoryRow = {
   orderId: string;
   pairLabel: string;
   side: "buy" | "sell" | null;
+  /** Limit / order engine price. */
+  price: number;
   averagePrice: number | null;
   quantity: number;
+  /** Filled base qty: buy ← filledTaker, sell ← filledMaker. */
+  filledQuantity: number;
+  /** Quote notional: averagePrice × filledQuantity when filled. */
+  total: number | null;
   status: string;
   fee: number;
   placedAt: string;
@@ -124,17 +152,28 @@ export type OrderHistoryRow = {
 };
 
 export function ordersHistoryRspToRow(order: OrdersHistoryRsp): OrderHistoryRow {
+  const price = enginePriceToNumber(order.enginePrice, order.enginePriceDecimal);
+  const averagePrice = orderAveragePrice(
+    order.side,
+    order.filledMakerAmount,
+    order.filledTakerAmount,
+    order.enginePriceDecimal
+  );
+  const quantity = formatOrderQuantity(order.quantity);
+  const filledQuantity = orderFilledBaseQuantity(
+    order.side,
+    order.filledMakerAmount,
+    order.filledTakerAmount
+  );
   return {
     orderId: String(order.id),
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
-    averagePrice: orderAveragePrice(
-      order.side,
-      order.filledMakerAmount,
-      order.filledTakerAmount,
-      order.enginePriceDecimal
-    ),
-    quantity: formatOrderQuantity(order.quantity),
+    price,
+    averagePrice,
+    quantity,
+    filledQuantity,
+    total: averagePrice != null ? averagePrice * filledQuantity : null,
     status: order.status,
     fee: formatOrderFee(order.fee),
     placedAt: order.placedAt,

@@ -8,10 +8,10 @@ import { SpotSideSwitch } from "@/components/spot/spot-side-switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getApiErrorMessage } from "@/lib/api/errors";
 import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
 import { buildPlaceOrderFields } from "@/lib/orders/build-place-order";
 import { getPlaceOrderSignTypedData } from "@/lib/orders/place-order-eip712";
+import { getSpotOrderErrorMessage } from "@/lib/spot/order-error-message";
 import { debugPlaceOrder } from "@/lib/spot/place-order-debug";
 import { orderQuoteAmountBaseUnits } from "@/lib/spot/pair-api";
 import { parseEnginePrice } from "@/lib/spot/order-place-amounts";
@@ -188,6 +188,16 @@ export function SpotOrderForm({
       return;
     }
 
+    const userBalanceId =
+      side === "buy"
+        ? pairBalances?.quoteUserBalanceId
+        : pairBalances?.baseUserBalanceId;
+    // No balance row yet (never deposited) — treat as insufficient, not generic failure.
+    if (userBalanceId == null) {
+      toast.error(t("spot.insufficientBalance"));
+      return;
+    }
+
     const q = Number(quantity);
     const submitPrice = resolveSubmitPriceString(price, lastPrice);
     const p = submitPrice != null ? Number(submitPrice) : NaN;
@@ -267,6 +277,7 @@ export function SpotOrderForm({
         });
 
         debugPlaceOrder("submit:fields", {
+          userBalanceId,
           makerAmount: fields.makerAmount.toString(),
           takerAmount: fields.takerAmount.toString(),
           makerToken: fields.makerToken,
@@ -274,6 +285,15 @@ export function SpotOrderForm({
           expiry: fields.expiry.toString(),
           salt: fields.salt.toString(),
         });
+
+        const available =
+          side === "buy"
+            ? parseApiBigInt(pairBalances?.quoteBalance)
+            : parseApiBigInt(pairBalances?.baseBalance);
+        if (available == null || available < fields.makerAmount) {
+          toast.error(t("spot.insufficientBalance"));
+          return;
+        }
 
         const signature = await signTypedDataAsync(
           getPlaceOrderSignTypedData(
@@ -292,6 +312,7 @@ export function SpotOrderForm({
         );
 
         await submitPlaceOrder({
+          userBalanceId,
           pairId: fields.pairId,
           maker: fields.maker,
           makerToken: fields.makerToken,
@@ -315,7 +336,9 @@ export function SpotOrderForm({
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
-        toast.error(getApiErrorMessage(error, t("spot.orderFailed")));
+        toast.error(
+          getSpotOrderErrorMessage(error, t, t("spot.orderFailed"))
+        );
       }
     })();
   }

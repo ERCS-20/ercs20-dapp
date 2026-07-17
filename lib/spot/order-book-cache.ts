@@ -23,6 +23,26 @@ export class OrderBookSideCache {
     this.sortedDirty = true;
   }
 
+  /**
+   * Apply a full REST snapshot:
+   * - clear previous state
+   * - aggregate duplicate price entries by summing quantity
+   */
+  replaceLevels(items: MarketBidsAndAsks["bids"] | undefined) {
+    this.clear();
+    if (!items?.length) return;
+
+    for (const row of items) {
+      const qty = parseApiBigInt(row.quantity);
+      if (qty == null || qty === BigInt(0)) {
+        continue;
+      }
+      const prev = this.levels.get(row.price) ?? BigInt(0);
+      this.levels.set(row.price, prev + qty);
+    }
+    this.sortedDirty = true;
+  }
+
   private ensureSorted() {
     if (!this.sortedDirty) return;
     this.sortedPrices = [...this.levels.keys()];
@@ -61,8 +81,8 @@ export class OrderBookCache {
     // Backend REST snapshots often use sequence 0; only skip strictly older deltas.
     if (rsp.sequence > 0 && rsp.sequence <= this.sequence) return false;
 
-    this.bids.applyLevels(rsp.bidsAndAsks?.bids);
-    this.asks.applyLevels(rsp.bidsAndAsks?.asks);
+    this.bids.replaceLevels(rsp.bidsAndAsks?.bids);
+    this.asks.replaceLevels(rsp.bidsAndAsks?.asks);
     if (rsp.sequence > this.sequence) {
       this.sequence = rsp.sequence;
     }

@@ -4,6 +4,7 @@ import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
 import { resolveSpotBalanceTokenAddress } from "@/lib/tokens/spot-balance-token";
 import { SpotOrdersApi } from "@/services/spot/orders/paths";
 import type {
+  CancelOrderReq,
   GetPairByCodeReq,
   OrderSaltRsp,
   OrdersHistoryPaginationReq,
@@ -36,6 +37,7 @@ export function getOrderSalt(): Promise<OrderSaltRsp> {
 /** POST /orders/orders/place — `userId` from gateway JWT headers. */
 export function placeOrder(req: PlaceOrderReq) {
   return request.post<void>(SpotOrdersApi.ordersPlace, {
+    userBalanceId: req.userBalanceId,
     pairId: req.pairId,
     maker: req.maker.toLowerCase(),
     makerToken: req.makerToken.toLowerCase(),
@@ -44,6 +46,17 @@ export function placeOrder(req: PlaceOrderReq) {
     takerAmount: apiBigIntToString(req.takerAmount),
     timeInForce: req.timeInForce,
     expiry: apiBigIntToString(req.expiry),
+    salt: apiBigIntToString(req.salt),
+    signature: req.signature,
+  });
+}
+
+/** POST /orders/orders/cancel — `userId` from gateway JWT headers. */
+export function cancelOrder(req: CancelOrderReq) {
+  return request.post<void>(SpotOrdersApi.ordersCancel, {
+    userBalanceId: req.userBalanceId,
+    orderId: apiBigIntToString(req.orderId),
+    tokenAddress: req.tokenAddress.toLowerCase(),
     salt: apiBigIntToString(req.salt),
     signature: req.signature,
   });
@@ -95,6 +108,7 @@ export function applyWithdraw(req: WithdrawApplyReq) {
   }
 
   return request.post<void>(SpotOrdersApi.withdrawalsApply, {
+    userBalanceId: req.userBalanceId,
     fromAddress: req.fromAddress.toLowerCase(),
     tokenAddress: tokenAddress.toLowerCase(),
     amount: req.amount,

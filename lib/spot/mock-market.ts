@@ -189,7 +189,7 @@ export function getMockChartBars(
   timeframe: ChartTimeframe
 ): number[] {
   const seed = hashSeed(`${pair.baseSymbol}-${timeframe}`);
-  const count = timeframe === "1D" ? 48 : timeframe === "1h" ? 60 : 72;
+  const count = timeframe === "1d" ? 48 : timeframe === "1h" ? 60 : 72;
   const bars: number[] = [];
   let v = 40 + (seed % 30);
   for (let i = 0; i < count; i++) {
