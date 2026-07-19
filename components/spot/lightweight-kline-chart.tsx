@@ -17,24 +17,34 @@ import type { ChartType } from "@/lib/spot/chart-interval";
 import { readSpotChartTheme } from "@/lib/spot/chart-theme";
 import { marketKlinesToChartSeries } from "@/lib/spot/kline-to-chart";
 import { cn } from "@/lib/utils";
+import { formatSubscriptPrice } from "@/lib/utils/price";
 import type { MarketKlineRsp } from "@/services/spot/market/types";
 
 type CandleSeries = ISeriesApi<"Candlestick">;
 type LineSeriesApi = ISeriesApi<"Line">;
 type VolumeSeries = ISeriesApi<"Histogram">;
 
-/** Keep candle/line width stable even when the pair only has 1–2 bars. */
+/**
+ * Fixed candle width (px between bars), same idea as Binance/OKX:
+ * wider viewport → more candles, not fatter candles.
+ */
 const BAR_SPACING = 8;
 const MIN_BAR_SPACING = 3;
-/** How many bar slots the viewport should cover (empty slots stay blank on the left). */
-const VISIBLE_BAR_SLOTS = 80;
 const RIGHT_OFFSET_BARS = 8;
 
-function applyStableVisibleRange(chart: IChartApi, barCount: number) {
-  if (barCount <= 0) return;
-  const to = barCount - 1 + RIGHT_OFFSET_BARS;
-  const from = to - VISIBLE_BAR_SLOTS;
-  chart.timeScale().setVisibleLogicalRange({ from, to });
+/**
+ * Default chart priceFormat is precision=2 / minMove=0.01 — tiny quote prices
+ * all round to "0.00" on the right axis. Use engine decimals + subscript UI format.
+ */
+function chartPriceFormat(enginePriceDecimal: number) {
+  const decimal = Math.max(0, Math.min(Math.trunc(enginePriceDecimal), 18));
+  const base = decimal === 0 ? 1 : 10 ** decimal;
+  return {
+    type: "custom" as const,
+    minMove: 1 / base,
+    base,
+    formatter: (price: number) => formatSubscriptPrice(price, decimal),
+  };
 }
 
 function crosshairTimeSec(param: MouseEventParams): number | null {
@@ -64,6 +74,8 @@ export function LightweightKlineChart({
   const lineRef = useRef<LineSeriesApi | null>(null);
   const volumeRef = useRef<VolumeSeries | null>(null);
   const onCrosshairTimeChangeRef = useRef(onCrosshairTimeChange);
+  /** Skip re-scrolling when only theme/colors refresh. */
+  const shouldScrollToLatestRef = useRef(true);
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
@@ -71,10 +83,14 @@ export function LightweightKlineChart({
   }, [onCrosshairTimeChange]);
 
   useEffect(() => {
+    shouldScrollToLatestRef.current = true;
+  }, [bars, chartType, secondsVisible]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const theme = readSpotChartTheme();
+    const theme = readSpotChartTheme(resolvedTheme);
     const chart = createChart(container, {
       autoSize: true,
       layout: {
@@ -114,12 +130,14 @@ export function LightweightKlineChart({
       wickUpColor: theme.up,
       wickDownColor: theme.down,
       visible: chartType === "candle",
+      priceFormat: chartPriceFormat(0),
     });
 
     const line = chart.addSeries(LineSeries, {
       color: theme.up,
       lineWidth: 2,
       visible: chartType === "line",
+      priceFormat: chartPriceFormat(0),
     });
 
     const volume = chart.addSeries(HistogramSeries, {
@@ -159,7 +177,7 @@ export function LightweightKlineChart({
     const volumeSeries = volumeRef.current;
     if (!chart || !candleSeries || !lineSeries || !volumeSeries) return;
 
-    const theme = readSpotChartTheme();
+    const theme = readSpotChartTheme(resolvedTheme);
     chart.applyOptions({
       layout: {
         background: { type: ColorType.Solid, color: theme.background },
@@ -179,6 +197,8 @@ export function LightweightKlineChart({
       },
     });
 
+    const priceFormat = chartPriceFormat(enginePriceDecimal);
+
     candleSeries.applyOptions({
       upColor: theme.up,
       downColor: theme.down,
@@ -187,12 +207,14 @@ export function LightweightKlineChart({
       wickUpColor: theme.up,
       wickDownColor: theme.down,
       visible: chartType === "candle",
+      priceFormat,
     });
 
     lineSeries.applyOptions({
       color: theme.up,
       lineWidth: 2,
       visible: chartType === "line",
+      priceFormat,
     });
 
     const { candles, volumes, line } = marketKlinesToChartSeries(
@@ -204,11 +226,12 @@ export function LightweightKlineChart({
     candleSeries.setData(chartType === "candle" ? candles : []);
     lineSeries.setData(chartType === "line" ? line : []);
     volumeSeries.setData(volumes);
-    // Do not use fitContent(): with 1–2 bars it stretches series across the whole width.
-    applyStableVisibleRange(
-      chart,
-      chartType === "line" ? line.length : candles.length
-    );
+
+    // Keep barSpacing; scroll to latest. Do not fitContent() — that stretches candles.
+    if (shouldScrollToLatestRef.current) {
+      chart.timeScale().scrollToRealTime();
+      shouldScrollToLatestRef.current = false;
+    }
   }, [bars, enginePriceDecimal, chartType, secondsVisible, resolvedTheme]);
 
   return (
