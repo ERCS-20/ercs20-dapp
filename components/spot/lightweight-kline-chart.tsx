@@ -8,6 +8,7 @@ import {
   LineSeries,
   type IChartApi,
   type ISeriesApi,
+  type MouseEventParams,
 } from "lightweight-charts";
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
@@ -36,17 +37,25 @@ function applyStableVisibleRange(chart: IChartApi, barCount: number) {
   chart.timeScale().setVisibleLogicalRange({ from, to });
 }
 
+function crosshairTimeSec(param: MouseEventParams): number | null {
+  if (param.point === undefined || param.time === undefined) return null;
+  return typeof param.time === "number" ? param.time : null;
+}
+
 export function LightweightKlineChart({
   bars,
   enginePriceDecimal,
   chartType,
   secondsVisible,
+  onCrosshairTimeChange,
   className,
 }: {
   bars: MarketKlineRsp[];
   enginePriceDecimal: number;
   chartType: ChartType;
   secondsVisible?: boolean;
+  /** UTC seconds of hovered bar; `null` when crosshair leaves data. */
+  onCrosshairTimeChange?: (timeSec: number | null) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,7 +63,12 @@ export function LightweightKlineChart({
   const candleRef = useRef<CandleSeries | null>(null);
   const lineRef = useRef<LineSeriesApi | null>(null);
   const volumeRef = useRef<VolumeSeries | null>(null);
+  const onCrosshairTimeChangeRef = useRef(onCrosshairTimeChange);
   const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    onCrosshairTimeChangeRef.current = onCrosshairTimeChange;
+  }, [onCrosshairTimeChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -117,17 +131,24 @@ export function LightweightKlineChart({
       scaleMargins: { top: 0.78, bottom: 0 },
     });
 
+    const onCrosshairMove = (param: MouseEventParams) => {
+      onCrosshairTimeChangeRef.current?.(crosshairTimeSec(param));
+    };
+    chart.subscribeCrosshairMove(onCrosshairMove);
+
     chartRef.current = chart;
     candleRef.current = candles;
     lineRef.current = line;
     volumeRef.current = volume;
 
     return () => {
+      chart.unsubscribeCrosshairMove(onCrosshairMove);
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       lineRef.current = null;
       volumeRef.current = null;
+      onCrosshairTimeChangeRef.current?.(null);
     };
   }, [chartType, secondsVisible]);
 
@@ -184,7 +205,10 @@ export function LightweightKlineChart({
     lineSeries.setData(chartType === "line" ? line : []);
     volumeSeries.setData(volumes);
     // Do not use fitContent(): with 1–2 bars it stretches series across the whole width.
-    applyStableVisibleRange(chart, chartType === "line" ? line.length : candles.length);
+    applyStableVisibleRange(
+      chart,
+      chartType === "line" ? line.length : candles.length
+    );
   }, [bars, enginePriceDecimal, chartType, secondsVisible, resolvedTheme]);
 
   return (

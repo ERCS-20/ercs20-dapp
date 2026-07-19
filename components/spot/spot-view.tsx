@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { SpotOrdersTabs, type SpotOrdersTab } from "@/components/spot/spot-orders-tabs";
@@ -14,12 +14,13 @@ import { SpotToolbar } from "@/components/spot/spot-toolbar";
 import { SpotTradePanel } from "@/components/spot/spot-trade-panel";
 import { getSpotDefaultPairPath } from "@/lib/config/spot-default-pair";
 import { isSwapEnvConfigured } from "@/lib/config/swap-target";
-import { marketKlineToStats } from "@/lib/spot/market-stats";
-import { pairRspToSpotPair } from "@/lib/spot/pair-api";
+import { readCachedChartView, writeCachedChartView } from "@/lib/spot/cached-chart-view";
 import {
   DEFAULT_CHART_VIEW,
   type ChartView,
 } from "@/lib/spot/chart-interval";
+import { marketKlineToStats } from "@/lib/spot/market-stats";
+import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
@@ -90,10 +91,20 @@ export function SpotView({
     return { lastPrice: stats.lastPrice, change24hPct: stats.change24hPct };
   }, [kline, enginePriceDecimal]);
 
+  /** SSR/hydration-safe default; restore from localStorage before paint. */
   const [chartView, setChartView] = useState<ChartView>(DEFAULT_CHART_VIEW);
   const [side, setSide] = useState<SpotSide>("buy");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
+
+  useLayoutEffect(() => {
+    setChartView(readCachedChartView());
+  }, []);
+
+  const handleChartViewChange = useCallback((view: ChartView) => {
+    setChartView(view);
+    writeCachedChartView(view);
+  }, []);
 
   useEffect(() => {
     setPrice("");
@@ -209,8 +220,10 @@ export function SpotView({
                 <SpotChartPanel
                   pairId={pairId}
                   enginePriceDecimal={enginePriceDecimal}
+                  baseSymbol={pair.baseSymbol}
+                  quoteSymbol={pair.quoteSymbol}
                   view={chartView}
-                  onViewChange={setChartView}
+                  onViewChange={handleChartViewChange}
                   className="min-h-0 flex-1 rounded-none"
                 />
               </div>
@@ -235,7 +248,7 @@ export function SpotView({
             onQuantityChange={setQuantity}
             onLevelClick={handleLevelClick}
             onOrderPlaced={handleOrderPlaced}
-            className="h-full min-h-0 w-[min(820px,42%)] shrink-0 [&_section]:rounded-none"
+            className="h-full min-h-0 w-[min(820px,38%)] shrink-0 [&_section]:rounded-none"
           />
         </div>
       </div>
@@ -246,8 +259,10 @@ export function SpotView({
           <SpotChartPanel
             pairId={pairId}
             enginePriceDecimal={enginePriceDecimal}
+            baseSymbol={pair.baseSymbol}
+            quoteSymbol={pair.quoteSymbol}
             view={chartView}
-            onViewChange={setChartView}
+            onViewChange={handleChartViewChange}
           />
         )}
         {mobilePanel === "book" && (

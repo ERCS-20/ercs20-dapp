@@ -36,6 +36,13 @@ function volumeToNumber(raw: ApiBigInt): number {
   return Number(bi) / 10 ** 18;
 }
 
+/** quoteVolume = enginePrice × quantity → ÷ 10^(18 + enginePriceDecimal). */
+function quoteVolumeToNumber(raw: ApiBigInt, enginePriceDecimal: number): number {
+  const bi = parseApiBigInt(raw);
+  if (bi == null || enginePriceDecimal < 0) return 0;
+  return Number(bi) / 10 ** (18 + enginePriceDecimal);
+}
+
 export function marketKlineToStats(
   kline: MarketKlineRsp,
   enginePriceDecimal: number
@@ -52,6 +59,6 @@ export function marketKlineToStats(
     high24h: enginePriceToNumber(kline.high, enginePriceDecimal),
     low24h: enginePriceToNumber(kline.low, enginePriceDecimal),
     volumeBase: volumeToNumber(kline.baseVolume),
-    volume24h: volumeToNumber(kline.quoteVolume),
+    volume24h: quoteVolumeToNumber(kline.quoteVolume, enginePriceDecimal),
   };
 }

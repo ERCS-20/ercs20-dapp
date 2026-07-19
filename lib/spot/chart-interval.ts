@@ -47,6 +47,13 @@ export const CHART_INTERVAL_OPTIONS: {
   { view: "1y", label: "1Y", chartType: "candle" },
 ];
 
+/** Intervals shown inline under the chart; the rest open via the more menu. */
+export const PRIMARY_CHART_VIEWS: ChartView[] = ["time", "15m", "2h", "1d"];
+
+export function chartViewLabel(view: ChartView): string {
+  return CHART_INTERVAL_OPTIONS.find((option) => option.view === view)?.label ?? view;
+}
+
 export function resolveChartRequest(view: ChartView): {
   apiInterval: ChartInterval;
   chartType: ChartType;
