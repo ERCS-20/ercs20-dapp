@@ -6,28 +6,29 @@ import type { MarketTrade, MarketTradeListRsp } from "@/services/spot/market/typ
 const BASE_VOLUME_DECIMALS = 18;
 const ORDER_SIDE_BUY = 1;
 
-/** Walk ring buffer from {@link MarketTradeListRsp.reverseFromIndex} backwards (newest first). */
+/**
+ * Walk ring buffer from {@link MarketTradeListRsp.reverseFromIndex} backwards
+ * (newest first), wrapping at 0 → length-1 so a cursor mid-buffer still yields
+ * the full filled ring (e.g. reverseFromIndex=1 with 16 slots → 16 rows).
+ */
 export function iterMarketTradesNewestFirst(rsp: MarketTradeListRsp): MarketTrade[] {
   const { trades, reverseFromIndex } = rsp;
   if (!trades?.length) return [];
 
-  if (reverseFromIndex == null) {
+  if (reverseFromIndex == null || !Number.isFinite(reverseFromIndex)) {
     return trades.filter((t): t is MarketTrade => t != null);
   }
 
-  const out: MarketTrade[] = [];
   const len = trades.length;
-  let idx = reverseFromIndex;
+  const start = ((Math.trunc(reverseFromIndex) % len) + len) % len;
+  const out: MarketTrade[] = [];
+  let idx = start;
 
   for (let n = 0; n < len; n++) {
-    if (idx < 0 || idx >= len) break;
     const row = trades[idx];
     if (row) out.push(row);
     idx -= 1;
-  }
-
-  if (out.length === 0) {
-    return trades.filter((t): t is MarketTrade => t != null);
+    if (idx < 0) idx = len - 1;
   }
 
   return out;
