@@ -19,7 +19,7 @@ import {
   DEFAULT_CHART_VIEW,
   type ChartView,
 } from "@/lib/spot/chart-interval";
-import { marketKlineToStats } from "@/lib/spot/market-stats";
+import { calcOpenCloseChange } from "@/lib/spot/market-stats";
 import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
@@ -87,8 +87,16 @@ export function SpotView({
     if (!kline || enginePriceDecimal == null) {
       return { lastPrice: 0, change24hPct: 0 };
     }
-    const stats = marketKlineToStats(kline, enginePriceDecimal);
-    return { lastPrice: stats.lastPrice, change24hPct: stats.change24hPct };
+    const current = kline.current;
+    if (!current) {
+      return { lastPrice: 0, change24hPct: 0 };
+    }
+    const { lastPrice, change24hPct } = calcOpenCloseChange(
+      kline.prevClose,
+      current.close,
+      enginePriceDecimal
+    );
+    return { lastPrice, change24hPct };
   }, [kline, enginePriceDecimal]);
 
   /** SSR/hydration-safe default; restore from localStorage before paint. */

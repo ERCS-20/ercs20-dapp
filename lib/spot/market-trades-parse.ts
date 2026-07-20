@@ -54,3 +54,25 @@ export function marketTradesToSpotTrades(
       };
     });
 }
+
+/**
+ * Merge a WS trade batch into a REST list snapshot using envelope `sequence`.
+ * Batch is chronological (old→new); result is dense newest-first with
+ * `reverseFromIndex: null` for {@link iterMarketTradesNewestFirst}.
+ * Returns `rsp` unchanged when `sequence <= rsp.sequence`.
+ */
+export function appendWsTradesToListRsp(
+  rsp: MarketTradeListRsp,
+  batch: MarketTrade[],
+  sequence: number,
+  limit = 200
+): MarketTradeListRsp {
+  if (batch.length === 0 || sequence <= rsp.sequence) return rsp;
+
+  const existing = iterMarketTradesNewestFirst(rsp);
+  // Docs: array order append; example is old→new → reverse for newest-first head.
+  const incoming = [...batch].reverse();
+  const merged = [...incoming, ...existing].slice(0, limit);
+
+  return { trades: merged, reverseFromIndex: null, sequence };
+}

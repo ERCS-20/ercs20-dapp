@@ -4,7 +4,7 @@ import type {
   KlineCurrentDayReq,
   KlineListReq,
   KlineListRsp,
-  MarketKlineRsp,
+  MarketKlineCurrentDayRsp,
   MarketOrderBookListRsp,
   MarketPairsPaginationReq,
   MarketPairsPaginationRsp,
@@ -27,7 +27,7 @@ export function listMarketUserPairs(req: MarketPairsUserReq) {
 
 /** POST /market/store/kline/current-day */
 export function getKlineCurrentDay(req: KlineCurrentDayReq) {
-  return request.post<MarketKlineRsp>(SpotMarketApi.klineCurrentDay, {
+  return request.post<MarketKlineCurrentDayRsp>(SpotMarketApi.klineCurrentDay, {
     pairId: req.pairId,
   });
 }

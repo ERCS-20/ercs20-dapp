@@ -345,7 +345,6 @@ export const zhCN = {
     chartChange: "涨跌幅",
     chartAmplitude: "振幅",
     chartVol: "Vol({symbol})",
-    chartCount: "Count",
     selectPair: "选择交易对",
     invalidAmount: "请输入有效数量",
     invalidPrice: "请输入有效价格",

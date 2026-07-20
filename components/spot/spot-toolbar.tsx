@@ -140,9 +140,27 @@ export function SpotToolbar({
         volume24h: 0,
       };
     }
-    const klineStats = marketKlineToStats(kline, enginePriceDecimal);
-    const { changeAmount } = calcOpenCloseChange(kline.open, kline.close, enginePriceDecimal);
-    return { ...klineStats, changeAmount };
+    const current = kline.current;
+    if (!current) {
+      return {
+        lastPrice: 0,
+        change24hPct: 0,
+        changeAmount: 0,
+        high24h: 0,
+        low24h: 0,
+        volumeBase: 0,
+        volume24h: 0,
+      };
+    }
+
+    // High/Low/Volume come from today's D1 bar; 24h change is relative to yesterday close.
+    const klineStats = marketKlineToStats(current, enginePriceDecimal);
+    const { change24hPct, changeAmount } = calcOpenCloseChange(
+      kline.prevClose,
+      current.close,
+      enginePriceDecimal
+    );
+    return { ...klineStats, change24hPct, changeAmount };
   }, [kline, enginePriceDecimal]);
 
   const up = stats.change24hPct >= 0;

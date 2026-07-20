@@ -1,4 +1,8 @@
-import type { MarketBidsAndAsks, MarketOrderBookListRsp } from "@/services/spot/market/types";
+import type {
+  MarketBidsAndAsks,
+  MarketOrderBookListRsp,
+  MarketWsOrderBookDiff,
+} from "@/services/spot/market/types";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 
 /** Sorted price levels beyond UI depth; zero qty removes a level. */
@@ -77,15 +81,26 @@ export class OrderBookCache {
   /** Start below 0 so the first REST snapshot with sequence 0 is accepted. */
   private sequence = -1;
 
-  applySnapshot(rsp: MarketOrderBookListRsp): boolean {
-    // Backend REST snapshots often use sequence 0; only skip strictly older deltas.
-    if (rsp.sequence > 0 && rsp.sequence <= this.sequence) return false;
+  getSequence(): number {
+    return this.sequence;
+  }
 
+  /** REST full snapshot — always authoritative. */
+  applySnapshot(rsp: MarketOrderBookListRsp): void {
     this.bids.replaceLevels(rsp.bidsAndAsks?.bids);
     this.asks.replaceLevels(rsp.bidsAndAsks?.asks);
-    if (rsp.sequence > this.sequence) {
-      this.sequence = rsp.sequence;
-    }
+    this.sequence = rsp.sequence;
+  }
+
+  /**
+   * WS orderbook diff: absolute qty per price; `0` deletes the level.
+   * Applies only when `sequence >` current (gaps allowed).
+   */
+  applyDiff(sequence: number, diff: MarketWsOrderBookDiff): boolean {
+    if (sequence <= this.sequence) return false;
+    this.bids.applyLevels(diff.bids);
+    this.asks.applyLevels(diff.asks);
+    this.sequence = sequence;
     return true;
   }
 
@@ -93,17 +108,6 @@ export class OrderBookCache {
     this.bids.clear();
     this.asks.clear();
     this.sequence = -1;
-  }
-
-  /** For future WS deltas: set qty to 0n to drop a level from cache. */
-  patchLevel(side: "bid" | "ask", price: number, quantity: bigint) {
-    const target = side === "bid" ? this.bids : this.asks;
-    if (quantity === BigInt(0)) {
-      target.applyLevels([{ price, quantity: "0" }]);
-    } else {
-      target.applyLevels([{ price, quantity: quantity.toString() }]);
-    }
-    this.sequence += 1;
   }
 }
 

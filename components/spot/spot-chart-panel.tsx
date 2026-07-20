@@ -20,11 +20,17 @@ import {
   resolveChartRequest,
   type ChartView,
 } from "@/lib/spot/chart-interval";
+import { useKlineLiveTick } from "@/hooks/use-kline-live-tick";
+import {
+  fillKlineGapsToNow,
+  fillSparseKlineGaps,
+} from "@/lib/spot/kline-fill-gaps";
 import { cn } from "@/lib/utils";
 import { formatBalance } from "@/lib/utils/format/balance";
+import { utcSecondsToLocalChartTime } from "@/lib/utils/format/datetime";
 import { formatPercentChange, formatSubscriptPrice } from "@/lib/utils/price";
 import { useI18n } from "@/providers/i18n-provider";
-import { useKlineList } from "@/services/spot/market/hooks";
+import { useKlineList, useMarketKlineWs } from "@/services/spot/market/hooks";
 import type { MarketKlineRsp } from "@/services/spot/market/types";
 
 const LightweightKlineChart = dynamic(
@@ -110,18 +116,35 @@ export function SpotChartPanel({
   const chartReady =
     pairId != null && enginePriceDecimal != null && enginePriceDecimal >= 0;
 
-  const { data, isLoading, isError } = useKlineList(
-    chartReady
-      ? {
-          pairId,
-          interval: apiInterval,
-          limit: KLINE_FIRST_SCREEN_LIMIT,
-        }
-      : undefined,
-    { enabled: chartReady }
+  const klineReq = chartReady
+    ? {
+        pairId: pairId!,
+        interval: apiInterval,
+        limit: KLINE_FIRST_SCREEN_LIMIT,
+      }
+    : undefined;
+
+  const { data, isLoading, isError } = useKlineList(klineReq, {
+    enabled: chartReady,
+  });
+
+  useMarketKlineWs(pairId, apiInterval, {
+    enabled: chartReady,
+    limit: KLINE_FIRST_SCREEN_LIMIT,
+  });
+
+  const liveTick = useKlineLiveTick(
+    apiInterval,
+    chartReady && !isLoading && !isError
   );
 
-  const bars = data?.bars ?? [];
+  const bars = useMemo(() => {
+    void liveTick;
+    const densified = fillSparseKlineGaps(data?.bars ?? [], apiInterval, {
+      prevClose: data?.prevClose,
+    });
+    return fillKlineGapsToNow(densified, apiInterval);
+  }, [apiInterval, data?.bars, data?.prevClose, liveTick]);
   const showChart = chartReady && !isLoading && !isError && bars.length > 0;
 
   const [hoverTimeSec, setHoverTimeSec] = useState<number | null>(null);
@@ -137,7 +160,8 @@ export function SpotChartPanel({
   const barsByTimeSec = useMemo(() => {
     const map = new Map<number, MarketKlineRsp>();
     for (const bar of bars) {
-      map.set(Math.floor(bar.openTime / 1000), bar);
+      // Keys match chart series times (UTC → local display shift).
+      map.set(utcSecondsToLocalChartTime(Math.floor(bar.openTime / 1000)), bar);
     }
     return map;
   }, [bars]);
@@ -164,7 +188,6 @@ export function SpotChartPanel({
         activeBar.quoteVolume,
         18 + enginePriceDecimal
       ),
-      tradeCount: activeBar.tradeCount,
       up:
         enginePriceToNumber(activeBar.close, enginePriceDecimal) >=
         enginePriceToNumber(activeBar.open, enginePriceDecimal),
@@ -300,12 +323,13 @@ export function SpotChartPanel({
               enginePriceDecimal={enginePriceDecimal}
               chartType={chartType}
               secondsVisible={apiInterval === "1s"}
+              seriesKey={`${pairId}:${apiInterval}:${chartType}`}
               onCrosshairTimeChange={handleCrosshairTimeChange}
               className="rounded-lg"
             />
             {volumeStats ? (
               <div
-                className="pointer-events-none absolute top-[78%] left-3 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] sm:left-4 sm:text-xs"
+                className="pointer-events-none absolute top-[75%] left-3 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] sm:left-4 sm:text-xs"
                 aria-hidden
               >
                 <ChartOhlcStat
@@ -317,11 +341,6 @@ export function SpotChartPanel({
                   label={t("spot.chartVol").replace("{symbol}", quoteSymbol)}
                   value={volumeStats.quoteVolume}
                   valueClassName={volTone}
-                />
-                <ChartOhlcStat
-                  label={t("spot.chartCount")}
-                  value={String(volumeStats.tradeCount)}
-                  valueClassName="text-foreground"
                 />
               </div>
             ) : null}

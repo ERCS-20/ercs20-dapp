@@ -5,9 +5,9 @@ import { useMemo } from "react";
 import { marketTradesToSpotTrades } from "@/lib/spot/market-trades-parse";
 import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { SpotPair } from "@/lib/spot/types";
-import { formatUtcTime } from "@/lib/utils/format/datetime";
+import { formatLocalTime } from "@/lib/utils/format/datetime";
 import { cn } from "@/lib/utils";
-import { useMarketTrades } from "@/services/spot/market/hooks";
+import { useMarketTrades, useMarketTradesWs } from "@/services/spot/market/hooks";
 import { useI18n } from "@/providers/i18n-provider";
 
 export function SpotMarketTrades({
@@ -22,7 +22,9 @@ export function SpotMarketTrades({
   className?: string;
 }) {
   const { t } = useI18n();
-  const { data, isLoading } = useMarketTrades(pairId);
+  const { data, isLoading, isSuccess } = useMarketTrades(pairId);
+  // REST first screen, then WS trade channel (model B).
+  useMarketTradesWs(pairId, { enabled: isSuccess });
 
   const trades = useMemo(
     () =>
@@ -70,7 +72,7 @@ export function SpotMarketTrades({
                     {formatQuantity(trade.quantity)}
                   </td>
                   <td className="text-muted-foreground py-0.5 text-right tabular-nums">
-                    {formatUtcTime(trade.time)}
+                    {formatLocalTime(trade.time)}
                   </td>
                 </tr>
               ))}

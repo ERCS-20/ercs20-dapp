@@ -31,6 +31,9 @@ type VolumeSeries = ISeriesApi<"Histogram">;
 const BAR_SPACING = 8;
 const MIN_BAR_SPACING = 3;
 const RIGHT_OFFSET_BARS = 8;
+/** Main pane vs volume pane stretch (≈ 75% / 25%). */
+const MAIN_PANE_STRETCH = 3;
+const VOLUME_PANE_STRETCH = 1;
 
 /**
  * Default chart priceFormat is precision=2 / minMove=0.01 — tiny quote prices
@@ -57,6 +60,7 @@ export function LightweightKlineChart({
   enginePriceDecimal,
   chartType,
   secondsVisible,
+  seriesKey,
   onCrosshairTimeChange,
   className,
 }: {
@@ -64,6 +68,8 @@ export function LightweightKlineChart({
   enginePriceDecimal: number;
   chartType: ChartType;
   secondsVisible?: boolean;
+  /** Change when pair/interval switches — scroll to latest once (not on every WS tick). */
+  seriesKey?: string;
   /** UTC seconds of hovered bar; `null` when crosshair leaves data. */
   onCrosshairTimeChange?: (timeSec: number | null) => void;
   className?: string;
@@ -74,7 +80,7 @@ export function LightweightKlineChart({
   const lineRef = useRef<LineSeriesApi | null>(null);
   const volumeRef = useRef<VolumeSeries | null>(null);
   const onCrosshairTimeChangeRef = useRef(onCrosshairTimeChange);
-  /** Skip re-scrolling when only theme/colors refresh. */
+  /** Skip re-scrolling when only theme/colors refresh or live bar updates. */
   const shouldScrollToLatestRef = useRef(true);
   const { resolvedTheme } = useTheme();
 
@@ -84,7 +90,7 @@ export function LightweightKlineChart({
 
   useEffect(() => {
     shouldScrollToLatestRef.current = true;
-  }, [bars, chartType, secondsVisible]);
+  }, [seriesKey, chartType, secondsVisible]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -97,6 +103,11 @@ export function LightweightKlineChart({
         background: { type: ColorType.Solid, color: theme.background },
         textColor: theme.text,
         attributionLogo: true,
+        panes: {
+          separatorColor: theme.grid,
+          separatorHoverColor: theme.grid,
+          enableResize: true,
+        },
       },
       grid: {
         vertLines: { color: theme.grid },
@@ -104,7 +115,7 @@ export function LightweightKlineChart({
       },
       rightPriceScale: {
         borderColor: theme.grid,
-        scaleMargins: { top: 0.05, bottom: 0.24 },
+        scaleMargins: { top: 0.05, bottom: 0.05 },
       },
       timeScale: {
         borderColor: theme.grid,
@@ -131,6 +142,8 @@ export function LightweightKlineChart({
       wickDownColor: theme.down,
       visible: chartType === "candle",
       priceFormat: chartPriceFormat(0),
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     const line = chart.addSeries(LineSeries, {
@@ -138,15 +151,24 @@ export function LightweightKlineChart({
       lineWidth: 2,
       visible: chartType === "line",
       priceFormat: chartPriceFormat(0),
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
-    const volume = chart.addSeries(HistogramSeries, {
+    // Separate volume pane so height is readable; pane separator draws the divider.
+    const volumePane = chart.addPane(true);
+    const volume = volumePane.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
-      priceScaleId: "volume",
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
-    chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.78, bottom: 0 },
+    chart.panes()[0]?.setStretchFactor(MAIN_PANE_STRETCH);
+    volumePane.setStretchFactor(VOLUME_PANE_STRETCH);
+
+    volume.priceScale().applyOptions({
+      borderColor: theme.grid,
+      scaleMargins: { top: 0.08, bottom: 0 },
     });
 
     const onCrosshairMove = (param: MouseEventParams) => {
@@ -182,6 +204,11 @@ export function LightweightKlineChart({
       layout: {
         background: { type: ColorType.Solid, color: theme.background },
         textColor: theme.text,
+        panes: {
+          separatorColor: theme.grid,
+          separatorHoverColor: theme.grid,
+          enableResize: true,
+        },
       },
       grid: {
         vertLines: { color: theme.grid },
@@ -208,6 +235,8 @@ export function LightweightKlineChart({
       wickDownColor: theme.down,
       visible: chartType === "candle",
       priceFormat,
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     lineSeries.applyOptions({
@@ -215,6 +244,17 @@ export function LightweightKlineChart({
       lineWidth: 2,
       visible: chartType === "line",
       priceFormat,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
+    volumeSeries.applyOptions({
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    volumeSeries.priceScale().applyOptions({
+      borderColor: theme.grid,
+      scaleMargins: { top: 0.08, bottom: 0 },
     });
 
     const { candles, volumes, line } = marketKlinesToChartSeries(

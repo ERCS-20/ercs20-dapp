@@ -349,7 +349,6 @@ export const en = {
     chartChange: "Change",
     chartAmplitude: "Amplitude",
     chartVol: "Vol({symbol})",
-    chartCount: "Count",
     selectPair: "Select pair",
     invalidAmount: "Enter a valid amount",
     invalidPrice: "Enter a valid price",

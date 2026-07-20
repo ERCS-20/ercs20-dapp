@@ -27,7 +27,12 @@ export const publicEnv = {
   /** Block explorer base URL, e.g. `https://explorer.testnet.arc.network`. */
   explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL ?? "",
   /** Global REST prefix, e.g. `/api/v1`. Overridable via env. */
-  apiPathPrefix: process.env.NEXT_PUBLIC_API_PATH_PREFIX ?? "/api/v1",
+  apiPathPrefix: process.env.NEXT_PUBLIC_API_PATH_PREFIX ?? "",
+  /**
+   * Spot market WebSocket (native), e.g. `ws://127.0.0.1:8610/ws/market`.
+   * Empty → live market WS disabled.
+   */
+  spotMarketWsUrl: process.env.NEXT_PUBLIC_SPOT_MARKET_WS_URL ?? "",
 } as const;
 
 /** Default ERC-20 / spot amount decimals (`NEXT_PUBLIC_DEFAULT_DECIMALS`, default 18). */
@@ -45,6 +50,11 @@ export function getApiPathPrefix(): string {
   if (!raw) return "";
   const withLeading = raw.startsWith("/") ? raw : `/${raw}`;
   return withLeading.replace(/\/$/, "");
+}
+
+/** Spot market WS URL, or empty when unset. */
+export function getSpotMarketWsUrl(): string {
+  return publicEnv.spotMarketWsUrl.trim().replace(/\/$/, "");
 }
 
 export function getExplorerTxUrl(txHash: string): string | null {

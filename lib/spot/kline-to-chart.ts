@@ -8,6 +8,7 @@ import type {
 import { enginePriceToNumber } from "@/lib/spot/engine-price-decimal";
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
+import { utcSecondsToLocalChartTime } from "@/lib/utils/format/datetime";
 import type { MarketKlineRsp } from "@/services/spot/market/types";
 
 function baseVolumeToNumber(raw: ApiBigInt): number {
@@ -37,7 +38,10 @@ export function marketKlinesToChartSeries(
   let prevTime: number | null = null;
 
   for (const bar of sorted) {
-    const time = Math.floor(bar.openTime / 1000) as UTCTimestamp;
+    // Data is UTC; shift so chart axis shows browser local time.
+    const time = utcSecondsToLocalChartTime(
+      Math.floor(bar.openTime / 1000)
+    ) as UTCTimestamp;
     // Same second (duplicate openTime or ms→s collision): keep the later bar.
     if (prevTime === time) {
       candles.pop();

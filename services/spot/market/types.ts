@@ -64,6 +64,14 @@ export type MarketKlineRsp = {
   closedBar: boolean;
 };
 
+/** Mirrors `exchange.orbix.spot.market.store.dto.MarketKlineCurrentDayRsp`. */
+export type MarketKlineCurrentDayRsp = {
+  /** Yesterday close (UTC-0 previous day's D1 close). */
+  prevClose: ApiBigInt;
+  /** Today D1 bar (may be null if no data). */
+  current: MarketKlineRsp | null;
+};
+
 /** Mirrors `exchange.orbix.spot.components.market.entity.MarketPriceAndQuantity`. */
 export type MarketPriceAndQuantity = {
   price: number;
@@ -93,6 +101,49 @@ export type MarketTrade = {
 
 /** Mirrors `exchange.orbix.spot.market.store.dto.TradeListRsp`. */
 export type MarketTradeListRsp = {
+  /** Matching-engine trade sequence at snapshot time (same space as WS envelope). */
+  sequence: number;
   trades: (MarketTrade | null)[];
-  reverseFromIndex: number;
+  /**
+   * Ring cursor for REST snapshots. After WS merges, may be `null` —
+   * then `trades` is a dense newest-first list.
+   */
+  reverseFromIndex: number | null;
+};
+
+/** WS channel names (`spot-market-ws`). */
+export type MarketWsChannel = "kline" | "orderbook" | "trade";
+
+/** Client → server control frame. */
+export type MarketWsClientMessage = {
+  op: "ping" | "subscribe" | "unsubscribe";
+  channel?: MarketWsChannel;
+  pairId?: number;
+  interval?: string;
+};
+
+/** Server control: pong / error. */
+export type MarketWsControlMessage = {
+  op: "pong" | "error";
+  code?: string;
+  message?: string;
+};
+
+/** Server → client market push envelope (no `type` field). */
+export type MarketWsPushMessage = {
+  channel: MarketWsChannel;
+  pairId: number;
+  sequence: number;
+  data: unknown;
+};
+
+export type MarketWsTradePushMessage = MarketWsPushMessage & {
+  channel: "trade";
+  data: MarketTrade[];
+};
+
+/** WS `orderbook` data — changed price levels only (absolute qty; 0 = delete). */
+export type MarketWsOrderBookDiff = {
+  bids?: MarketPriceAndQuantity[];
+  asks?: MarketPriceAndQuantity[];
 };

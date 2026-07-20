@@ -345,7 +345,6 @@ export const zhTW = {
     chartChange: "漲跌幅",
     chartAmplitude: "振幅",
     chartVol: "Vol({symbol})",
-    chartCount: "Count",
     selectPair: "選擇交易對",
     invalidAmount: "請輸入有效數量",
     invalidPrice: "請輸入有效價格",
