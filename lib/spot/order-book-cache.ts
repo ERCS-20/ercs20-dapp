@@ -67,6 +67,20 @@ export class OrderBookSideCache {
     return out;
   }
 
+  /**
+   * UI row order: bids best-first (unchanged); asks high→low with best ask last
+   * (nearest spread). No extra array allocation.
+   */
+  displayTop(depth: number): { price: number; quantity: bigint }[] {
+    const rows = this.top(depth);
+    if (!this.ascending || rows.length <= 1) return rows;
+    const out: { price: number; quantity: bigint }[] = new Array(rows.length);
+    for (let i = 0; i < rows.length; i++) {
+      out[i] = rows[rows.length - 1 - i];
+    }
+    return out;
+  }
+
   clear() {
     this.levels.clear();
     this.sortedPrices = [];

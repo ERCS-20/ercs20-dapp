@@ -32,7 +32,7 @@ function readDisplayLevels(
 ) {
   return {
     bids: levelsToDisplay(cache.bids.top(depth), enginePriceDecimal),
-    asks: levelsToDisplay(cache.asks.top(depth), enginePriceDecimal),
+    asks: levelsToDisplay(cache.asks.displayTop(depth), enginePriceDecimal),
   };
 }
 

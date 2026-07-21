@@ -39,7 +39,7 @@ import {
 } from "@/lib/contracts/global-spot-vault";
 import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import { formatBalance } from "@/lib/utils/format/balance";
+import { formatBalance, formatGroupedDecimal } from "@/lib/utils/format/balance";
 import { useErcs20Pagination } from "@/services/chain/hooks";
 import type { Ercs20Rsp } from "@/services/chain/types";
 import { useUserBalance } from "@/services/spot/accounts/hooks";
@@ -392,7 +392,7 @@ export function ProfileDepositView() {
     !approveDialogOpen;
 
   const displaySymbol = selectedToken?.symbol ?? "—";
-  const approveAmountLabel = amount.trim() || "0";
+  const approveAmountLabel = formatGroupedDecimal(amount.trim() || "0");
 
   return (
     <>

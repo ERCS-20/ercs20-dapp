@@ -19,12 +19,11 @@ import {
   DEFAULT_CHART_VIEW,
   type ChartView,
 } from "@/lib/spot/chart-interval";
-import { calcOpenCloseChange } from "@/lib/spot/market-stats";
 import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
-import { useKlineCurrentDay } from "@/services/spot/market/hooks";
+import { useSpotTickerStats } from "@/services/spot/market/hooks";
 import { usePairByCode } from "@/services/spot/orders/hooks";
 
 type MobilePanel = "chart" | "book" | "trade" | "orders";
@@ -81,23 +80,11 @@ export function SpotView({
   const enginePriceDecimal = pairRsp?.enginePriceDecimal;
   const pairReady = Boolean(pairRsp);
 
-  const { data: kline } = useKlineCurrentDay(pairId, { enabled: pairId != null });
-
-  const marketStats = useMemo(() => {
-    if (!kline || enginePriceDecimal == null) {
-      return { lastPrice: 0, change24hPct: 0 };
-    }
-    const current = kline.current;
-    if (!current) {
-      return { lastPrice: 0, change24hPct: 0 };
-    }
-    const { lastPrice, change24hPct } = calcOpenCloseChange(
-      kline.prevClose,
-      current.close,
-      enginePriceDecimal
-    );
-    return { lastPrice, change24hPct };
-  }, [kline, enginePriceDecimal]);
+  const { stats: marketStats, isLoading: tickerLoading } = useSpotTickerStats(
+    pairId,
+    enginePriceDecimal,
+    { enabled: pairId != null }
+  );
 
   /** SSR/hydration-safe default; restore from localStorage before paint. */
   const [chartView, setChartView] = useState<ChartView>(DEFAULT_CHART_VIEW);
@@ -185,6 +172,8 @@ export function SpotView({
         pairId={pairId}
         enginePriceDecimal={enginePriceDecimal}
         onPairChange={handlePairChange}
+        stats={marketStats}
+        statsLoading={tickerLoading}
         className="lg:hidden"
       />
 
@@ -223,6 +212,8 @@ export function SpotView({
                   enginePriceDecimal={enginePriceDecimal}
                   onPairChange={handlePairChange}
                   hidePairSelectorOnWide
+                  stats={marketStats}
+                  statsLoading={tickerLoading}
                   className="shrink-0 rounded-none border-x-0 border-t-0"
                 />
                 <SpotChartPanel
@@ -256,7 +247,7 @@ export function SpotView({
             onQuantityChange={setQuantity}
             onLevelClick={handleLevelClick}
             onOrderPlaced={handleOrderPlaced}
-            className="h-full min-h-0 w-[min(820px,38%)] shrink-0 [&_section]:rounded-none"
+            className="h-full min-h-0 w-[min(820px,32%)] shrink-0 [&_section]:rounded-none"
           />
         </div>
       </div>
@@ -291,7 +282,7 @@ export function SpotView({
               pairId={pairId}
               enginePriceDecimal={enginePriceDecimal}
               pair={pair}
-              className="min-h-[200px]"
+              className="h-[240px] max-h-[40vh] shrink-0"
             />
           </div>
         )}

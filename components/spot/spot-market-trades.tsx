@@ -2,7 +2,10 @@
 
 import { useMemo } from "react";
 
-import { marketTradesToSpotTrades } from "@/lib/spot/market-trades-parse";
+import {
+  MARKET_TRADES_MAX,
+  marketTradesToSpotTrades,
+} from "@/lib/spot/market-trades-parse";
 import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { SpotPair } from "@/lib/spot/types";
 import { formatLocalTime } from "@/lib/utils/format/datetime";
@@ -29,7 +32,7 @@ export function SpotMarketTrades({
   const trades = useMemo(
     () =>
       enginePriceDecimal != null
-        ? marketTradesToSpotTrades(data, enginePriceDecimal)
+        ? marketTradesToSpotTrades(data, enginePriceDecimal, MARKET_TRADES_MAX)
         : [],
     [data, enginePriceDecimal]
   );
@@ -52,7 +55,7 @@ export function SpotMarketTrades({
         <span className="text-right">{t("spot.time")}</span>
       </div>
 
-      <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto px-1 pb-2 sm:px-2">
+      <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-2 sm:px-2">
         {isLoading ? (
           <p className="text-muted-foreground py-6 text-center text-xs">{t("swap.loading")}</p>
         ) : (

@@ -35,14 +35,25 @@ function padBids(rows: LevelWithTotal[], depth: number): LevelWithTotal[] {
   ];
 }
 
-function withTotals(levels: OrderBookLevel[], fromEnd: boolean): LevelWithTotal[] {
+/** Cumulative size from spread outward; `levels[0]` is farthest from mid. */
+function withTotalsFromSpread(levels: OrderBookLevel[]): LevelWithTotal[] {
+  const n = levels.length;
+  if (n === 0) return [];
+  const out: LevelWithTotal[] = new Array(n);
   let acc = 0;
-  const ordered = fromEnd ? [...levels].reverse() : levels;
-  const mapped = ordered.map((row) => {
+  for (let i = n - 1; i >= 0; i--) {
+    acc += levels[i].size;
+    out[i] = { ...levels[i], total: acc };
+  }
+  return out;
+}
+
+function withTotals(levels: OrderBookLevel[]): LevelWithTotal[] {
+  let acc = 0;
+  return levels.map((row) => {
     acc += row.size;
     return { ...row, total: acc };
   });
-  return fromEnd ? mapped.reverse() : mapped;
 }
 
 export const ORDER_BOOK_DEPTH = ORDER_BOOK_DISPLAY_DEPTH;
@@ -68,11 +79,11 @@ export function SpotOrderBook({
   const { bids, asks, isLoading } = useCachedOrderBook(pairId, enginePriceDecimal);
 
   const askRows = useMemo(
-    () => padAsks(withTotals(asks, true).slice(-ORDER_BOOK_DEPTH), ORDER_BOOK_DEPTH),
+    () => padAsks(withTotalsFromSpread(asks), ORDER_BOOK_DEPTH),
     [asks]
   );
   const bidRows = useMemo(
-    () => padBids(withTotals(bids, false).slice(0, ORDER_BOOK_DEPTH), ORDER_BOOK_DEPTH),
+    () => padBids(withTotals(bids), ORDER_BOOK_DEPTH),
     [bids]
   );
 

@@ -7,6 +7,13 @@ const BASE_VOLUME_DECIMALS = 18;
 const ORDER_SIDE_BUY = 1;
 
 /**
+ * Max trades kept in the React Query cache (and shown in the market-trades panel).
+ * Newest first; older rows are dropped on WS merge — dense list + slice, not a ring.
+ * (REST may still arrive as a small ring; after the first WS merge we densify.)
+ */
+export const MARKET_TRADES_MAX = 200;
+
+/**
  * Walk ring buffer from {@link MarketTradeListRsp.reverseFromIndex} backwards
  * (newest first), wrapping at 0 → length-1 so a cursor mid-buffer still yields
  * the full filled ring (e.g. reverseFromIndex=1 with 16 slots → 16 rows).
@@ -37,7 +44,7 @@ export function iterMarketTradesNewestFirst(rsp: MarketTradeListRsp): MarketTrad
 export function marketTradesToSpotTrades(
   rsp: MarketTradeListRsp | undefined,
   enginePriceDecimal: number,
-  limit = 50
+  limit = MARKET_TRADES_MAX
 ): SpotMarketTrade[] {
   if (!rsp) return [];
 
@@ -59,13 +66,14 @@ export function marketTradesToSpotTrades(
  * Merge a WS trade batch into a REST list snapshot using envelope `sequence`.
  * Batch is chronological (old→new); result is dense newest-first with
  * `reverseFromIndex: null` for {@link iterMarketTradesNewestFirst}.
+ * Caps at {@link MARKET_TRADES_MAX} (drop oldest).
  * Returns `rsp` unchanged when `sequence <= rsp.sequence`.
  */
 export function appendWsTradesToListRsp(
   rsp: MarketTradeListRsp,
   batch: MarketTrade[],
   sequence: number,
-  limit = 200
+  limit = MARKET_TRADES_MAX
 ): MarketTradeListRsp {
   if (batch.length === 0 || sequence <= rsp.sequence) return rsp;
 

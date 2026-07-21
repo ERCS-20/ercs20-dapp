@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 
 import { SpotFavoriteButton } from "@/components/spot/spot-favorite-button";
@@ -17,12 +17,12 @@ import {
   formatPercentChange,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import { calcOpenCloseChange, marketKlineToStats } from "@/lib/spot/market-stats";
+import type { SpotTickerStats } from "@/lib/spot/market-ticker-stats";
 import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/spot/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { SpotPair } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";
-import { useKlineCurrentDay, useMarketPairsPagination } from "@/services/spot/market/hooks";
+import { useMarketPairsPagination, useSpotTickerStats } from "@/services/spot/market/hooks";
 import { useI18n } from "@/providers/i18n-provider";
 
 function SpotBaseIcon({ symbol }: { symbol: string }) {
@@ -116,6 +116,8 @@ export function SpotToolbar({
   enginePriceDecimal,
   onPairChange,
   hidePairSelectorOnWide = false,
+  stats: statsProp,
+  statsLoading: statsLoadingProp,
   className,
 }: {
   pair: SpotPair;
@@ -123,45 +125,18 @@ export function SpotToolbar({
   enginePriceDecimal: number | undefined;
   onPairChange: (path: string) => void;
   hidePairSelectorOnWide?: boolean;
+  /** When set (e.g. from `SpotView`), skip an extra ticker subscription. */
+  stats?: SpotTickerStats;
+  statsLoading?: boolean;
   className?: string;
 }) {
   const { t } = useI18n();
-  const { data: kline, isLoading } = useKlineCurrentDay(pairId);
-
-  const stats = useMemo(() => {
-    if (!kline || enginePriceDecimal == null) {
-      return {
-        lastPrice: 0,
-        change24hPct: 0,
-        changeAmount: 0,
-        high24h: 0,
-        low24h: 0,
-        volumeBase: 0,
-        volume24h: 0,
-      };
-    }
-    const current = kline.current;
-    if (!current) {
-      return {
-        lastPrice: 0,
-        change24hPct: 0,
-        changeAmount: 0,
-        high24h: 0,
-        low24h: 0,
-        volumeBase: 0,
-        volume24h: 0,
-      };
-    }
-
-    // High/Low/Volume come from today's D1 bar; 24h change is relative to yesterday close.
-    const klineStats = marketKlineToStats(current, enginePriceDecimal);
-    const { change24hPct, changeAmount } = calcOpenCloseChange(
-      kline.prevClose,
-      current.close,
-      enginePriceDecimal
-    );
-    return { ...klineStats, change24hPct, changeAmount };
-  }, [kline, enginePriceDecimal]);
+  const live = useSpotTickerStats(pairId, enginePriceDecimal, {
+    // Parent passes `stats` from SpotView — do not run a second live pipeline here.
+    enabled: statsProp === undefined,
+  });
+  const stats = statsProp ?? live.stats;
+  const isLoading = statsLoadingProp ?? live.isLoading;
 
   const up = stats.change24hPct >= 0;
   const changeTone = up ? "text-brand" : "text-brand-alt";
