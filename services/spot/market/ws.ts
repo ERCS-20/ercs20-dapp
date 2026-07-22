@@ -15,7 +15,7 @@ type SubKey = string;
 
 type SubEntry = {
   channel: MarketWsChannel;
-  pairId: number;
+  pairId?: number;
   interval?: string;
   count: number;
 };
@@ -26,9 +26,10 @@ export type MarketWsMessageHandler = (
 
 function subKey(
   channel: MarketWsChannel,
-  pairId: number,
+  pairId?: number,
   interval?: string
 ): SubKey {
+  if (channel === "pairs") return "pairs";
   return interval ? `${channel}:${pairId}:${interval}` : `${channel}:${pairId}`;
 }
 
@@ -77,8 +78,13 @@ class SpotMarketWsClient {
     };
   }
 
-  subscribe(channel: MarketWsChannel, pairId: number, interval?: string): void {
+  subscribe(channel: MarketWsChannel, pairId?: number, interval?: string): void {
     if (!this.isConfigured()) return;
+    if (channel === "pairs") {
+      // Global channel — no pairId / interval.
+    } else if (pairId == null) {
+      throw new Error(`pairId is required for ${channel} subscribe`);
+    }
     if (channel === "kline" && !interval) {
       throw new Error("interval is required for kline subscribe");
     }
@@ -97,7 +103,7 @@ class SpotMarketWsClient {
 
   unsubscribe(
     channel: MarketWsChannel,
-    pairId: number,
+    pairId?: number,
     interval?: string
   ): void {
     const key = subKey(channel, pairId, interval);
@@ -108,12 +114,13 @@ class SpotMarketWsClient {
     if (existing.count > 0) return;
 
     this.refs.delete(key);
-    this.send({
+    const msg: MarketWsClientMessage = {
       op: "unsubscribe",
       channel,
-      pairId,
+      ...(channel !== "pairs" && pairId != null ? { pairId } : {}),
       ...(interval ? { interval } : {}),
-    });
+    };
+    this.send(msg);
 
     if (this.refs.size === 0) {
       this.close();
@@ -238,15 +245,16 @@ class SpotMarketWsClient {
 
   private sendSubscribe(
     channel: MarketWsChannel,
-    pairId: number,
+    pairId?: number,
     interval?: string
   ): void {
-    this.send({
+    const msg: MarketWsClientMessage = {
       op: "subscribe",
       channel,
-      pairId,
+      ...(channel !== "pairs" && pairId != null ? { pairId } : {}),
       ...(interval ? { interval } : {}),
-    });
+    };
+    this.send(msg);
   }
 
   private send(msg: MarketWsClientMessage): void {

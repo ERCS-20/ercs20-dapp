@@ -10,6 +10,11 @@ import {
   EMPTY_TICKER_STATS,
   type SpotTickerStats,
 } from "@/lib/spot/market-ticker-stats";
+import {
+  applyPairPricesToPagination,
+  applyPairPricesToUserPairs,
+  isMarketWsPairPriceList,
+} from "@/lib/spot/pairs-price-merge";
 import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/spot/kline-merge";
 import {
   getKlineCurrentDay,
@@ -41,6 +46,14 @@ import { spotMarketWs, type MarketWsMessageHandler } from "@/services/spot/marke
 
 export { marketTradesQueryKey } from "@/services/spot/market/trade-ws-bridge";
 
+export function marketPairsPaginationQueryKeyPrefix() {
+  return ["spot", "market", "pairs", "pagination"] as const;
+}
+
+export function marketPairsUserPairsQueryKeyPrefix() {
+  return ["spot", "market", "pairs", "user-pairs"] as const;
+}
+
 export function useMarketPairsPagination(
   req: MarketPairsPaginationReq,
   options?: { enabled?: boolean; notifyError?: boolean }
@@ -48,7 +61,7 @@ export function useMarketPairsPagination(
   const { enabled = true, notifyError = false } = options ?? {};
 
   return useApiQuery<MarketPairsPaginationRsp>({
-    queryKey: ["spot", "market", "pairs", "pagination", req],
+    queryKey: [...marketPairsPaginationQueryKeyPrefix(), req],
     queryFn: () => paginationMarketPairs(req),
     enabled,
     notifyError,
@@ -65,12 +78,63 @@ export function useMarketUserPairs(
   const ids = pairIds ?? [];
 
   return useApiQuery<MarketPairsRsp>({
-    queryKey: ["spot", "market", "pairs", "user-pairs", ids],
+    queryKey: [...marketPairsUserPairsQueryKeyPrefix(), ids],
     queryFn: () => listMarketUserPairs({ pairIds: ids }),
     enabled: enabled && ids.length > 0,
     notifyError,
     staleTime: 15_000,
   });
+}
+
+/**
+ * After REST pairs pagination: subscribe global `pairs` WS and patch
+ * open/close into pagination + user-pairs React Query caches.
+ */
+export function useMarketPairsWs(options?: { enabled?: boolean }) {
+  const { enabled = true } = options ?? {};
+  const queryClient = useQueryClient();
+  const lastSequenceRef = useRef(-1);
+
+  useEffect(() => {
+    if (!enabled || !spotMarketWs.isConfigured()) return;
+
+    lastSequenceRef.current = -1;
+
+    const onMessage: MarketWsMessageHandler = (msg) => {
+      if (!("channel" in msg) || msg.channel !== "pairs") return;
+      if (!isMarketWsPairPriceList(msg.data)) return;
+
+      // sequence=-1: day-roll / add — always apply. Else drop stale batches.
+      if (
+        msg.sequence >= 0 &&
+        lastSequenceRef.current >= 0 &&
+        msg.sequence < lastSequenceRef.current
+      ) {
+        return;
+      }
+      if (msg.sequence >= 0) {
+        lastSequenceRef.current = msg.sequence;
+      }
+
+      const updates = msg.data;
+      queryClient.setQueriesData<MarketPairsPaginationRsp>(
+        { queryKey: marketPairsPaginationQueryKeyPrefix() },
+        (old) => applyPairPricesToPagination(old, updates)
+      );
+      queryClient.setQueriesData<MarketPairsRsp>(
+        { queryKey: marketPairsUserPairsQueryKeyPrefix() },
+        (old) => applyPairPricesToUserPairs(old, updates)
+      );
+    };
+
+    const removeHandler = spotMarketWs.addHandler(onMessage);
+    spotMarketWs.subscribe("pairs");
+
+    return () => {
+      removeHandler();
+      spotMarketWs.unsubscribe("pairs");
+    };
+  }, [enabled, queryClient]);
 }
 
 export function useKlineCurrentDay(

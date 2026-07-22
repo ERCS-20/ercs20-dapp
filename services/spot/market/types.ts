@@ -112,12 +112,13 @@ export type MarketTradeListRsp = {
 };
 
 /** WS channel names (`spot-market-ws`). */
-export type MarketWsChannel = "kline" | "orderbook" | "trade";
+export type MarketWsChannel = "kline" | "orderbook" | "trade" | "pairs";
 
 /** Client → server control frame. */
 export type MarketWsClientMessage = {
   op: "ping" | "subscribe" | "unsubscribe";
   channel?: MarketWsChannel;
+  /** Required for kline / orderbook / trade; omit for `pairs`. */
   pairId?: number;
   interval?: string;
 };
@@ -132,6 +133,7 @@ export type MarketWsControlMessage = {
 /** Server → client market push envelope (no `type` field). */
 export type MarketWsPushMessage = {
   channel: MarketWsChannel;
+  /** Business pairId; for `pairs` channel this is always `0` (unused). */
   pairId: number;
   sequence: number;
   data: unknown;
@@ -140,6 +142,18 @@ export type MarketWsPushMessage = {
 export type MarketWsTradePushMessage = MarketWsPushMessage & {
   channel: "trade";
   data: MarketTrade[];
+};
+
+/** WS `pairs` data item — list open/close only (涨跌幅前端自算). */
+export type MarketWsPairPrice = {
+  pairId: number;
+  open: ApiBigInt;
+  close: ApiBigInt;
+};
+
+export type MarketWsPairsPushMessage = MarketWsPushMessage & {
+  channel: "pairs";
+  data: MarketWsPairPrice[];
 };
 
 /** WS `orderbook` data — changed price levels only (absolute qty; 0 = delete). */

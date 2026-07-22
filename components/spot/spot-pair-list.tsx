@@ -19,6 +19,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 import {
   useMarketPairsPagination,
+  useMarketPairsWs,
   useMarketUserPairs,
 } from "@/services/spot/market/hooks";
 import type { MarketPairRsp } from "@/services/spot/market/types";
@@ -220,9 +221,12 @@ export function SpotPairList({
     []
   );
 
-  const { data: allPairsData, isLoading: isAllLoading } =
+  const { data: allPairsData, isLoading: isAllLoading, isSuccess: isAllSuccess } =
     useMarketPairsPagination(paginationReq);
   const allPairs = allPairsData?.pageItems ?? [];
+
+  // REST first screen, then global `pairs` WS (open/close patches).
+  useMarketPairsWs({ enabled: isAllSuccess });
 
   const { data: userPairsData, isLoading: isUserPairsLoading } = useUserPairs({
     enabled: isAuthenticated,
