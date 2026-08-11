@@ -3,7 +3,7 @@ export const zhTW = {
   nav: {
     swap: "兌換",
     spot: "現貨",
-    futures: "合約",
+    perps: "合約",
     pools: "流動性池",
     ercs20: "ERCS-20",
   },
@@ -43,7 +43,9 @@ export const zhTW = {
   profile: {
     title: "帳戶",
     dashboard: "Dashboard",
+    tokenLaunch: "代幣發行",
     spot: "現貨",
+    perps: "合約",
     spotTitle: "現貨交易",
     spotDesc: "查看委託、歷史成交，並前往現貨市場進行交易。",
     goToSpot: "進入現貨",
@@ -56,6 +58,10 @@ export const zhTW = {
     spotWithdrawHistory: "提現",
     spotDepositHistoryEmpty: "暫無充值紀錄。",
     spotWithdrawHistoryEmpty: "暫無提現紀錄。",
+    perpsAccountList: "帳戶列表",
+    perpsDepositHistory: "充值",
+    perpsDepositHistoryEmpty: "暫無充值紀錄。",
+    emptyPerpsBalances: "暫無合約餘額",
     wallet: "錢包",
     address: "地址",
     network: "網路",
@@ -84,8 +90,18 @@ export const zhTW = {
     withdraw: "提現",
     depositCardDesc: "將加密貨幣充值至現貨帳戶",
     withdrawCardDesc: "提現至已連接的錢包",
+    perpsDepositCardDesc: "將保證金充值至合約帳戶",
+    perpsWithdrawCardDesc: "將保證金提現至已連接的錢包",
+    perpsAccounts: "合約帳戶",
+    perpsDepositDialogDesc: "填寫金額，在錢包中確認鏈上充值 ARC 原生 USDC。",
+    perpsDepositVaultNotConfigured:
+      "未配置合約 Vault，請設定 NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS。",
+    deployErcs20: "Deploy ERCS-20",
+    deployErcs20CardDesc: "在鏈上建立並掌控你的 ERCS-20 代幣",
     applyListSpot: "申請上架 (Spot)",
     applyListSpotCardDesc: "將你的 ERCS-20 代幣註冊為現貨交易對",
+    applyListPerps: "申請上架 (Perps)",
+    applyListPerpsCardDesc: "將你的 ERCS-20 代幣註冊為合約交易對",
     applyListSpotDesc: "選擇代幣並在錢包中確認鏈上上架。你必須是該代幣的 owner。",
     confirmApplyList: "申請上架",
     applyListSubmitted: "{symbol} 上架交易已提交。",
@@ -411,7 +427,7 @@ Orbix 與 OBX（說明 / 風險揭露）
     spot: {
       title: "現貨",
     },
-    futures: {
+    perps: {
       title: "合約",
     },
     pools: {

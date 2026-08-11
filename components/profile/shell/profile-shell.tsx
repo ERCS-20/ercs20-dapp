@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import {
+  CandlestickChartIcon,
   DownloadIcon,
   LayoutDashboardIcon,
   LineChartIcon,
@@ -25,19 +26,67 @@ export const profileDetailSectionClass =
 
 export type { ProfileSection };
 
-type SpotNavItem = {
+type ProfileNavItem = {
   section: ProfileSection;
   href: string;
   label: string;
   icon: typeof WalletIcon;
 };
 
+function ProfileNavGroup({
+  title,
+  titleIcon: TitleIcon,
+  active,
+  items,
+  section,
+}: {
+  title: string;
+  titleIcon: typeof LineChartIcon;
+  active: boolean;
+  items: ProfileNavItem[];
+  section: ProfileSection;
+}) {
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      <div
+        className={cn(
+          "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium",
+          active ? "text-foreground" : "text-muted-foreground"
+        )}
+      >
+        <TitleIcon className="size-4 shrink-0" aria-hidden />
+        {title}
+      </div>
+      {items.map(({ section: itemSection, href, label, icon: Icon }) => {
+        const itemActive = section === itemSection;
+        return (
+          <Link
+            key={itemSection}
+            href={href}
+            aria-current={itemActive ? "page" : undefined}
+            className={cn(
+              "inline-flex w-full items-center gap-2 rounded-xl py-2.5 pr-3 pl-6 text-left text-sm font-medium transition-colors",
+              "hover:bg-muted/60",
+              itemActive
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="size-4 shrink-0" aria-hidden />
+            {label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProfileShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const section = pathnameToProfileSection(pathname);
 
-  const spotSubItems: SpotNavItem[] = [
+  const spotSubItems: ProfileNavItem[] = [
     {
       section: "spot-accounts",
       href: ProfileRoutes.accounts,
@@ -58,7 +107,23 @@ export function ProfileShell({ children }: { children: ReactNode }) {
     },
   ];
 
+  const perpsSubItems: ProfileNavItem[] = [
+    {
+      section: "perps-accounts",
+      href: ProfileRoutes.perpsAccounts,
+      label: t("profile.perpsAccountList"),
+      icon: WalletIcon,
+    },
+    {
+      section: "perps-deposits",
+      href: ProfileRoutes.perpsDeposits,
+      label: t("profile.perpsDepositHistory"),
+      icon: DownloadIcon,
+    },
+  ];
+
   const isSpotSection = section.startsWith("spot-");
+  const isPerpsSection = section.startsWith("perps-");
 
   return (
     <PageShell className={profilePageShellClass}>
@@ -82,37 +147,21 @@ export function ProfileShell({ children }: { children: ReactNode }) {
             {t("profile.dashboard")}
           </Link>
 
-          <div className="mt-1 flex flex-col gap-0.5">
-            <div
-              className={cn(
-                "inline-flex items-center gap-2 px-3 py-2 text-sm font-medium",
-                isSpotSection ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              <LineChartIcon className="size-4 shrink-0" aria-hidden />
-              {t("profile.spot")}
-            </div>
-            {spotSubItems.map(({ section: itemSection, href, label, icon: Icon }) => {
-              const active = section === itemSection;
-              return (
-                <Link
-                  key={itemSection}
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "inline-flex w-full items-center gap-2 rounded-xl py-2.5 pr-3 pl-6 text-left text-sm font-medium transition-colors",
-                    "hover:bg-muted/60",
-                    active
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" aria-hidden />
-                  {label}
-                </Link>
-              );
-            })}
-          </div>
+          <ProfileNavGroup
+            title={t("profile.perps")}
+            titleIcon={CandlestickChartIcon}
+            active={isPerpsSection}
+            items={perpsSubItems}
+            section={section}
+          />
+
+          <ProfileNavGroup
+            title={t("profile.spot")}
+            titleIcon={LineChartIcon}
+            active={isSpotSection}
+            items={spotSubItems}
+            section={section}
+          />
         </nav>
 
         <div className="flex min-h-0 min-w-0 flex-col lg:flex-[8]">

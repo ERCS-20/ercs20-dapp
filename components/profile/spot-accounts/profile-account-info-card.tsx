@@ -6,9 +6,17 @@ import { useState } from "react";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { profileTableSectionClass } from "@/lib/profile/table-filters";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import type { UserBalancesRsp } from "@/services/spot/accounts/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
+
+/** Shared balance summary fields for spot / perps account detail cards. */
+export type ProfileAccountBalanceSummary = {
+  symbol: string;
+  tokenAddress: string;
+  availableBalance: string;
+  frozenBalance: string;
+  status: string;
+};
 
 function TokenIcon({ symbol }: { symbol: string }) {
   const [failed, setFailed] = useState(false);
@@ -64,7 +72,7 @@ function statusBadgeClass(status: string): string {
   }
 }
 
-export function ProfileAccountInfoCard({ account }: { account: UserBalancesRsp }) {
+export function ProfileAccountInfoCard({ account }: { account: ProfileAccountBalanceSummary }) {
   const { t } = useI18n();
 
   return (

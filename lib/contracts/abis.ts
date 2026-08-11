@@ -3,6 +3,7 @@ import type { Abi } from "viem";
 import erc20AbiJson from "./abi/ERC20.json";
 import ercs20TokenAbiJson from "./abi/ERCS20.json";
 import ercs20FactoryAbiJson from "./abi/ERCS20Factory.json";
+import globalPerpsVaultAbiJson from "./abi/GlobalPerpsVault.json";
 import globalSpotVaultAbiJson from "./abi/GlobalSpotVault.json";
 import spotPairFactoryAbiJson from "./abi/SpotPairFactory.json";
 
@@ -17,6 +18,9 @@ export const ercs20FactoryAbi = ercs20FactoryAbiJson as Abi;
 
 /** GlobalSpotVault — sync from `lib/contracts/abi/GlobalSpotVault.json`. */
 export const globalSpotVaultAbi = globalSpotVaultAbiJson as Abi;
+
+/** GlobalPerpsVault — sync from `lib/contracts/abi/GlobalPerpsVault.json`. */
+export const globalPerpsVaultAbi = globalPerpsVaultAbiJson as Abi;
 
 /** SpotPairFactory — sync from `lib/contracts/abi/SpotPairFactory.json`. */
 export const spotPairFactoryAbi = spotPairFactoryAbiJson as Abi;

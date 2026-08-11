@@ -23,6 +23,7 @@ import type { HomeBlock } from "@/lib/content/home-contract";
 import { HeroVisual } from "@/components/home/hero-visual";
 import { cn } from "@/lib/utils";
 import { PageShell } from "@/components/layout/page-shell";
+import { ProfileRoutes } from "@/lib/profile/routes";
 import { useI18n } from "@/providers/i18n-provider";
 
 /** Comfortable reading width inside a wider protocol column (cards/quotes span full). */
@@ -428,7 +429,7 @@ export function HomeView() {
             <AppleHeroLink href="/swap" variant="primary" className="w-full sm:w-auto">
               {t("home.ctaSwap")}
             </AppleHeroLink>
-            <AppleHeroLink href="/ercs-20" variant="secondary" className="w-full sm:w-auto">
+            <AppleHeroLink href={ProfileRoutes.deployErcs20} variant="secondary" className="w-full sm:w-auto">
               {t("home.ctaErcs20")}
             </AppleHeroLink>
           </div>

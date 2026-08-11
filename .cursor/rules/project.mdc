@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Project
 
-ERCS-20 / Orbix — 代币化股权 + 内置 AMM 的 Web3 前端（Phase 1：Swap、Factory；Phase 2：spot/futures/pools 占位）。
+ERCS-20 / Orbix — 代币化股权 + 内置 AMM 的 Web3 前端（Phase 1：Swap、Factory；Phase 2：spot/perps/pools 占位）。
 
 Tech stack: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui, wagmi, viem, RainbowKit, TanStack Query, next-themes, sonner.
 

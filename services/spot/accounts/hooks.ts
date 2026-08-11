@@ -1,13 +1,19 @@
 "use client";
 
-import { useApiQuery } from "@/lib/api/hooks";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import {
+  addUserPair,
+  deleteUserPair,
   getUserBalance,
   getWithdrawalDetail,
   listUserBalances,
+  listUserPairs,
   paginationAccountLedger,
   paginationDeposits,
   paginationWithdrawals,
+  reorderUserPairs,
 } from "@/services/spot/accounts/api";
 import type {
   AccountLedgerPaginationReq,
@@ -15,6 +21,10 @@ import type {
   DepositsPaginationReq,
   DepositsPaginationRsp,
   UserBalancesRsp,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
   WithdrawalsPaginationReq,
   WithdrawalsPaginationRsp,
   WithdrawalsRsp,
@@ -111,5 +121,67 @@ export function useAccountLedgerPagination(
     enabled: enabled && Boolean(req.condition?.tokenAddress),
     notifyError,
     staleTime: 30_000,
+  });
+}
+
+export function userPairsQueryKey() {
+  return ["spot", "accounts", "user-pairs"] as const;
+}
+
+/** POST /accounts/userPairs/pairs — favorite / pinned pairs for the signed-in user. */
+export function useUserPairs(options?: {
+  enabled?: boolean;
+  notifyError?: boolean;
+}) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<UserPairsRsp>({
+    queryKey: userPairsQueryKey(),
+    queryFn: () => listUserPairs(),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function useAddUserPair() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<UserPairsRsp, Error, UserPairAddReq>({
+    mutationFn: (req) => addUserPair(req),
+    onSuccess: (data) => {
+      queryClient.setQueryData(userPairsQueryKey(), data);
+      void queryClient.invalidateQueries({
+        queryKey: ["spot", "market", "pairs", "user-pairs"],
+      });
+    },
+  });
+}
+
+export function useDeleteUserPair() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<UserPairsRsp, Error, UserPairDeleteReq>({
+    mutationFn: (req) => deleteUserPair(req),
+    onSuccess: (data) => {
+      queryClient.setQueryData(userPairsQueryKey(), data);
+      void queryClient.invalidateQueries({
+        queryKey: ["spot", "market", "pairs", "user-pairs"],
+      });
+    },
+  });
+}
+
+export function useReorderUserPairs() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, UserPairsReorderReq>({
+    mutationFn: (req) => reorderUserPairs(req),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userPairsQueryKey() });
+      void queryClient.invalidateQueries({
+        queryKey: ["spot", "market", "pairs", "user-pairs"],
+      });
+    },
   });
 }

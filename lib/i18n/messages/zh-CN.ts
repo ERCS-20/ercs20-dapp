@@ -3,7 +3,7 @@ export const zhCN = {
   nav: {
     swap: "兑换",
     spot: "现货",
-    futures: "合约",
+    perps: "合约",
     pools: "流动性池",
     ercs20: "ERCS-20",
   },
@@ -43,7 +43,9 @@ export const zhCN = {
   profile: {
     title: "账户",
     dashboard: "Dashboard",
+    tokenLaunch: "代币发行",
     spot: "现货",
+    perps: "合约",
     spotTitle: "现货交易",
     spotDesc: "查看委托、历史成交，并前往现货市场进行交易。",
     goToSpot: "进入现货",
@@ -56,6 +58,10 @@ export const zhCN = {
     spotWithdrawHistory: "提现",
     spotDepositHistoryEmpty: "暂无充值记录。",
     spotWithdrawHistoryEmpty: "暂无提现记录。",
+    perpsAccountList: "账户列表",
+    perpsDepositHistory: "充值",
+    perpsDepositHistoryEmpty: "暂无充值记录。",
+    emptyPerpsBalances: "暂无合约余额",
     wallet: "钱包",
     address: "地址",
     network: "网络",
@@ -84,8 +90,18 @@ export const zhCN = {
     withdraw: "提现",
     depositCardDesc: "将加密货币充值至现货账户",
     withdrawCardDesc: "提现至已连接的钱包",
+    perpsDepositCardDesc: "将保证金充值至合约账户",
+    perpsWithdrawCardDesc: "将保证金提现至已连接的钱包",
+    perpsAccounts: "合约账户",
+    perpsDepositDialogDesc: "填写金额，在钱包中确认链上充值 ARC 原生 USDC。",
+    perpsDepositVaultNotConfigured:
+      "未配置合约 Vault，请设置 NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS。",
+    deployErcs20: "Deploy ERCS-20",
+    deployErcs20CardDesc: "在链上创建并掌控你的 ERCS-20 代币",
     applyListSpot: "申请上架 (Spot)",
     applyListSpotCardDesc: "将你的 ERCS-20 代币注册为现货交易对",
+    applyListPerps: "申请上架 (Perps)",
+    applyListPerpsCardDesc: "将你的 ERCS-20 代币注册为合约交易对",
     applyListSpotDesc: "选择代币并在钱包中确认链上上架。你必须是该代币的 owner。",
     confirmApplyList: "申请上架",
     applyListSubmitted: "{symbol} 上架交易已提交。",
@@ -411,7 +427,7 @@ Orbix 与 OBX（说明 / 风险披露）
     spot: {
       title: "现货",
     },
-    futures: {
+    perps: {
       title: "合约",
     },
     pools: {

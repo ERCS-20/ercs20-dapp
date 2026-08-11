@@ -3,7 +3,7 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { useI18n } from "@/providers/i18n-provider";
 
-type Phase2Key = "spot" | "futures" | "pools";
+type Phase2Key = "spot" | "perps" | "pools";
 
 export function RoadmapPlaceholder({ page }: { page: Phase2Key }) {
   const { t } = useI18n();

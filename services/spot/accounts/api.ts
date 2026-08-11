@@ -8,6 +8,10 @@ import type {
   DepositsPaginationRsp,
   UserBalancesReq,
   UserBalancesRsp,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
   WithdrawalsDetailReq,
   WithdrawalsPaginationReq,
   WithdrawalsPaginationRsp,
@@ -60,5 +64,31 @@ export function paginationAccountLedger(req: AccountLedgerPaginationReq) {
       ...(req.condition?.bizType ? { bizType: req.condition.bizType } : {}),
       ...(req.condition?.bizSubType ? { bizSubType: req.condition.bizSubType } : {}),
     },
+  });
+}
+
+/** POST /accounts/userPairs/pairs — `userId` from gateway JWT headers. */
+export function listUserPairs() {
+  return request.post<UserPairsRsp>(SpotAccountsApi.userPairs);
+}
+
+/** POST /accounts/userPairs/add — `userId` from gateway JWT headers. */
+export function addUserPair(req: UserPairAddReq) {
+  return request.post<UserPairsRsp>(SpotAccountsApi.userPairsAdd, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /accounts/userPairs/delete — `userId` from gateway JWT headers. */
+export function deleteUserPair(req: UserPairDeleteReq) {
+  return request.post<UserPairsRsp>(SpotAccountsApi.userPairsDelete, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /accounts/userPairs/reorder — `userId` from gateway JWT headers. */
+export function reorderUserPairs(req: UserPairsReorderReq) {
+  return request.post<void>(SpotAccountsApi.userPairsReorder, {
+    pairIds: req.pairIds,
   });
 }

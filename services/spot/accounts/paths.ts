@@ -1,9 +1,13 @@
-/** Spot user balances REST path constants. */
+/** Spot accounts REST path constants. */
 export const SpotAccountsApi = {
-  userBalance: "/users/user-balances/balance",
-  userBalancesList: "/users/user-balances/list",
-  depositsPagination: "/users/deposits/pagination",
-  withdrawalsPagination: "/users/withdrawals/pagination",
-  withdrawalsDetail: "/users/withdrawals/detail",
-  accountLedgerPagination: "/users/accountLedger/pagination",
+  userBalance: "/spot/accounts/user-balances/balance",
+  userBalancesList: "/spot/accounts/user-balances/list",
+  depositsPagination: "/spot/accounts/deposits/pagination",
+  withdrawalsPagination: "/spot/accounts/withdrawals/pagination",
+  withdrawalsDetail: "/spot/accounts/withdrawals/detail",
+  accountLedgerPagination: "/spot/accounts/accountLedger/pagination",
+  userPairs: "/spot/accounts/userPairs/pairs",
+  userPairsAdd: "/spot/accounts/userPairs/add",
+  userPairsDelete: "/spot/accounts/userPairs/delete",
+  userPairsReorder: "/spot/accounts/userPairs/reorder",
 } as const;

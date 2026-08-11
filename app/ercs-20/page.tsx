@@ -1,5 +1,7 @@
-import { FactoryCreateCard } from "@/components/ercs20/factory-create-card";
+import { redirect } from "next/navigation";
+
+import { ProfileRoutes } from "@/lib/profile/routes";
 
 export default function Ercs20Page() {
-  return <FactoryCreateCard />;
+  redirect(ProfileRoutes.deployErcs20);
 }

@@ -16,6 +16,14 @@ export const publicEnv = {
     "",
   defaultErcs20Token: process.env.NEXT_PUBLIC_DEFAULT_ERCS20_TOKEN ?? "",
   spotAssetVaultAddress: process.env.NEXT_PUBLIC_SPOT_ASSET_VAULT_ADDRESS ?? "",
+  perpsAssetVaultAddress: process.env.NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS ?? "",
+  /**
+   * Perps ledger token for ARC native USDC (must match `perps.contract.native-token.address`).
+   * Default: `0xeeee…eeee`.
+   */
+  perpsNativeTokenAddress:
+    process.env.NEXT_PUBLIC_PERPS_NATIVE_TOKEN_ADDRESS?.trim() ||
+    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
   spotPairFactoryAddress: process.env.NEXT_PUBLIC_SPOT_PAIR_FACTORY ?? "",
   spotExchangeAddress: process.env.NEXT_PUBLIC_SPOT_EXCHANGE_ADDRESS ?? "",
   spotDefaultBaseTokenSymbol:

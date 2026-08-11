@@ -44,9 +44,8 @@ import { useI18n } from "@/providers/i18n-provider";
 const navPaths = [
   { href: "/swap", key: "nav.swap" },
   { href: "/spot", key: "nav.spot" },
-  { href: "/futures", key: "nav.futures" },
+  { href: "/perps", key: "nav.perps" },
   { href: "/pools", key: "nav.pools" },
-  { href: "/ercs-20", key: "nav.ercs20" },
 ] as const;
 
 export function AppHeader() {

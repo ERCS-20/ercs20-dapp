@@ -3,7 +3,7 @@ export const en = {
   nav: {
     swap: "Swap",
     spot: "Spot",
-    futures: "Futures",
+    perps: "Perps",
     pools: "Pools",
     ercs20: "ERCS-20",
   },
@@ -43,7 +43,9 @@ export const en = {
   profile: {
     title: "Profile",
     dashboard: "Dashboard",
+    tokenLaunch: "Token Launch",
     spot: "Spot",
+    perps: "Perps",
     spotTitle: "Spot trading",
     spotDesc: "View open orders, history, and trade on the spot market.",
     goToSpot: "Go to Spot",
@@ -56,6 +58,10 @@ export const en = {
     spotWithdrawHistory: "Withdrawals",
     spotDepositHistoryEmpty: "No deposit records yet.",
     spotWithdrawHistoryEmpty: "No withdrawal records yet.",
+    perpsAccountList: "Accounts",
+    perpsDepositHistory: "Deposits",
+    perpsDepositHistoryEmpty: "No deposit records yet.",
+    emptyPerpsBalances: "No perps balances yet",
     wallet: "Wallet",
     address: "Address",
     network: "Network",
@@ -84,8 +90,19 @@ export const en = {
     withdraw: "Withdraw",
     depositCardDesc: "Deposit crypto to your spot account",
     withdrawCardDesc: "Withdraw to your connected wallet",
+    perpsDepositCardDesc: "Deposit margin to your perps account",
+    perpsWithdrawCardDesc: "Withdraw margin to your connected wallet",
+    perpsAccounts: "Perps accounts",
+    perpsDepositDialogDesc:
+      "Enter the amount and confirm the on-chain deposit of ARC native USDC in your wallet.",
+    perpsDepositVaultNotConfigured:
+      "Perps vault is not configured. Set NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS.",
+    deployErcs20: "Deploy ERCS-20",
+    deployErcs20CardDesc: "Create an ERCS-20 token you control on-chain",
     applyListSpot: "Apply to List (Spot)",
     applyListSpotCardDesc: "Register your ERCS-20 token for spot trading",
+    applyListPerps: "Apply to List (Perps)",
+    applyListPerpsCardDesc: "Register your ERCS-20 token for perps trading",
     applyListSpotDesc:
       "Select your token and confirm the on-chain listing. You must be the token owner.",
     confirmApplyList: "Apply to list",
@@ -416,8 +433,8 @@ By starting with a practical trading entry and progressively upgrading into a li
     spot: {
       title: "Spot",
     },
-    futures: {
-      title: "Futures",
+    perps: {
+      title: "Perps",
     },
     pools: {
       title: "Pools",

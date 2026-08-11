@@ -27,7 +27,7 @@ import { usePairEnginePriceDecimalMap } from "@/services/spot/orders/hooks";
 import {
   useReorderUserPairs,
   useUserPairs,
-} from "@/services/spot/user/hooks";
+} from "@/services/spot/accounts/hooks";
 
 const MARKET_PAIR_PAGE_SIZE = 100;
 
