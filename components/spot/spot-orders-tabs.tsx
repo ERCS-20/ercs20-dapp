@@ -23,6 +23,7 @@ import {
   formatSubscriptPrice,
 } from "@/lib/utils/price";
 import { shortTxHash } from "@/lib/utils/format/address";
+import { formatUtcDateTime } from "@/lib/utils/format/datetime";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
@@ -261,7 +262,7 @@ function OpenOrdersTable() {
                   {row.orderId}
                 </td>
                 <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                  {new Date(row.placedAt).toLocaleString()}
+                  {formatUtcDateTime(row.placedAt)}
                 </td>
                 <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
                 <td
@@ -412,10 +413,10 @@ function HistoryOrdersTable() {
                 {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {new Date(row.placedAt).toLocaleString()}
+                {formatUtcDateTime(row.placedAt)}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {new Date(row.completedAt).toLocaleString()}
+                {formatUtcDateTime(row.completedAt)}
               </td>
               <td className="text-muted-foreground py-2.5 whitespace-nowrap">
                 {formatOrderHistoryStatus(row.status, t)}
@@ -505,7 +506,7 @@ function TradeHistoryTable() {
                 {formatQuantity(row.quantity)}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {new Date(row.tradeTime).toLocaleString()}
+                {formatUtcDateTime(row.tradeTime)}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
                 {formatTradeStatus(row.tradeStatus, t)}

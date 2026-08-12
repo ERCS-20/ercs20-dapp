@@ -10,8 +10,10 @@ export type UserBalanceRsp = {
   /** decimal(63,0) as string */
   frozenBalance: string;
   status: UserBalanceStatus;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 /** Mirrors `deposits` row (fields exposed to UI). */
@@ -26,9 +28,12 @@ export type DepositRsp = {
   fromAddress: string;
   toAddress: string;
   status: DepositStatus;
-  confirmedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  confirmedAt: number | null;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 /** Mirrors `withdrawals` row (fields exposed to UI). */
@@ -43,8 +48,10 @@ export type WithdrawalRsp = {
   toAddress: string | null;
   status: WithdrawalStatus;
   txHash: string | null;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 /** Mirrors `account_ledger` row (fields exposed to UI). */
@@ -70,5 +77,6 @@ export type AccountLedgerRsp = {
   bizSubType: AccountLedgerBizSubType;
   refId: string;
   remark: string | null;
-  createdAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
 };

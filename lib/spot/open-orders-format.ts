@@ -101,7 +101,7 @@ export type OpenOrderRow = {
   orderId: string;
   pairCode: string;
   pairId: number;
-  placedAt: string;
+  placedAt: number;
   pairLabel: string;
   side: "buy" | "sell" | null;
   price: number;
@@ -146,8 +146,8 @@ export type OrderHistoryRow = {
   total: number | null;
   status: string;
   fee: number;
-  placedAt: string;
-  completedAt: string;
+  placedAt: number;
+  completedAt: number;
   enginePriceDecimal: number;
 };
 
@@ -196,7 +196,7 @@ export type TradeHistoryRow = {
   placeSide: "buy" | "sell" | null;
   price: number;
   quantity: number;
-  tradeTime: string;
+  tradeTime: number;
   tradeStatus: string;
   txHash: string;
   enginePriceDecimal: number;

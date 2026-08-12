@@ -16,8 +16,10 @@ export type PerpsUserBalancesRsp = {
   frozenBalance: string;
   version: number;
   status: string;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 /** Mirrors `exchange.orbix.perps.accounts.dto.DepositsPaginationReq`. */
@@ -35,7 +37,8 @@ export type PerpsDepositsRsp = {
   fromAddress: string;
   toAddress: string;
   status: string;
-  confirmedAt: string | null;
+  /** Unix epoch milliseconds */
+  confirmedAt: number | null;
 };
 
 export type PerpsDepositsPaginationReq = PaginationCondition<PerpsDepositsPaginationCondition>;
@@ -62,8 +65,10 @@ export type PerpsWithdrawalsRsp = {
   salt: ApiBigInt;
   /** Backend withdrawDAO EIP-712 signature authorizing vault `withdraw`. */
   sysSignature: string;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 export type PerpsWithdrawalsPaginationReq =
@@ -91,7 +96,8 @@ export type PerpsAccountLedgerRsp = {
   bizSubType: string;
   refId: string;
   remark: string | null;
-  createdAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
 };
 
 export type PerpsAccountLedgerPaginationReq =

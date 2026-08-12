@@ -12,8 +12,8 @@ export function getMockWithdrawals(): WithdrawalRsp[] {
       status: "Success",
       txHash:
         "0x9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d",
-      createdAt: "2026-07-03T14:20:00.000Z",
-      updatedAt: "2026-07-03T14:22:45.000Z",
+      createdAt: 1783088400000, // 2026-07-03T14:20:00.000Z
+      updatedAt: 1783088565000, // 2026-07-03T14:22:45.000Z
     },
     {
       tokenAddress: "0x0000000000000000000000000000000000000000",
@@ -23,8 +23,8 @@ export function getMockWithdrawals(): WithdrawalRsp[] {
       toAddress: null,
       status: "AwaitingClaim",
       txHash: null,
-      createdAt: "2026-07-04T09:30:00.000Z",
-      updatedAt: "2026-07-04T09:30:00.000Z",
+      createdAt: 1783157400000, // 2026-07-04T09:30:00.000Z
+      updatedAt: 1783157400000,
     },
   ];
 }

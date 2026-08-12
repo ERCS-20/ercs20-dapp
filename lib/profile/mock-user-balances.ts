@@ -3,7 +3,7 @@ import { getDefaultErcs20TokenAddress } from "@/lib/config/swap-target";
 
 /** Phase 2 mock — replace with `services/asset` API when wired. */
 export function getMockUserBalances(): UserBalanceRsp[] {
-  const now = "2026-07-04T10:30:00.000Z";
+  const now = 1783161000000; // 2026-07-04T10:30:00.000Z
   const obxAddress =
     getDefaultErcs20TokenAddress() ?? "0xa16E02E87b7454126E5E10d957A927A7F5B5d2be";
   return [
@@ -14,7 +14,7 @@ export function getMockUserBalances(): UserBalanceRsp[] {
       availableBalance: "1250000000000000000000",
       frozenBalance: "50000000000000000000",
       status: "Active",
-      createdAt: "2026-06-01T08:00:00.000Z",
+      createdAt: 1780300800000, // 2026-06-01T08:00:00.000Z
       updatedAt: now,
     },
     {
@@ -24,7 +24,7 @@ export function getMockUserBalances(): UserBalanceRsp[] {
       availableBalance: "850000000000000000000",
       frozenBalance: "12000000000000000000",
       status: "Active",
-      createdAt: "2026-06-15T12:20:00.000Z",
+      createdAt: 1781526000000, // 2026-06-15T12:20:00.000Z
       updatedAt: now,
     },
     {
@@ -34,8 +34,8 @@ export function getMockUserBalances(): UserBalanceRsp[] {
       availableBalance: "0",
       frozenBalance: "1000000000000000000",
       status: "Frozen",
-      createdAt: "2026-05-20T06:00:00.000Z",
-      updatedAt: "2026-07-01T09:15:00.000Z",
+      createdAt: 1779256800000, // 2026-05-20T06:00:00.000Z
+      updatedAt: 1782897300000, // 2026-07-01T09:15:00.000Z
     },
   ];
 }

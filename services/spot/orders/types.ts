@@ -20,7 +20,8 @@ export type PairRsp = {
   maxPriceFluctuation: number;
   issuePrice: string;
   enginePriceDecimal: number;
-  expiresAt: string;
+  /** Unix epoch milliseconds. */
+  expiresAt: number;
 };
 
 /** Mirrors `exchange.orbix.spot.orders.dto.OrderSaltRsp`. */
@@ -74,7 +75,8 @@ export type OrdersRsp = {
   makerAmount: ApiBigInt;
   takerAmount: ApiBigInt;
   timeInForce: number;
-  expiry: string;
+  /** Unix epoch milliseconds. */
+  expiry: number;
   salt: ApiBigInt;
   enginePrice: ApiBigInt;
   enginePriceDecimal: number;
@@ -84,7 +86,8 @@ export type OrdersRsp = {
   filledTakerAmount: ApiBigInt;
   fee: ApiBigInt;
   status: string;
-  placedAt: string;
+  /** Unix epoch milliseconds. */
+  placedAt: number;
 };
 
 /** Mirrors `PaginationCondition<Void>` for open orders pagination. */
@@ -93,7 +96,8 @@ export type OrdersPaginationRsp = PaginationRepertory<OrdersRsp>;
 
 /** Mirrors `exchange.orbix.spot.orders.dto.OrdersHistoryRsp`. BigInteger → string in JSON. */
 export type OrdersHistoryRsp = OrdersRsp & {
-  completedAt: string;
+  /** Unix epoch milliseconds. */
+  completedAt: number;
 };
 
 /** Mirrors `PaginationCondition<Void>` for order history pagination. */
@@ -112,7 +116,8 @@ export type OrdersTradeHistoryRsp = {
   fee: ApiBigInt;
   placeSide: number;
   matchedSide: number;
-  tradeTime: string;
+  /** Unix epoch milliseconds. */
+  tradeTime: number;
   tradeStatus: string;
   txHash: string;
 };

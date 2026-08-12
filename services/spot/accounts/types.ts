@@ -17,8 +17,10 @@ export type UserBalancesRsp = {
   userBalancesHash: number;
   version: number;
   status: string;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 /** Mirrors `exchange.orbix.spot.users.dto.DepositsPaginationReq`. */
@@ -36,7 +38,8 @@ export type DepositsRsp = {
   fromAddress: string;
   toAddress: string;
   status: string;
-  confirmedAt: string | null;
+  /** Unix epoch milliseconds */
+  confirmedAt: number | null;
 };
 
 export type DepositsPaginationReq = PaginationCondition<DepositsPaginationCondition>;
@@ -63,8 +66,10 @@ export type WithdrawalsRsp = {
   salt: ApiBigInt;
   /** Backend withdrawDAO EIP-712 signature authorizing vault `withdraw`. */
   sysSignature: string;
-  createdAt: string;
-  updatedAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
+  /** Unix epoch milliseconds */
+  updatedAt: number;
 };
 
 export type WithdrawalsPaginationReq = PaginationCondition<WithdrawalsPaginationCondition>;
@@ -91,7 +96,8 @@ export type AccountLedgerRsp = {
   bizSubType: string;
   refId: string;
   remark: string | null;
-  createdAt: string;
+  /** Unix epoch milliseconds */
+  createdAt: number;
 };
 
 export type AccountLedgerPaginationReq = PaginationCondition<AccountLedgerPaginationCondition>;

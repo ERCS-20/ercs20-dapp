@@ -14,7 +14,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "Deposit",
       refId: "dep-1001",
       remark: null,
-      createdAt: "2026-06-01T08:00:10.000Z",
+      createdAt: 1780300810000, // 2026-06-01T08:00:10.000Z
     },
     {
       tokenAddress: usdc,
@@ -24,7 +24,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "OrderFrozen",
       refId: "ord-8821",
       remark: "OBX/USDC buy",
-      createdAt: "2026-06-28T11:22:00.000Z",
+      createdAt: 1782645720000, // 2026-06-28T11:22:00.000Z
     },
     {
       tokenAddress: usdc,
@@ -34,7 +34,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "OrderDeduct",
       refId: "trd-44102",
       remark: null,
-      createdAt: "2026-07-02T09:15:33.000Z",
+      createdAt: 1782983733000, // 2026-07-02T09:15:33.000Z
     },
   ],
   [obx.toLowerCase()]: [
@@ -46,7 +46,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "Deposit",
       refId: "dep-2008",
       remark: null,
-      createdAt: "2026-06-15T12:20:05.000Z",
+      createdAt: 1781526005000, // 2026-06-15T12:20:05.000Z
     },
     {
       tokenAddress: obx,
@@ -56,7 +56,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "WithdrawFrozen",
       refId: "wdr-3301",
       remark: null,
-      createdAt: "2026-07-01T16:40:00.000Z",
+      createdAt: 1782924000000, // 2026-07-01T16:40:00.000Z
     },
     {
       tokenAddress: obx,
@@ -66,7 +66,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "OrderCredit",
       refId: "trd-44102",
       remark: "Match credit",
-      createdAt: "2026-07-02T09:15:33.000Z",
+      createdAt: 1782983733000, // 2026-07-02T09:15:33.000Z
     },
   ],
   [demo.toLowerCase()]: [
@@ -78,7 +78,7 @@ const ledgerByToken: Record<string, AccountLedgerRsp[]> = {
       bizSubType: "OrderFrozen",
       refId: "ord-9900",
       remark: "Demo pair",
-      createdAt: "2026-05-20T06:00:15.000Z",
+      createdAt: 1779256815000, // 2026-05-20T06:00:15.000Z
     },
   ],
 };

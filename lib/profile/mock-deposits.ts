@@ -12,9 +12,9 @@ export function getMockDeposits(): DepositRsp[] {
       fromAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
       toAddress: "0x0000000000000000000000000000000000000001",
       status: "Success",
-      confirmedAt: "2026-07-04T08:15:22.000Z",
-      createdAt: "2026-07-04T08:14:01.000Z",
-      updatedAt: "2026-07-04T08:15:22.000Z",
+      confirmedAt: 1783152922000, // 2026-07-04T08:15:22.000Z
+      createdAt: 1783152841000, // 2026-07-04T08:14:01.000Z
+      updatedAt: 1783152922000,
     },
     {
       tokenAddress: "0x0000000000000000000000000000000000000000",
@@ -26,8 +26,8 @@ export function getMockDeposits(): DepositRsp[] {
       toAddress: "0x0000000000000000000000000000000000000001",
       status: "Pending",
       confirmedAt: null,
-      createdAt: "2026-07-04T10:02:11.000Z",
-      updatedAt: "2026-07-04T10:02:11.000Z",
+      createdAt: 1783159331000, // 2026-07-04T10:02:11.000Z
+      updatedAt: 1783159331000,
     },
   ];
 }
