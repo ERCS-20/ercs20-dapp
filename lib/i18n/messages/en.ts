@@ -61,6 +61,8 @@ export const en = {
     perpsAccountList: "Accounts",
     perpsDepositHistory: "Deposits",
     perpsDepositHistoryEmpty: "No deposit records yet.",
+    perpsWithdrawHistory: "Withdrawals",
+    perpsWithdrawHistoryEmpty: "No withdrawal records yet.",
     emptyPerpsBalances: "No perps balances yet",
     wallet: "Wallet",
     address: "Address",
@@ -95,6 +97,8 @@ export const en = {
     perpsAccounts: "Perps accounts",
     perpsDepositDialogDesc:
       "Enter the amount and confirm the on-chain deposit of ARC native USDC in your wallet.",
+    perpsWithdrawDialogDesc:
+      "Enter the amount to withdraw. Sign the request in your wallet; claim on-chain later from history.",
     perpsDepositVaultNotConfigured:
       "Perps vault is not configured. Set NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS.",
     deployErcs20: "Deploy ERCS-20",

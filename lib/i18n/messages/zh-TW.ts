@@ -61,6 +61,8 @@ export const zhTW = {
     perpsAccountList: "帳戶列表",
     perpsDepositHistory: "充值",
     perpsDepositHistoryEmpty: "暫無充值紀錄。",
+    perpsWithdrawHistory: "提現",
+    perpsWithdrawHistoryEmpty: "暫無提現紀錄。",
     emptyPerpsBalances: "暫無合約餘額",
     wallet: "錢包",
     address: "地址",
@@ -94,6 +96,8 @@ export const zhTW = {
     perpsWithdrawCardDesc: "將保證金提現至已連接的錢包",
     perpsAccounts: "合約帳戶",
     perpsDepositDialogDesc: "填寫金額，在錢包中確認鏈上充值 ARC 原生 USDC。",
+    perpsWithdrawDialogDesc:
+      "填寫提現金額，在錢包中簽署申請；鏈上領取稍後在歷史紀錄中完成。",
     perpsDepositVaultNotConfigured:
       "未配置合約 Vault，請設定 NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS。",
     deployErcs20: "Deploy ERCS-20",

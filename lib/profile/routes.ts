@@ -6,6 +6,8 @@ export const ProfileRoutes = {
   perpsAccounts: "/profile/perps/accounts",
   perpsDeposits: "/profile/perps/deposits",
   perpsDeposit: "/profile/perps/deposit",
+  perpsWithdraw: "/profile/perps/withdraw",
+  perpsWithdrawals: "/profile/perps/withdrawals",
   applyList: "/profile/apply-list",
   deployErcs20: "/profile/deploy-ercs-20",
   withdrawals: "/profile/withdrawals",
@@ -22,7 +24,8 @@ export type ProfileSection =
   | "spot-deposits"
   | "spot-withdrawals"
   | "perps-accounts"
-  | "perps-deposits";
+  | "perps-deposits"
+  | "perps-withdrawals";
 
 const legacySectionPaths: Record<string, string> = {
   "spot-accounts": ProfileRoutes.accounts,
@@ -30,6 +33,7 @@ const legacySectionPaths: Record<string, string> = {
   "spot-withdrawals": ProfileRoutes.withdrawals,
   "perps-accounts": ProfileRoutes.perpsAccounts,
   "perps-deposits": ProfileRoutes.perpsDeposits,
+  "perps-withdrawals": ProfileRoutes.perpsWithdrawals,
 };
 
 export function legacySectionToPath(section: string | null): string | null {
@@ -40,6 +44,7 @@ export function legacySectionToPath(section: string | null): string | null {
 export function pathnameToProfileSection(pathname: string): ProfileSection {
   if (pathname.startsWith("/profile/perps/accounts")) return "perps-accounts";
   if (pathname === ProfileRoutes.perpsDeposits) return "perps-deposits";
+  if (pathname === ProfileRoutes.perpsWithdrawals) return "perps-withdrawals";
   if (pathname.startsWith("/profile/accounts")) return "spot-accounts";
   if (pathname === ProfileRoutes.deposits) return "spot-deposits";
   if (pathname === ProfileRoutes.withdrawals) return "spot-withdrawals";

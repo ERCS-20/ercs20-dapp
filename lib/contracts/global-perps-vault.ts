@@ -1,4 +1,4 @@
-import type { Abi } from "viem";
+import type { Abi, PublicClient } from "viem";
 
 import { globalPerpsVaultAbi } from "@/lib/contracts/abis";
 
@@ -9,6 +9,7 @@ type WriteContractAsync = (params: {
   args?: readonly unknown[];
   value?: bigint;
   chainId: number;
+  account?: `0x${string}`;
 }) => Promise<`0x${string}`>;
 
 /**
@@ -29,4 +30,42 @@ export async function executeGlobalPerpsVaultDeposit(params: {
     value: amount,
     chainId,
   });
+}
+
+/** GlobalPerpsVault `withdraw(orderId, amount, signature)` — claim awaiting withdrawal. */
+export async function executeGlobalPerpsVaultWithdraw(params: {
+  publicClient?: PublicClient;
+  account?: `0x${string}`;
+  writeContractAsync: WriteContractAsync;
+  vaultAddress: `0x${string}`;
+  orderId: bigint;
+  amount: bigint;
+  signature: `0x${string}`;
+  chainId: number;
+}): Promise<`0x${string}`> {
+  const {
+    publicClient,
+    account,
+    writeContractAsync,
+    vaultAddress,
+    orderId,
+    amount,
+    signature,
+    chainId,
+  } = params;
+
+  const request = {
+    address: vaultAddress,
+    abi: globalPerpsVaultAbi,
+    functionName: "withdraw" as const,
+    args: [orderId, amount, signature] as const,
+    chainId,
+    account,
+  };
+
+  if (publicClient && account) {
+    await publicClient.simulateContract(request);
+  }
+
+  return writeContractAsync(request);
 }

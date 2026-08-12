@@ -55,7 +55,7 @@ export function ProfileDashboardPanel() {
           description={t("profile.perpsDepositCardDesc")}
         />
         <ProfileActionLinkCard
-          href="/perps"
+          href={ProfileRoutes.perpsWithdraw}
           tone="brand-alt"
           icon={<UploadIcon className="size-6" aria-hidden />}
           title={t("profile.withdraw")}

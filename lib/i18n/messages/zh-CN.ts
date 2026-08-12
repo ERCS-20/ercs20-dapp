@@ -61,6 +61,8 @@ export const zhCN = {
     perpsAccountList: "账户列表",
     perpsDepositHistory: "充值",
     perpsDepositHistoryEmpty: "暂无充值记录。",
+    perpsWithdrawHistory: "提现",
+    perpsWithdrawHistoryEmpty: "暂无提现记录。",
     emptyPerpsBalances: "暂无合约余额",
     wallet: "钱包",
     address: "地址",
@@ -94,6 +96,8 @@ export const zhCN = {
     perpsWithdrawCardDesc: "将保证金提现至已连接的钱包",
     perpsAccounts: "合约账户",
     perpsDepositDialogDesc: "填写金额，在钱包中确认链上充值 ARC 原生 USDC。",
+    perpsWithdrawDialogDesc:
+      "填写提现金额，在钱包中签名申请；链上领取稍后在历史记录中完成。",
     perpsDepositVaultNotConfigured:
       "未配置合约 Vault，请设置 NEXT_PUBLIC_PERPS_ASSET_VAULT_ADDRESS。",
     deployErcs20: "Deploy ERCS-20",

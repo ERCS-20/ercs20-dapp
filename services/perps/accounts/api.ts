@@ -8,6 +8,10 @@ import type {
   PerpsDepositsPaginationRsp,
   PerpsUserBalancesReq,
   PerpsUserBalancesRsp,
+  PerpsWithdrawalsDetailReq,
+  PerpsWithdrawalsPaginationReq,
+  PerpsWithdrawalsPaginationRsp,
+  PerpsWithdrawalsRsp,
 } from "@/services/perps/accounts/types";
 
 /**
@@ -31,6 +35,19 @@ export function listPerpsUserBalances() {
 /** POST /perps/accounts/deposits/pagination — `userId` from gateway JWT headers. */
 export function paginationPerpsDeposits(req: PerpsDepositsPaginationReq) {
   return request.post<PerpsDepositsPaginationRsp>(PerpsAccountsApi.depositsPagination, req);
+}
+
+/** POST /perps/accounts/withdrawals/pagination — `userId` from gateway JWT headers. */
+export function paginationPerpsWithdrawals(req: PerpsWithdrawalsPaginationReq) {
+  return request.post<PerpsWithdrawalsPaginationRsp>(
+    PerpsAccountsApi.withdrawalsPagination,
+    req
+  );
+}
+
+/** POST /perps/accounts/withdrawals/detail — `userId` from gateway JWT headers. */
+export function getPerpsWithdrawalDetail(req: PerpsWithdrawalsDetailReq) {
+  return request.post<PerpsWithdrawalsRsp>(PerpsAccountsApi.withdrawalsDetail, req);
 }
 
 /** POST /perps/accounts/accountLedger/pagination — `userId` from gateway JWT headers. */

@@ -120,6 +120,12 @@ export function ProfileShell({ children }: { children: ReactNode }) {
       label: t("profile.perpsDepositHistory"),
       icon: DownloadIcon,
     },
+    {
+      section: "perps-withdrawals",
+      href: ProfileRoutes.perpsWithdrawals,
+      label: t("profile.perpsWithdrawHistory"),
+      icon: UploadIcon,
+    },
   ];
 
   const isSpotSection = section.startsWith("spot-");

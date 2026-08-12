@@ -7,6 +7,7 @@ import {
   listPerpsUserBalances,
   paginationPerpsAccountLedger,
   paginationPerpsDeposits,
+  paginationPerpsWithdrawals,
 } from "@/services/perps/accounts/api";
 import type {
   PerpsAccountLedgerPaginationReq,
@@ -14,6 +15,8 @@ import type {
   PerpsDepositsPaginationReq,
   PerpsDepositsPaginationRsp,
   PerpsUserBalancesRsp,
+  PerpsWithdrawalsPaginationReq,
+  PerpsWithdrawalsPaginationRsp,
 } from "@/services/perps/accounts/types";
 
 export function perpsUserBalanceQueryKey(tokenAddress?: string) {
@@ -65,6 +68,21 @@ export function usePerpsDepositsPagination(
     queryFn: () => paginationPerpsDeposits(req),
     enabled,
     staleTime: 15_000,
+  });
+}
+
+export function usePerpsWithdrawalsPagination(
+  req: PerpsWithdrawalsPaginationReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<PerpsWithdrawalsPaginationRsp>({
+    queryKey: ["perps", "accounts", "withdrawals", "pagination", req],
+    queryFn: () => paginationPerpsWithdrawals(req),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
   });
 }
 
