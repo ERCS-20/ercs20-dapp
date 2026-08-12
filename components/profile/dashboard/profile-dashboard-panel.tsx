@@ -49,14 +49,12 @@ export function ProfileDashboardPanel() {
       <DashboardSectionCard title={t("profile.perps")}>
         <ProfileActionLinkCard
           href={ProfileRoutes.perpsDeposit}
-          tone="brand"
           icon={<DownloadIcon className="size-6" aria-hidden />}
           title={t("profile.deposit")}
           description={t("profile.perpsDepositCardDesc")}
         />
         <ProfileActionLinkCard
           href={ProfileRoutes.perpsWithdraw}
-          tone="brand-alt"
           icon={<UploadIcon className="size-6" aria-hidden />}
           title={t("profile.withdraw")}
           description={t("profile.perpsWithdrawCardDesc")}
@@ -66,14 +64,12 @@ export function ProfileDashboardPanel() {
       <DashboardSectionCard title={t("profile.spot")}>
         <ProfileActionLinkCard
           href={ProfileRoutes.deposit}
-          tone="brand"
           icon={<DownloadIcon className="size-6" aria-hidden />}
           title={t("profile.deposit")}
           description={t("profile.depositCardDesc")}
         />
         <ProfileActionLinkCard
           href={ProfileRoutes.withdraw}
-          tone="brand-alt"
           icon={<UploadIcon className="size-6" aria-hidden />}
           title={t("profile.withdraw")}
           description={t("profile.withdrawCardDesc")}
@@ -83,21 +79,18 @@ export function ProfileDashboardPanel() {
       <DashboardSectionCard title={t("profile.tokenLaunch")}>
         <ProfileActionLinkCard
           href={ProfileRoutes.deployErcs20}
-          tone="brand"
           icon={<RocketIcon className="size-6" aria-hidden />}
           title={t("profile.deployErcs20")}
           description={t("profile.deployErcs20CardDesc")}
         />
         <ProfileActionLinkCard
           href={ProfileRoutes.applyList}
-          tone="brand"
           icon={<ListPlusIcon className="size-6" aria-hidden />}
           title={t("profile.applyListSpot")}
           description={t("profile.applyListSpotCardDesc")}
         />
         <ProfileActionLinkCard
-          href="/perps"
-          tone="brand-alt"
+          href={ProfileRoutes.applyListPerps}
           icon={<ListPlusIcon className="size-6" aria-hidden />}
           title={t("profile.applyListPerps")}
           description={t("profile.applyListPerpsCardDesc")}

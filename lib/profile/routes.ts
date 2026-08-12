@@ -9,6 +9,7 @@ export const ProfileRoutes = {
   perpsWithdraw: "/profile/perps/withdraw",
   perpsWithdrawals: "/profile/perps/withdrawals",
   applyList: "/profile/apply-list",
+  applyListPerps: "/profile/apply-list-perps",
   deployErcs20: "/profile/deploy-ercs-20",
   withdrawals: "/profile/withdrawals",
   withdraw: "/profile/withdraw",

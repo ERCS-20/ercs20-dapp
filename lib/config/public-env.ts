@@ -25,6 +25,7 @@ export const publicEnv = {
     process.env.NEXT_PUBLIC_PERPS_NATIVE_TOKEN_ADDRESS?.trim() ||
     "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
   spotPairFactoryAddress: process.env.NEXT_PUBLIC_SPOT_PAIR_FACTORY ?? "",
+  perpsPairFactoryAddress: process.env.NEXT_PUBLIC_PERPS_PAIR_FACTORY ?? "",
   spotExchangeAddress: process.env.NEXT_PUBLIC_SPOT_EXCHANGE_ADDRESS ?? "",
   spotDefaultBaseTokenSymbol:
     process.env.NEXT_PUBLIC_SPOT_DEFAULT_BASE_TOKEN_SYMBOL?.trim() || "OBX",

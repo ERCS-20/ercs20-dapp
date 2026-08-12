@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileFormCardShell } from "@/components/profile/shared/profile-form-card-shell";
 import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
 import { ProfileTransferAddressBlock } from "@/components/profile/shared/profile-transfer-dialog-parts";
 import { profileDetailSectionClass } from "@/components/profile/shell/profile-shell";
@@ -295,12 +296,10 @@ export function ProfileDeployErcs20View() {
           className="mb-4"
         />
 
-        <div className="mx-auto w-full max-w-[480px]">
-          <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
-            <div className="rounded-[24px] bg-card p-5 sm:p-6">
+        <ProfileFormCardShell>
               <div className="flex flex-col items-center text-center">
                 <div
-                  className="text-brand bg-brand/10 mb-5 flex size-[4.5rem] shrink-0 items-center justify-center rounded-full ring-1 ring-brand/25"
+                  className="text-primary bg-primary/10 mb-5 flex size-[4.5rem] shrink-0 items-center justify-center rounded-full ring-1 ring-primary/25"
                   aria-hidden
                 >
                   <CheckCircle2Icon className="size-10" strokeWidth={1.5} />
@@ -388,9 +387,7 @@ export function ProfileDeployErcs20View() {
               >
                 {t("ercs20.deployAnother")}
               </Button>
-            </div>
-          </div>
-        </div>
+        </ProfileFormCardShell>
       </section>
     );
   }
@@ -403,11 +400,8 @@ export function ProfileDeployErcs20View() {
         className="mb-4"
       />
 
-      <div className="mx-auto w-full max-w-[480px]">
-        <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
-          <div className="rounded-[24px] bg-card p-5 sm:p-6">
+      <ProfileFormCardShell>
             <ProfileFormHeader
-              tone="brand"
               icon={<RocketIcon aria-hidden />}
               title={t("profile.deployErcs20")}
               description={t("profile.deployErcs20CardDesc")}
@@ -533,15 +527,14 @@ export function ProfileDeployErcs20View() {
                   label={t("ercs20.ownerAddress")}
                   value={address}
                   hint={t("ercs20.hint")}
-                  tone="brand"
-                />
+                                  />
               ) : (
                 <div
                   className={cn(
                     "rounded-xl border border-dashed px-3.5 py-3 text-sm",
                     deployErrors.includes("wallet")
                       ? "border-destructive/40 bg-destructive/5 text-destructive"
-                      : "border-brand/20 bg-brand/5 text-muted-foreground"
+                      : "border-primary/20 bg-primary/5 text-muted-foreground"
                   )}
                 >
                   {deployErrors.includes("wallet")
@@ -563,9 +556,7 @@ export function ProfileDeployErcs20View() {
                   : t("swap.confirmWallet")
                 : t("ercs20.submit")}
             </Button>
-          </div>
-        </div>
-      </div>
+      </ProfileFormCardShell>
     </section>
   );
 }

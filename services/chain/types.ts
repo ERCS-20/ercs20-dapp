@@ -1,4 +1,5 @@
 import type { PaginationCondition, PaginationRepertory } from "@/lib/api/pagination";
+import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 
 /** Mirrors `exchange.orbix.blockchain.data.api.dto.Ercs20Req`. */
 export type Ercs20Req = {
@@ -6,7 +7,7 @@ export type Ercs20Req = {
   symbol?: string;
 };
 
-/** Mirrors `exchange.orbix.blockchain.data.api.dto.Ercs20Rsp`. BigInteger → string in JSON. */
+/** Mirrors `exchange.orbix.blockchain.data.api.dto.Ercs20Rsp`. BigInteger → string/bigint via json-with-bigint. */
 export type Ercs20Rsp = {
   id: number;
   contract: string;
@@ -14,7 +15,8 @@ export type Ercs20Rsp = {
   symbol: string;
   decimals: number;
   totalSupply: string;
-  usdcSeedAmount: string;
+  /** USDC seed / opening price in 18-decimal base units. */
+  usdcSeedAmount: ApiBigInt;
 };
 
 export type Ercs20PaginationReq = PaginationCondition<Ercs20Req>;

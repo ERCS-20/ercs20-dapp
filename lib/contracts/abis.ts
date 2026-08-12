@@ -5,6 +5,7 @@ import ercs20TokenAbiJson from "./abi/ERCS20.json";
 import ercs20FactoryAbiJson from "./abi/ERCS20Factory.json";
 import globalPerpsVaultAbiJson from "./abi/GlobalPerpsVault.json";
 import globalSpotVaultAbiJson from "./abi/GlobalSpotVault.json";
+import perpsPairFactoryAbiJson from "./abi/PerpsPairFactory.json";
 import spotPairFactoryAbiJson from "./abi/SpotPairFactory.json";
 
 /** Standard ERC-20 — sync from `lib/contracts/abi/ERC20.json`. */
@@ -24,6 +25,9 @@ export const globalPerpsVaultAbi = globalPerpsVaultAbiJson as Abi;
 
 /** SpotPairFactory — sync from `lib/contracts/abi/SpotPairFactory.json`. */
 export const spotPairFactoryAbi = spotPairFactoryAbiJson as Abi;
+
+/** PerpsPairFactory — sync from `lib/contracts/abi/PerpsPairFactory.json`. */
+export const perpsPairFactoryAbi = perpsPairFactoryAbiJson as Abi;
 
 /** Alias for `globalSpotVaultAbi`. */
 export const assetVaultAbi = globalSpotVaultAbi;

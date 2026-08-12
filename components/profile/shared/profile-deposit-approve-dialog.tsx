@@ -58,9 +58,9 @@ export function ProfileDepositApproveDialog({
           "max-h-[min(90vh,640px)] overflow-y-auto"
         )}
       >
-        <div className="border-border/60 bg-brand/5 border-b px-5 pt-5 pb-4">
+        <div className="border-border/60 bg-primary/5 border-b px-5 pt-5 pb-4">
           <div className="flex items-start gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand/15 text-brand ring-1 ring-brand/20">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
               <ShieldCheckIcon aria-hidden className="size-5" />
             </div>
             <AlertDialogHeader className="min-w-0 flex-1 !grid-cols-1 gap-1.5 text-left sm:place-items-start">
@@ -91,7 +91,7 @@ export function ProfileDepositApproveDialog({
 
           <ol className="text-muted-foreground space-y-1.5 text-xs leading-relaxed">
             <li className="flex gap-2">
-              <span className="bg-brand/15 text-brand flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
+              <span className="bg-primary/15 text-primary flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
                 1
               </span>
               <span>{t("profile.depositApproveStep1")}</span>

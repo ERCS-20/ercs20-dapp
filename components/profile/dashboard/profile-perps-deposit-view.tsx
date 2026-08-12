@@ -13,6 +13,7 @@ import {
 } from "wagmi";
 
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileFormCardShell } from "@/components/profile/shared/profile-form-card-shell";
 import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
 import { ProfileTransferAddressBlock } from "@/components/profile/shared/profile-transfer-dialog-parts";
 import { profileDetailSectionClass } from "@/components/profile/shell/profile-shell";
@@ -223,11 +224,8 @@ export function ProfilePerpsDepositView() {
         className="mb-4"
       />
 
-      <div className="mx-auto w-full max-w-[480px]">
-        <div className="rounded-[28px] bg-muted/50 p-1 shadow-lg ring-1 ring-border/60">
-          <div className="rounded-[24px] bg-card p-5 sm:p-6">
+      <ProfileFormCardShell>
             <ProfileFormHeader
-              tone="brand"
               icon={<DownloadIcon aria-hidden />}
               title={t("profile.deposit")}
               description={t("profile.perpsDepositDialogDesc")}
@@ -242,7 +240,7 @@ export function ProfilePerpsDepositView() {
                   <dt className="text-muted-foreground shrink-0 text-xs sm:text-sm">
                     {t("profile.availableBalance")}
                   </dt>
-                  <dd className="text-brand min-w-0 truncate text-right text-sm font-semibold tabular-nums sm:text-base">
+                  <dd className="text-primary min-w-0 truncate text-right text-sm font-semibold tabular-nums sm:text-base">
                     {availableLabel}
                     {availableLabel !== DISCONNECTED ? ` ${NATIVE_USDC.symbol}` : ""}
                   </dd>
@@ -251,7 +249,7 @@ export function ProfilePerpsDepositView() {
                   <dt className="text-muted-foreground shrink-0 text-xs sm:text-sm">
                     {t("profile.frozenBalance")}
                   </dt>
-                  <dd className="text-brand-alt min-w-0 truncate text-right text-sm font-semibold tabular-nums sm:text-base">
+                  <dd className="text-primary min-w-0 truncate text-right text-sm font-semibold tabular-nums sm:text-base">
                     {frozenLabel}
                     {frozenLabel !== DISCONNECTED ? ` ${NATIVE_USDC.symbol}` : ""}
                   </dd>
@@ -321,10 +319,9 @@ export function ProfilePerpsDepositView() {
                   label={t("profile.depositAssetOwner")}
                   value={address}
                   hint={t("profile.depositOwnerHint")}
-                  tone="brand"
-                />
+                                  />
               ) : (
-                <p className="text-muted-foreground rounded-xl border border-dashed border-brand/20 bg-brand/5 px-3.5 py-3 text-sm">
+                <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">
                   {t("profile.notConnected")}
                 </p>
               )}
@@ -342,9 +339,7 @@ export function ProfilePerpsDepositView() {
                   : t("swap.confirming")
                 : t("profile.confirmDeposit")}
             </Button>
-          </div>
-        </div>
-      </div>
+      </ProfileFormCardShell>
     </section>
   );
 }

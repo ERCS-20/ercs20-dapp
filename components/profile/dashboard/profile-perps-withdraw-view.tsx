@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useSignTypedData } from "wagmi";
 
 import { ProfileBackLink } from "@/components/profile/shared/profile-back-link";
+import { ProfileFormCardShell } from "@/components/profile/shared/profile-form-card-shell";
 import { ProfileFormHeader } from "@/components/profile/shared/profile-form-header";
 import { ProfileTransferAddressBlock } from "@/components/profile/shared/profile-transfer-dialog-parts";
 import { profileDetailSectionClass } from "@/components/profile/shell/profile-shell";
@@ -205,18 +206,15 @@ export function ProfilePerpsWithdrawView() {
         className="mb-4"
       />
 
-      <div className="mx-auto w-full max-w-[480px]">
-        <div className="rounded-[28px] bg-brand-alt/10 p-1 shadow-lg ring-1 ring-brand-alt/20">
-          <div className="rounded-[24px] bg-card p-5 sm:p-6">
+      <ProfileFormCardShell>
             <ProfileFormHeader
-              tone="brand-alt"
               icon={<UploadIcon aria-hidden />}
               title={t("profile.withdraw")}
               description={t("profile.perpsWithdrawDialogDesc")}
             />
 
             <div className="space-y-4">
-              <div className="bg-brand-alt/5 border-brand-alt/20 space-y-1.5 rounded-2xl border p-3.5 sm:p-4">
+              <div className="bg-muted/50 border-border/60 space-y-1.5 rounded-2xl border p-3.5 sm:p-4">
                 <div className="text-muted-foreground flex items-center justify-between text-xs font-medium sm:text-sm">
                   <span>{t("profile.amount")}</span>
                   <span>
@@ -276,10 +274,9 @@ export function ProfilePerpsWithdrawView() {
                   value={address}
                   onCopy={() => void copyAddress()}
                   copyLabel={t("profile.copyAddress")}
-                  tone="brand-alt"
-                />
+                                  />
               ) : (
-                <p className="text-muted-foreground rounded-xl border border-dashed border-brand-alt/20 bg-brand-alt/5 px-3.5 py-3 text-sm">
+                <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">
                   {t("profile.notConnected")}
                 </p>
               )}
@@ -289,16 +286,14 @@ export function ProfilePerpsWithdrawView() {
               type="button"
               className={cn(
                 "mt-4 h-11 w-full rounded-xl text-base",
-                "bg-brand-alt text-brand-alt-on hover:bg-brand-alt/90"
+                "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
               onClick={() => void handleConfirm()}
               disabled={!canSubmit}
             >
               {busy ? t("swap.confirmWallet") : t("profile.confirmWithdraw")}
             </Button>
-          </div>
-        </div>
-      </div>
+      </ProfileFormCardShell>
     </section>
   );
 }

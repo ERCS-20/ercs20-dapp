@@ -156,17 +156,16 @@ export function ProfileTransferAddressBlock({
   onCopy?: () => void;
   copyLabel?: string;
   truncate?: boolean;
-  tone?: "neutral" | "brand" | "brand-alt";
+  /** Accent follows theme primary (light teal / dark pink). */
+  tone?: "neutral" | "primary";
 }) {
   return (
     <div
       className={cn(
         "rounded-xl border border-dashed p-3.5",
-        tone === "brand"
-          ? "border-brand/20 bg-brand/5"
-          : tone === "brand-alt"
-            ? "border-brand-alt/20 bg-brand-alt/5"
-            : "border-border/60 bg-muted/20"
+        tone === "primary"
+          ? "border-primary/20 bg-primary/5"
+          : "border-border/60 bg-muted/20"
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -204,29 +203,15 @@ export function ProfileTransferBalanceHint({
   label,
   amount,
   symbol,
-  tone = "brand",
 }: {
   label: string;
   amount: string;
   symbol: string;
-  tone?: "brand" | "brand-alt";
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5",
-        tone === "brand"
-          ? "border-brand/20 bg-brand/5"
-          : "border-brand-alt/20 bg-brand-alt/5"
-      )}
-    >
+    <div className="border-primary/20 bg-primary/5 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5">
       <span className="text-muted-foreground text-xs">{label}</span>
-      <span
-        className={cn(
-          "tabular-nums text-sm font-medium",
-          tone === "brand" ? "text-brand" : "text-brand-alt"
-        )}
-      >
+      <span className="text-primary tabular-nums text-sm font-medium">
         {amount} {symbol}
       </span>
     </div>
