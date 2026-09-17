@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ProfileApplyListPerpsView } from "@/components/profile/dashboard/profile-apply-list-perps-view";
+import { ProfilePerpsApplyListView } from "@/components/profile/dashboard/profile-perps-apply-list-view";
 
 export const metadata: Metadata = {
   title: "Apply to List (Perps) · Profile · ERCS-20",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ProfileApplyListPerpsPage() {
   return (
     <Suspense fallback={null}>
-      <ProfileApplyListPerpsView />
+      <ProfilePerpsApplyListView />
     </Suspense>
   );
 }

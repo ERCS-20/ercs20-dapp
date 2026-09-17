@@ -6,10 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListPlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
-  useBalance,
   useChainId,
   usePublicClient,
-  useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
@@ -20,24 +18,22 @@ import { ProfileFormHeader } from "@/components/profile/shared/profile-form-head
 import { ProfileApplyListTokenSelectSheet } from "@/components/profile/apply-list/profile-apply-list-token-select-sheet";
 import { profileDetailSectionClass } from "@/components/profile/shell/profile-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useErcs20OpeningPrice } from "@/hooks/use-ercs20-opening-price";
 import { useWallet } from "@/hooks/use-wallet";
-import {
-  getPerpsPairFactoryAddress,
-  isPerpsPairFactoryConfigured,
-} from "@/lib/config/perps-pair-factory";
 import { getSwapTargetChainId } from "@/lib/config/swap-target";
-import { ercs20TokenAbi, perpsPairFactoryAbi } from "@/lib/contracts/abis";
-import { isNativeUsdcDepositAddress } from "@/lib/contracts/global-spot-vault";
 import {
-  executePerpsPairFactoryCreate,
-  readPerpsMarketExists,
-  readPerpsPairFactoryFee,
-} from "@/lib/contracts/perps-pair-factory";
+  getSpotPairFactoryAddress,
+  isSpotPairFactoryConfigured,
+} from "@/lib/config/spot-pair-factory";
+import { getWusdcAddress } from "@/lib/config/wusdc";
+import { ercs20TokenAbi } from "@/lib/contracts/abis";
+import {
+  executeSpotPairFactoryCreate,
+  readSpotPairExists,
+} from "@/lib/contracts/spot-pair-factory";
+import { isNativeUsdcDepositAddress } from "@/lib/contracts/global-spot-vault";
 import { ProfileRoutes } from "@/lib/profile/routes";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
-import { formatBalance } from "@/lib/utils/format/balance";
 import { shortTokenAddress } from "@/lib/utils/format/address";
 import { getWalletErrorMessage } from "@/lib/web3/contract-errors";
 import { useErcs20Pagination } from "@/services/chain/hooks";
@@ -59,53 +55,23 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-/** Local wall time → `datetime-local` value (`YYYY-MM-DDTHH:mm`). */
-function toDatetimeLocalValue(ms: number): string {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** `datetime-local` → Unix seconds (contract `openingTime`). */
-function datetimeLocalToUnixSeconds(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const ms = new Date(trimmed).getTime();
-  if (Number.isNaN(ms)) return null;
-  return Math.floor(ms / 1000);
-}
-
-/** Default opening: next full hour, at least ~1h ahead. */
-function defaultOpeningDatetimeLocal(): string {
-  const d = new Date();
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 2);
-  return toDatetimeLocalValue(d.getTime());
-}
-
-export function ProfileApplyListPerpsView() {
+export function ProfileSpotApplyListView() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const { address, isConnected } = useWallet();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const targetChainId = getSwapTargetChainId();
-  const factoryAddress = getPerpsPairFactoryAddress();
+  const factoryAddress = getSpotPairFactoryAddress();
+  const quoteToken = getWusdcAddress();
   const wrongNetwork =
     targetChainId != null && chainId != null && chainId !== targetChainId;
-
-  const { data: nativeBal } = useBalance({
-    address,
-    chainId: targetChainId,
-    query: { enabled: Boolean(address) && targetChainId != null },
-  });
 
   const { data: tokenPage } = useErcs20Pagination({ currentPage: 1, pageSize: 20 });
   const [selectedToken, setSelectedToken] = useState<Ercs20Rsp | null>(null);
   const [tokenSheetOpen, setTokenSheetOpen] = useState(false);
-  const [openingTimeLocal, setOpeningTimeLocal] = useState(defaultOpeningDatetimeLocal);
   const [tokenOwner, setTokenOwner] = useState<`0x${string}` | null>(null);
-  const [marketExists, setMarketExists] = useState<boolean | null>(null);
+  const [pairExists, setPairExists] = useState<boolean | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const handledTxRef = useRef<`0x${string}` | null>(null);
@@ -115,24 +81,6 @@ export function ProfileApplyListPerpsView() {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
-
-  const {
-    data: listingFee,
-    isLoading: isFeeLoading,
-    isError: isFeeError,
-    refetch: refetchFee,
-  } = useReadContract({
-    address: factoryAddress,
-    abi: perpsPairFactoryAbi,
-    functionName: "fee",
-    chainId: targetChainId,
-    query: {
-      enabled: Boolean(factoryAddress) && targetChainId != null,
-      staleTime: 30_000,
-    },
-  });
-  const listingFeeWei =
-    typeof listingFee === "bigint" ? listingFee : listingFee != null ? BigInt(listingFee as string | number) : null;
 
   useEffect(() => {
     if (selectedToken) return;
@@ -151,14 +99,6 @@ export function ProfileApplyListPerpsView() {
     return selectedToken.contract.toLowerCase() as `0x${string}`;
   }, [selectedToken]);
 
-  const openingTimeUnix = useMemo(
-    () => datetimeLocalToUnixSeconds(openingTimeLocal),
-    [openingTimeLocal]
-  );
-
-  const openingTimeValid =
-    openingTimeUnix != null && openingTimeUnix * 1000 > Date.now();
-
   const {
     label: openingPriceLabel,
     isLoading: isOpeningPriceLoading,
@@ -170,12 +110,10 @@ export function ProfileApplyListPerpsView() {
     enabled: Boolean(baseToken),
   });
 
-  const datetimeMin = useMemo(() => toDatetimeLocalValue(Date.now() + 60_000), []);
-
   useEffect(() => {
-    if (!publicClient || !baseToken || !factoryAddress) {
+    if (!publicClient || !baseToken || !factoryAddress || !quoteToken) {
       setTokenOwner(null);
-      setMarketExists(null);
+      setPairExists(null);
       setIsChecking(false);
       return;
     }
@@ -191,19 +129,20 @@ export function ProfileApplyListPerpsView() {
             abi: ercs20TokenAbi,
             functionName: "owner",
           }) as Promise<`0x${string}`>,
-          readPerpsMarketExists({
+          readSpotPairExists({
             publicClient,
             factoryAddress,
             baseToken,
+            quoteToken,
           }),
         ]);
         if (cancelled) return;
         setTokenOwner(owner);
-        setMarketExists(exists);
+        setPairExists(exists);
       } catch {
         if (!cancelled) {
           setTokenOwner(null);
-          setMarketExists(null);
+          setPairExists(null);
         }
       } finally {
         if (!cancelled) setIsChecking(false);
@@ -214,7 +153,7 @@ export function ProfileApplyListPerpsView() {
       cancelled = true;
       setIsChecking(false);
     };
-  }, [publicClient, baseToken, factoryAddress]);
+  }, [publicClient, baseToken, factoryAddress, quoteToken]);
 
   useEffect(() => {
     if (!isSuccess || !selectedToken || !txHash) return;
@@ -223,12 +162,13 @@ export function ProfileApplyListPerpsView() {
     toast.success(t("profile.applyListSubmitted").replace("{symbol}", selectedToken.symbol));
     resetWrite();
     setTxHash(undefined);
-    if (baseToken && publicClient && factoryAddress) {
-      void readPerpsMarketExists({
+    if (baseToken && publicClient && factoryAddress && quoteToken) {
+      void readSpotPairExists({
         publicClient,
         factoryAddress,
         baseToken,
-      }).then(setMarketExists);
+        quoteToken,
+      }).then(setPairExists);
     }
   }, [
     isSuccess,
@@ -239,36 +179,21 @@ export function ProfileApplyListPerpsView() {
     baseToken,
     publicClient,
     factoryAddress,
+    quoteToken,
   ]);
 
-  const selectToken = useCallback(
-    (token: Ercs20Rsp) => {
-      if (isNativeUsdcDepositAddress(token.contract)) {
-        toast.error(t("profile.applyListNativeToken"));
-        return;
-      }
-      setSelectedToken(token);
-    },
-    [t]
-  );
+  const selectToken = useCallback((token: Ercs20Rsp) => {
+    if (isNativeUsdcDepositAddress(token.contract)) {
+      toast.error(t("profile.applyListNativeToken"));
+      return;
+    }
+    setSelectedToken(token);
+  }, [t]);
 
   const ownerMatches =
     Boolean(address) &&
     Boolean(tokenOwner) &&
     address!.toLowerCase() === tokenOwner!.toLowerCase();
-
-  // Arc native USDC: fee() is wei; prefer chain decimals, fallback 18.
-  const feeDecimals = nativeBal?.decimals ?? 18;
-  const feeLabel = isFeeLoading
-    ? "…"
-    : isFeeError || listingFeeWei == null
-      ? "—"
-      : `${formatBalance(listingFeeWei, feeDecimals)} USDC`;
-
-  const hasEnoughFee =
-    listingFeeWei == null ||
-    nativeBal == null ||
-    nativeBal.value >= listingFeeWei;
 
   const busy = isWritePending || isConfirming;
 
@@ -277,10 +202,7 @@ export function ProfileApplyListPerpsView() {
     Boolean(address) &&
     Boolean(selectedToken) &&
     Boolean(baseToken) &&
-    isPerpsPairFactoryConfigured() &&
-    openingTimeValid &&
-    listingFeeWei != null &&
-    hasEnoughFee &&
+    isSpotPairFactoryConfigured() &&
     !wrongNetwork &&
     !busy;
 
@@ -288,57 +210,23 @@ export function ProfileApplyListPerpsView() {
     if (busy) return null;
     if (!isConnected || !address) return t("profile.notConnected");
     if (!selectedToken) return t("profile.selectTokenFirst");
-    if (!isPerpsPairFactoryConfigured()) return t("profile.perpsPairFactoryNotConfigured");
+    if (!isSpotPairFactoryConfigured()) return t("profile.spotPairFactoryNotConfigured");
     if (wrongNetwork) return t("swap.wrongNetwork");
-    if (!openingTimeLocal.trim()) return t("profile.applyListOpeningTimeRequired");
-    if (!openingTimeValid) return t("profile.applyListInvalidOpeningTime");
-    if (isFeeError) return t("profile.applyListFeeLoadFailed");
-    if (listingFeeWei != null && !hasEnoughFee) return t("profile.insufficientBalance");
     return null;
-  }, [
-    busy,
-    isConnected,
-    address,
-    selectedToken,
-    wrongNetwork,
-    openingTimeLocal,
-    openingTimeValid,
-    isFeeError,
-    listingFeeWei,
-    hasEnoughFee,
-    t,
-  ]);
+  }, [busy, isConnected, address, selectedToken, wrongNetwork, t]);
 
   async function handleConfirm() {
-    if (
-      !address ||
-      !baseToken ||
-      !factoryAddress ||
-      targetChainId == null ||
-      !publicClient ||
-      openingTimeUnix == null ||
-      listingFeeWei == null
-    ) {
+    if (!address || !baseToken || !factoryAddress || targetChainId == null || !publicClient) {
       return;
     }
 
-    if (!isPerpsPairFactoryConfigured()) {
-      toast.error(t("profile.perpsPairFactoryNotConfigured"));
+    if (!isSpotPairFactoryConfigured()) {
+      toast.error(t("profile.spotPairFactoryNotConfigured"));
       return;
     }
 
     if (wrongNetwork) {
       toast.error(t("swap.wrongNetwork"));
-      return;
-    }
-
-    if (!openingTimeValid) {
-      toast.error(t("profile.applyListInvalidOpeningTime"));
-      return;
-    }
-
-    if (!hasEnoughFee) {
-      toast.error(t("profile.insufficientBalance"));
       return;
     }
 
@@ -352,8 +240,8 @@ export function ProfileApplyListPerpsView() {
       return;
     }
 
-    if (marketExists) {
-      toast.error(t("profile.applyListPerpsMarketExists"));
+    if (pairExists) {
+      toast.error(t("profile.applyListPairExists"));
       return;
     }
 
@@ -367,18 +255,12 @@ export function ProfileApplyListPerpsView() {
     handledTxRef.current = null;
 
     try {
-      // Refresh fee right before send — IncorrectFee if stale.
-      const fee = await readPerpsPairFactoryFee({ publicClient, factoryAddress });
-      void refetchFee();
-
-      const hash = await executePerpsPairFactoryCreate({
+      const hash = await executeSpotPairFactoryCreate({
         publicClient,
         account: address,
         writeContractAsync,
         factoryAddress,
         baseToken,
-        openingTime: BigInt(openingTimeUnix),
-        fee,
         chainId: targetChainId,
       });
       setTxHash(hash);
@@ -387,15 +269,13 @@ export function ProfileApplyListPerpsView() {
         getWalletErrorMessage(error, t("profile.applyListFailed"), {
           userRejected: t("wallet.userRejected"),
           revertMessages: {
-            IncorrectFee: t("profile.applyListIncorrectFee"),
             InvalidAddress: t("profile.applyListInvalidAddress"),
-            InvalidOpeningTime: t("profile.applyListInvalidOpeningTime"),
             NotERCS20: t("profile.applyListNotErcs20"),
             NotTokenOwner: t("profile.applyListNotOwner"),
-            MarketAlreadyExists: t("profile.applyListPerpsMarketExists"),
+            InvalidOpeningPrice: t("profile.applyListInvalidOpeningPrice"),
             OpeningPriceDecimalsTooHigh: t("profile.applyListInvalidOpeningPrice"),
             OpeningPriceTooHigh: t("profile.applyListInvalidOpeningPrice"),
-            InsuranceAccountNotSet: t("profile.applyListFailed"),
+            PairAlreadyExists: t("profile.applyListPairExists"),
           },
         })
       );
@@ -427,8 +307,8 @@ export function ProfileApplyListPerpsView() {
 <ProfileFormCardShell>
               <ProfileFormHeader
               icon={<ListPlusIcon aria-hidden />}
-                title={t("profile.applyListPerps")}
-                description={t("profile.applyListPerpsDesc")}
+                title={t("profile.applyListSpot")}
+                description={t("profile.applyListSpotDesc")}
               />
 
               <div className="space-y-4">
@@ -493,38 +373,9 @@ export function ProfileApplyListPerpsView() {
                   ) : null}
                 </div>
 
-                <div className="bg-muted/50 border-border/60 space-y-2 rounded-2xl border p-3.5 sm:p-4">
-                  <label
-                    htmlFor="perps-apply-opening-time"
-                    className="text-muted-foreground text-xs font-medium sm:text-sm"
-                  >
-                    {t("profile.applyListOpeningTime")}
-                  </label>
-                  <Input
-                    id="perps-apply-opening-time"
-                    type="datetime-local"
-                    className="h-10 rounded-xl"
-                    min={datetimeMin}
-                    value={openingTimeLocal}
-                    onChange={(e) => setOpeningTimeLocal(e.target.value)}
-                  />
-                  <p className="text-muted-foreground text-[11px] leading-snug">
-                    {t("profile.applyListOpeningTimeHint")}
-                  </p>
-                </div>
-
-                <div className="bg-primary/5 border-primary/20 flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-sm">
-                  <span className="text-muted-foreground text-xs font-medium">
-                    {t("profile.applyListListingFee")}
-                  </span>
-                  <span className="text-primary tabular-nums text-sm font-semibold">
-                    {feeLabel}
-                  </span>
-                </div>
-
-                {marketExists ? (
+                {pairExists ? (
                   <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">
-                    {t("profile.applyListPerpsMarketExists")}
+                    {t("profile.applyListPairExists")}
                   </p>
                 ) : null}
 
@@ -532,9 +383,9 @@ export function ProfileApplyListPerpsView() {
                   <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">
                     {t("profile.notConnected")}
                   </p>
-                ) : !isPerpsPairFactoryConfigured() ? (
+                ) : !isSpotPairFactoryConfigured() ? (
                   <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">
-                    {t("profile.perpsPairFactoryNotConfigured")}
+                    {t("profile.spotPairFactoryNotConfigured")}
                   </p>
                 ) : wrongNetwork ? (
                   <p className="text-muted-foreground rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3.5 py-3 text-sm">

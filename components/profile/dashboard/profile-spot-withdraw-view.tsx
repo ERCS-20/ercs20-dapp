@@ -53,7 +53,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-export function ProfileWithdrawView() {
+export function ProfileSpotWithdrawView() {
   const { t } = useI18n();
   const { isAuthenticated } = useAuth();
   const router = useRouter();

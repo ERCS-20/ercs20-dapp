@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ProfileWithdrawView } from "@/components/profile/dashboard/profile-withdraw-view";
+import { ProfileSpotWithdrawView } from "@/components/profile/dashboard/profile-spot-withdraw-view";
 
 export const metadata: Metadata = {
   title: "Withdraw · Profile · ERCS-20",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ProfileWithdrawPage() {
   return (
     <Suspense fallback={null}>
-      <ProfileWithdrawView />
+      <ProfileSpotWithdrawView />
     </Suspense>
   );
 }

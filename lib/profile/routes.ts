@@ -1,8 +1,10 @@
 export const ProfileRoutes = {
   dashboard: "/profile",
-  accounts: "/profile/accounts",
-  deposits: "/profile/deposits",
-  deposit: "/profile/deposit",
+  accounts: "/profile/spot/accounts",
+  deposits: "/profile/spot/deposits",
+  deposit: "/profile/spot/deposit",
+  withdrawals: "/profile/spot/withdrawals",
+  withdraw: "/profile/spot/withdraw",
   perpsAccounts: "/profile/perps/accounts",
   perpsDeposits: "/profile/perps/deposits",
   perpsDeposit: "/profile/perps/deposit",
@@ -11,10 +13,8 @@ export const ProfileRoutes = {
   applyList: "/profile/apply-list",
   applyListPerps: "/profile/apply-list-perps",
   deployErcs20: "/profile/deploy-ercs-20",
-  withdrawals: "/profile/withdrawals",
-  withdraw: "/profile/withdraw",
   accountDetail: (tokenAddress: string) =>
-    `/profile/accounts/${encodeURIComponent(tokenAddress)}`,
+    `/profile/spot/accounts/${encodeURIComponent(tokenAddress)}`,
   perpsAccountDetail: (tokenAddress: string) =>
     `/profile/perps/accounts/${encodeURIComponent(tokenAddress)}`,
 } as const;
@@ -43,10 +43,10 @@ export function legacySectionToPath(section: string | null): string | null {
 }
 
 export function pathnameToProfileSection(pathname: string): ProfileSection {
-  if (pathname.startsWith("/profile/perps/accounts")) return "perps-accounts";
+  if (pathname.startsWith(ProfileRoutes.perpsAccounts)) return "perps-accounts";
   if (pathname === ProfileRoutes.perpsDeposits) return "perps-deposits";
   if (pathname === ProfileRoutes.perpsWithdrawals) return "perps-withdrawals";
-  if (pathname.startsWith("/profile/accounts")) return "spot-accounts";
+  if (pathname.startsWith(ProfileRoutes.accounts)) return "spot-accounts";
   if (pathname === ProfileRoutes.deposits) return "spot-deposits";
   if (pathname === ProfileRoutes.withdrawals) return "spot-withdrawals";
   return "dashboard";

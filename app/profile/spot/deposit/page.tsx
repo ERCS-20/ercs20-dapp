@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ProfileDepositView } from "@/components/profile/dashboard/profile-deposit-view";
+import { ProfileSpotDepositView } from "@/components/profile/dashboard/profile-spot-deposit-view";
 
 export const metadata: Metadata = {
   title: "Deposit · Profile · ERCS-20",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ProfileDepositPage() {
   return (
     <Suspense fallback={null}>
-      <ProfileDepositView />
+      <ProfileSpotDepositView />
     </Suspense>
   );
 }

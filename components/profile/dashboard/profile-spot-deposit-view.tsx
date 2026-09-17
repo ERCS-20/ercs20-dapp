@@ -81,7 +81,7 @@ function TokenIcon({ symbol }: { symbol: string }) {
   );
 }
 
-export function ProfileDepositView() {
+export function ProfileSpotDepositView() {
   const { t } = useI18n();
   const { isAuthenticated } = useAuth();
   const searchParams = useSearchParams();
