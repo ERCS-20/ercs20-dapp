@@ -36,7 +36,7 @@ export function SizePctControls({
         disabled={disabled}
         data-side={side}
         onChange={(e) => onPctChange(Number(e.target.value))}
-        className="spot-size-slider w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        className="size-slider w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={t("spot.sizePct")}
       />
       <div className="flex gap-1">

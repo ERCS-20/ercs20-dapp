@@ -410,7 +410,7 @@ export function SpotOrderForm({
             value={sliderPct}
             data-side={side}
             onChange={(e) => applyPct(Number(e.target.value))}
-            className="spot-size-slider w-full cursor-pointer"
+            className="size-slider w-full cursor-pointer"
             aria-label={t("spot.sizePct")}
           />
           <div className="mt-1 flex gap-1">

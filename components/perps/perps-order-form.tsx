@@ -410,7 +410,7 @@ export function PerpsOrderForm({
             value={sliderPct}
             data-side={side}
             onChange={(e) => applyPct(Number(e.target.value))}
-            className="perps-size-slider w-full cursor-pointer"
+            className="size-slider w-full cursor-pointer"
             aria-label={t("perps.sizePct")}
           />
           <div className="mt-1 flex gap-1">

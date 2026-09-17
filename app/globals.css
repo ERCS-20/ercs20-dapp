@@ -198,7 +198,7 @@
     }
   }
 
-  .spot-size-slider {
+  .size-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
@@ -209,19 +209,19 @@
     background: transparent;
     cursor: pointer;
   }
-  .spot-size-slider:focus-visible {
+  .size-slider:focus-visible {
     outline: none;
   }
-  .spot-size-slider::-webkit-slider-runnable-track {
+  .size-slider::-webkit-slider-runnable-track {
     height: 2px;
     border-radius: 9999px;
     background: var(--border);
   }
-  .spot-size-slider::-webkit-slider-thumb {
+  .size-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 10px;
-    height: 10px;
-    margin-top: -4px;
+    width: 16px;
+    height: 16px;
+    margin-top: -7px;
     border-radius: 50%;
     background: var(--brand-accent);
     border: none;
@@ -229,28 +229,28 @@
     cursor: pointer;
     transition: background-color 0.2s ease;
   }
-  .spot-size-slider[data-side="sell"]::-webkit-slider-thumb {
+  .size-slider[data-side="sell"]::-webkit-slider-thumb {
     background: var(--brand-accent-alt);
   }
-  .spot-size-slider::-moz-range-track {
+  .size-slider::-moz-range-track {
     height: 2px;
     border-radius: 9999px;
     background: var(--border);
     border: none;
   }
-  .spot-size-slider::-moz-range-progress {
+  .size-slider::-moz-range-progress {
     height: 2px;
     border-radius: 9999px;
     background: var(--brand-accent);
     border: none;
     transition: background-color 0.2s ease;
   }
-  .spot-size-slider[data-side="sell"]::-moz-range-progress {
+  .size-slider[data-side="sell"]::-moz-range-progress {
     background: var(--brand-accent-alt);
   }
-  .spot-size-slider::-moz-range-thumb {
-    width: 10px;
-    height: 10px;
+  .size-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: var(--brand-accent);
     border: none;
@@ -258,7 +258,7 @@
     cursor: pointer;
     transition: background-color 0.2s ease;
   }
-  .spot-size-slider[data-side="sell"]::-moz-range-thumb {
+  .size-slider[data-side="sell"]::-moz-range-thumb {
     background: var(--brand-accent-alt);
   }
 }
