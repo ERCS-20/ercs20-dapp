@@ -1,5 +1,7 @@
-import { RoadmapPlaceholder } from "@/components/phase2/roadmap-placeholder";
+import { redirect } from "next/navigation";
 
-export default function PerpsPage() {
-  return <RoadmapPlaceholder page="perps" />;
+import { getPerpsDefaultPairPath } from "@/lib/config/perps-default-pair";
+
+export default function PerpsIndexPage() {
+  redirect(`/perps/${getPerpsDefaultPairPath()}`);
 }

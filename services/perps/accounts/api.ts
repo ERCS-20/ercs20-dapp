@@ -12,6 +12,10 @@ import type {
   PerpsWithdrawalsPaginationReq,
   PerpsWithdrawalsPaginationRsp,
   PerpsWithdrawalsRsp,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
 } from "@/services/perps/accounts/types";
 
 /**
@@ -65,5 +69,31 @@ export function paginationPerpsAccountLedger(req: PerpsAccountLedgerPaginationRe
       ...(req.condition?.bizType ? { bizType: req.condition.bizType } : {}),
       ...(req.condition?.bizSubType ? { bizSubType: req.condition.bizSubType } : {}),
     },
+  });
+}
+
+/** POST /perps/accounts/userPairs/pairs — `userId` from gateway JWT headers. */
+export function listUserPairs() {
+  return request.post<UserPairsRsp>(PerpsAccountsApi.userPairs);
+}
+
+/** POST /perps/accounts/userPairs/add — `userId` from gateway JWT headers. */
+export function addUserPair(req: UserPairAddReq) {
+  return request.post<UserPairsRsp>(PerpsAccountsApi.userPairsAdd, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /perps/accounts/userPairs/delete — `userId` from gateway JWT headers. */
+export function deleteUserPair(req: UserPairDeleteReq) {
+  return request.post<UserPairsRsp>(PerpsAccountsApi.userPairsDelete, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /perps/accounts/userPairs/reorder — `userId` from gateway JWT headers. */
+export function reorderUserPairs(req: UserPairsReorderReq) {
+  return request.post<void>(PerpsAccountsApi.userPairsReorder, {
+    pairIds: req.pairIds,
   });
 }

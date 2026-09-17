@@ -6,4 +6,8 @@ export const PerpsAccountsApi = {
   withdrawalsPagination: "/perps/accounts/withdrawals/pagination",
   withdrawalsDetail: "/perps/accounts/withdrawals/detail",
   accountLedgerPagination: "/perps/accounts/accountLedger/pagination",
+  userPairs: "/perps/accounts/userPairs/pairs",
+  userPairsAdd: "/perps/accounts/userPairs/add",
+  userPairsDelete: "/perps/accounts/userPairs/delete",
+  userPairsReorder: "/perps/accounts/userPairs/reorder",
 } as const;

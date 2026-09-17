@@ -27,10 +27,19 @@ export const publicEnv = {
   spotPairFactoryAddress: process.env.NEXT_PUBLIC_SPOT_PAIR_FACTORY ?? "",
   perpsPairFactoryAddress: process.env.NEXT_PUBLIC_PERPS_PAIR_FACTORY ?? "",
   spotExchangeAddress: process.env.NEXT_PUBLIC_SPOT_EXCHANGE_ADDRESS ?? "",
+  perpsExchangeAddress: process.env.NEXT_PUBLIC_PERPS_EXCHANGE_ADDRESS ?? "",
   spotDefaultBaseTokenSymbol:
     process.env.NEXT_PUBLIC_SPOT_DEFAULT_BASE_TOKEN_SYMBOL?.trim() || "OBX",
   spotDefaultQuoteTokenSymbol:
     process.env.NEXT_PUBLIC_SPOT_DEFAULT_QUOTE_TOKEN_SYMBOL?.trim() || "USDC",
+  perpsDefaultBaseTokenSymbol:
+    process.env.NEXT_PUBLIC_PERPS_DEFAULT_BASE_TOKEN_SYMBOL?.trim() ||
+    process.env.NEXT_PUBLIC_SPOT_DEFAULT_BASE_TOKEN_SYMBOL?.trim() ||
+    "OBX",
+  perpsDefaultQuoteTokenSymbol:
+    process.env.NEXT_PUBLIC_PERPS_DEFAULT_QUOTE_TOKEN_SYMBOL?.trim() ||
+    process.env.NEXT_PUBLIC_SPOT_DEFAULT_QUOTE_TOKEN_SYMBOL?.trim() ||
+    "USDC",
   /** API origin only, e.g. `https://api.example.com` (no `/api/v1`). */
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
   /** Block explorer base URL, e.g. `https://explorer.testnet.arc.network`. */
@@ -42,6 +51,8 @@ export const publicEnv = {
    * Empty → live market WS disabled.
    */
   spotMarketWsUrl: process.env.NEXT_PUBLIC_SPOT_MARKET_WS_URL ?? "",
+  /** Perps market WebSocket (native). Empty → live market WS disabled. */
+  perpsMarketWsUrl: process.env.NEXT_PUBLIC_PERPS_MARKET_WS_URL ?? "",
 } as const;
 
 /** Default ERC-20 / spot amount decimals (`NEXT_PUBLIC_DEFAULT_DECIMALS`, default 18). */
@@ -64,6 +75,11 @@ export function getApiPathPrefix(): string {
 /** Spot market WS URL, or empty when unset. */
 export function getSpotMarketWsUrl(): string {
   return publicEnv.spotMarketWsUrl.trim().replace(/\/$/, "");
+}
+
+/** Perps market WS URL, or empty when unset. */
+export function getPerpsMarketWsUrl(): string {
+  return publicEnv.perpsMarketWsUrl.trim().replace(/\/$/, "");
 }
 
 export function getExplorerTxUrl(txHash: string): string | null {
