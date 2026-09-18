@@ -136,15 +136,3 @@ export type OrdersTradeHistoryRsp = {
 
 export type OrdersTradeHistoryPaginationReq = PaginationCondition<Record<string, never>>;
 export type OrdersTradeHistoryPaginationRsp = PaginationRepertory<OrdersTradeHistoryRsp>;
-
-export type OrdersUserBalancesPairReq = {
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-};
-
-export type OrdersUserBalancesPairRsp = {
-  baseUserBalanceId: number | null;
-  baseBalance: ApiBigInt;
-  quoteUserBalanceId: number | null;
-  quoteBalance: ApiBigInt;
-};

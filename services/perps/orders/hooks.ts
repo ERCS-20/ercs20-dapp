@@ -10,7 +10,6 @@ import {
   applyPerpsWithdraw,
   cancelOrder,
   getOrderSalt,
-  getPairBalances,
   getPairByCode,
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
@@ -29,7 +28,6 @@ import type {
   OrdersPaginationRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
-  OrdersUserBalancesPairRsp,
   PairRsp,
   PerpsOrderSaltRsp,
   PerpsOrdersUserBalanceRsp,
@@ -191,40 +189,6 @@ export function useOrdersTradeHistoryPagination(
   });
 }
 
-export function ordersPairBalancesQueryKey(
-  baseTokenAddress: string,
-  quoteTokenAddress: string
-) {
-  return [
-    "perps",
-    "orders",
-    "user-balances-pair",
-    baseTokenAddress.toLowerCase(),
-    quoteTokenAddress.toLowerCase(),
-  ] as const;
-}
-
-/** Pair base/quote perps balances for trading (orders service in-memory cache). */
-export function usePairBalances(
-  baseTokenAddress: string | undefined,
-  quoteTokenAddress: string | undefined,
-  options?: { enabled?: boolean; notifyError?: boolean }
-) {
-  const { enabled = true, notifyError = false } = options ?? {};
-
-  return useApiQuery<OrdersUserBalancesPairRsp>({
-    queryKey: ordersPairBalancesQueryKey(baseTokenAddress ?? "", quoteTokenAddress ?? ""),
-    queryFn: () =>
-      getPairBalances({
-        baseTokenAddress: baseTokenAddress!,
-        quoteTokenAddress: quoteTokenAddress!,
-      }),
-    enabled: enabled && Boolean(baseTokenAddress && quoteTokenAddress),
-    notifyError,
-    staleTime: 30_000,
-  });
-}
-
 export function usePlaceOrder() {
   const queryClient = useQueryClient();
 
@@ -233,7 +197,7 @@ export function usePlaceOrder() {
     notifyError: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
-      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balances-pair"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },
   });
 }
@@ -246,7 +210,6 @@ export function useCancelOrder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "history"] });
-      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balances-pair"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },
   });

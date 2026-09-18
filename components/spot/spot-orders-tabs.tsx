@@ -15,7 +15,7 @@ import {
 } from "@/lib/spot/open-orders-format";
 import { parsePairCode } from "@/lib/spot/pair-api";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getCancelOrderSignTypedData } from "@/lib/orders/cancel-order-eip712";
+import { getCancelOrderSignTypedData } from "@/lib/spot/cancel-order-eip712";
 import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
 import {
   formatQuantity,

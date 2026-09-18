@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/hooks/use-wallet";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getWithdrawSignTypedData } from "@/lib/orders/withdraw-eip712";
+import { getWithdrawSignTypedData } from "@/lib/spot/withdraw-eip712";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { resolveInitialProfileToken } from "@/lib/profile/resolve-initial-token";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";

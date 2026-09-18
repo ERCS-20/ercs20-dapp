@@ -9,6 +9,5 @@ export const PerpsOrdersApi = {
   ordersPlace: "/perps/orders/orders/place",
   ordersCancel: "/perps/orders/orders/cancel",
   userBalance: "/perps/orders/user-balances/balance",
-  userBalancesPair: "/perps/orders/user-balances/balances-pair",
   withdrawalsApply: "/perps/orders/withdrawals/apply",
 } as const;

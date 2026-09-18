@@ -8,13 +8,14 @@ import { SpotSideSwitch } from "@/components/spot/spot-side-switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getDefaultDecimals } from "@/lib/config/public-env";
 import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
-import { buildPlaceOrderFields } from "@/lib/orders/build-place-order";
-import { getPlaceOrderSignTypedData } from "@/lib/orders/place-order-eip712";
+import { buildPlaceOrderFields } from "@/lib/spot/build-place-order";
 import { getSpotOrderErrorMessage } from "@/lib/spot/order-error-message";
-import { debugPlaceOrder } from "@/lib/spot/place-order-debug";
-import { orderQuoteAmountBaseUnits } from "@/lib/spot/pair-api";
 import { parseEnginePrice } from "@/lib/spot/order-place-amounts";
+import { orderQuoteAmountBaseUnits } from "@/lib/spot/pair-api";
+import { debugPlaceOrder } from "@/lib/spot/place-order-debug";
+import { getPlaceOrderSignTypedData } from "@/lib/spot/place-order-eip712";
 import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
@@ -24,8 +25,6 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 import { useOrderSalt, usePairBalances, usePlaceOrder } from "@/services/spot/orders/hooks";
-
-const SPOT_BALANCE_DECIMALS = 18;
 
 function sanitizeDecimal(raw: string): string {
   let x = raw.replace(/[^\d.]/g, "");
@@ -108,14 +107,14 @@ export function SpotOrderForm({
     if (!isAuthenticated) return "—";
     if (balancesPending) return "…";
     if (!pairBalances) return "0";
-    return formatBalance(pairBalances.baseBalance, SPOT_BALANCE_DECIMALS);
+    return formatBalance(pairBalances.baseBalance, getDefaultDecimals());
   }, [balancesPending, isAuthenticated, pairBalances]);
 
   const availableQuote = useMemo(() => {
     if (!isAuthenticated) return "—";
     if (balancesPending) return "…";
     if (!pairBalances) return "0";
-    return formatBalance(pairBalances.quoteBalance, SPOT_BALANCE_DECIMALS);
+    return formatBalance(pairBalances.quoteBalance, getDefaultDecimals());
   }, [balancesPending, isAuthenticated, pairBalances]);
 
   const effectivePrice = useMemo(() => {
@@ -254,7 +253,7 @@ export function SpotOrderForm({
     ) {
       toast.error(
         t("spot.minTotal")
-          .replace("{min}", formatBalance(minTrade, SPOT_BALANCE_DECIMALS))
+          .replace("{min}", formatBalance(minTrade, getDefaultDecimals()))
           .replace("{symbol}", pair.quoteSymbol)
       );
       return;

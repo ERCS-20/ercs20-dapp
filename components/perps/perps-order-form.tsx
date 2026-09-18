@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
-import { buildPlaceOrderFields } from "@/lib/orders/build-place-order";
-import { getPlaceOrderSignTypedData } from "@/lib/orders/perps-place-order-eip712";
+import { getDefaultDecimals } from "@/lib/config/public-env";
+import { buildPlaceOrderFields } from "@/lib/perps/build-place-order";
 import { getPerpsOrderErrorMessage } from "@/lib/perps/order-error-message";
-import { debugPlaceOrder } from "@/lib/perps/place-order-debug";
-import { orderQuoteAmountBaseUnits } from "@/lib/perps/pair-api";
 import { parseEnginePrice } from "@/lib/perps/order-place-amounts";
+import { orderQuoteAmountBaseUnits } from "@/lib/perps/pair-api";
+import { debugPlaceOrder } from "@/lib/perps/place-order-debug";
+import { getPlaceOrderSignTypedData } from "@/lib/perps/place-order-eip712";
 import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
@@ -23,9 +24,7 @@ import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
-import { useOrderSalt, usePairBalances, usePlaceOrder } from "@/services/perps/orders/hooks";
-
-const SPOT_BALANCE_DECIMALS = 18;
+import { useOrderSalt, usePerpsOrdersUserBalance, usePlaceOrder } from "@/services/perps/orders/hooks";
 
 function sanitizeDecimal(raw: string): string {
   let x = raw.replace(/[^\d.]/g, "");
@@ -93,30 +92,23 @@ export function PerpsOrderForm({
   const busy = isSigning || isSaltPending || isSubmitPending;
 
   const {
-    data: pairBalances,
+    data: usdcBalance,
     isLoading: isBalancesLoading,
     isFetching: isBalancesFetching,
-  } = usePairBalances(pair.baseAddress, pair.quoteAddress, {
+  } = usePerpsOrdersUserBalance({
     enabled: isAuthenticated,
     notifyError: false,
   });
 
   const balancesPending =
-    isBalancesLoading || (isBalancesFetching && pairBalances == null);
-
-  const availableBase = useMemo(() => {
-    if (!isAuthenticated) return "—";
-    if (balancesPending) return "…";
-    if (!pairBalances) return "0";
-    return formatBalance(pairBalances.baseBalance, SPOT_BALANCE_DECIMALS);
-  }, [balancesPending, isAuthenticated, pairBalances]);
+    isBalancesLoading || (isBalancesFetching && usdcBalance == null);
 
   const availableQuote = useMemo(() => {
     if (!isAuthenticated) return "—";
     if (balancesPending) return "…";
-    if (!pairBalances) return "0";
-    return formatBalance(pairBalances.quoteBalance, SPOT_BALANCE_DECIMALS);
-  }, [balancesPending, isAuthenticated, pairBalances]);
+    if (!usdcBalance) return "0";
+    return formatBalance(usdcBalance.balance, getDefaultDecimals());
+  }, [balancesPending, isAuthenticated, usdcBalance]);
 
   const effectivePrice = useMemo(() => {
     const p = Number(price);
@@ -134,21 +126,10 @@ export function PerpsOrderForm({
     if (effectivePrice <= 0) return;
 
     const ratio = pct / 100;
-
-    if (side === "buy") {
-      const quoteAvail = parseAvailableBalance(availableQuote);
-      if (quoteAvail <= 0) return;
-      const quoteUse = quoteAvail * ratio;
-      const amount = quoteUse / effectivePrice;
-      onQuantityChange(formatInputDecimal(amount));
-      return;
-    }
-
-    const baseAvail = parseAvailableBalance(availableBase);
-    if (baseAvail <= 0) return;
-    const baseUse = baseAvail * ratio;
-    const totalQuote = baseUse * effectivePrice;
-    const amount = totalQuote / effectivePrice;
+    const quoteAvail = parseAvailableBalance(availableQuote);
+    if (quoteAvail <= 0) return;
+    const quoteUse = quoteAvail * ratio;
+    const amount = quoteUse / effectivePrice;
     onQuantityChange(formatInputDecimal(amount));
   }
 
@@ -188,10 +169,7 @@ export function PerpsOrderForm({
       return;
     }
 
-    const userBalanceId =
-      side === "buy"
-        ? pairBalances?.quoteUserBalanceId
-        : pairBalances?.baseUserBalanceId;
+    const userBalanceId = usdcBalance?.userBalanceId;
     // No balance row yet (never deposited) — treat as insufficient, not generic failure.
     if (userBalanceId == null) {
       toast.error(t("perps.insufficientBalance"));
@@ -228,8 +206,8 @@ export function PerpsOrderForm({
     });
 
     let quoteBudget: bigint | undefined;
-    if (side === "buy" && sliderPct > 0 && pairBalances) {
-      const quoteBal = parseApiBigInt(pairBalances.quoteBalance);
+    if (sliderPct > 0 && usdcBalance) {
+      const quoteBal = parseApiBigInt(usdcBalance.balance);
       if (quoteBal != null && quoteBal > BigInt(0)) {
         quoteBudget = (quoteBal * BigInt(sliderPct)) / BigInt(100);
       }
@@ -254,7 +232,7 @@ export function PerpsOrderForm({
     ) {
       toast.error(
         t("perps.minTotal")
-          .replace("{min}", formatBalance(minTrade, SPOT_BALANCE_DECIMALS))
+          .replace("{min}", formatBalance(minTrade, getDefaultDecimals()))
           .replace("{symbol}", pair.quoteSymbol)
       );
       return;
@@ -286,11 +264,9 @@ export function PerpsOrderForm({
           salt: fields.salt.toString(),
         });
 
-        const available =
-          side === "buy"
-            ? parseApiBigInt(pairBalances?.quoteBalance)
-            : parseApiBigInt(pairBalances?.baseBalance);
-        if (available == null || available < fields.makerAmount) {
+        const available = parseApiBigInt(usdcBalance?.balance);
+        const required = side === "buy" ? fields.makerAmount : quoteAmount;
+        if (available == null || required == null || available < required) {
           toast.error(t("perps.insufficientBalance"));
           return;
         }
@@ -441,19 +417,11 @@ export function PerpsOrderForm({
           />
         </div>
 
-        <div className="space-y-1.5 text-xs">
-          <div className="text-muted-foreground flex justify-between tabular-nums">
-            <span>
-              {t("perps.available")} {pair.quoteSymbol}
-            </span>
-            <span className="text-foreground">{availableQuote}</span>
-          </div>
-          <div className="text-muted-foreground flex justify-between tabular-nums">
-            <span>
-              {t("perps.available")} {pair.baseSymbol}
-            </span>
-            <span className="text-foreground">{availableBase}</span>
-          </div>
+        <div className="text-muted-foreground flex justify-between text-xs tabular-nums">
+          <span>
+            {t("perps.available")} {pair.quoteSymbol}
+          </span>
+          <span className="text-foreground">{availableQuote}</span>
         </div>
       </div>
 

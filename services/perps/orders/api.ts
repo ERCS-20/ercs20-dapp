@@ -1,4 +1,4 @@
-import { allocatePerpsOrderSalt } from "@/lib/orders/perps-order-salt";
+import { allocatePerpsOrderSalt } from "@/lib/perps/order-salt";
 import { request } from "@/lib/api/request";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
 import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
@@ -12,8 +12,6 @@ import type {
   OrdersPaginationRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
-  OrdersUserBalancesPairReq,
-  OrdersUserBalancesPairRsp,
   PairRsp,
   PerpsOrderSaltRsp,
   PerpsOrdersUserBalanceReq,
@@ -99,14 +97,6 @@ export function getPerpsOrdersUserBalance(req?: Partial<PerpsOrdersUserBalanceRe
 
 export function getOrdersUserBalance(req: PerpsOrdersUserBalanceReq) {
   return getPerpsOrdersUserBalance(req);
-}
-
-/** POST /perps/orders/user-balances/balances-pair */
-export function getPairBalances(req: OrdersUserBalancesPairReq) {
-  return request.post<OrdersUserBalancesPairRsp>(PerpsOrdersApi.userBalancesPair, {
-    baseTokenAddress: req.baseTokenAddress.toLowerCase(),
-    quoteTokenAddress: req.quoteTokenAddress.toLowerCase(),
-  });
 }
 
 /** POST /perps/orders/withdrawals/apply — `userId` from gateway JWT headers. */

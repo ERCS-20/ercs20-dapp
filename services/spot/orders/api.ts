@@ -1,4 +1,4 @@
-import { allocateOrderSalt } from "@/lib/orders/order-salt";
+import { allocateOrderSalt } from "@/lib/spot/order-salt";
 import { request } from "@/lib/api/request";
 import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
 import { resolveSpotBalanceTokenAddress } from "@/lib/tokens/spot-balance-token";

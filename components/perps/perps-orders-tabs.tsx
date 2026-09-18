@@ -15,7 +15,7 @@ import {
 } from "@/lib/perps/open-orders-format";
 import { parsePairCode } from "@/lib/perps/pair-api";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getCancelOrderSignTypedData } from "@/lib/orders/perps-cancel-order-eip712";
+import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import {
   formatQuantity,

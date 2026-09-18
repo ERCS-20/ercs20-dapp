@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { useWallet } from "@/hooks/use-wallet";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
-import { getPerpsWithdrawSignTypedData } from "@/lib/orders/perps-withdraw-eip712";
+import { getPerpsWithdrawSignTypedData } from "@/lib/perps/withdraw-eip712";
 import { createNativeUsdcToken } from "@/lib/profile/native-usdc-token";
 import { ProfileRoutes } from "@/lib/profile/routes";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
