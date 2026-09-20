@@ -15,7 +15,6 @@ import { enginePriceToNumber } from "@/lib/perps/engine-price-decimal";
 import {
   CHART_INTERVAL_OPTIONS,
   chartViewLabel,
-  KLINE_FIRST_SCREEN_LIMIT,
   PRIMARY_CHART_VIEWS,
   resolveChartRequest,
   type ChartView,
@@ -120,7 +119,6 @@ export function PerpsChartPanel({
     ? {
         pairId: pairId!,
         interval: apiInterval,
-        limit: KLINE_FIRST_SCREEN_LIMIT,
       }
     : undefined;
 
@@ -130,7 +128,6 @@ export function PerpsChartPanel({
 
   useMarketKlineWs(pairId, apiInterval, {
     enabled: chartReady,
-    limit: KLINE_FIRST_SCREEN_LIMIT,
   });
 
   const liveTick = useKlineLiveTick(

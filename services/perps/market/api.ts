@@ -37,7 +37,6 @@ export function listKlines(req: KlineListReq) {
   return request.post<KlineListRsp>(PerpsMarketApi.klineList, {
     pairId: req.pairId,
     interval: req.interval,
-    ...(req.limit != null ? { limit: req.limit } : {}),
     ...(req.beforeOpenTime != null ? { beforeOpenTime: req.beforeOpenTime } : {}),
   });
 }

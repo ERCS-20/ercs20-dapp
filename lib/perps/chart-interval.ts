@@ -17,14 +17,11 @@ export type ChartView = "time" | ChartInterval;
 
 export type ChartType = "line" | "candle";
 
-/** Default REST first-screen bar count (`kline-first-screen-limit`). */
-export const KLINE_FIRST_SCREEN_LIMIT = 200;
-
 export const DEFAULT_CHART_VIEW: ChartView = "15m";
 
 /**
  * 分时用 1m close 连线（首屏约覆盖数小时）。
- * 若改用 1s，limit=200 大约只覆盖 3 分钟。
+ * 若改用 1s，服务端默认条数大约只覆盖数分钟。
  */
 export const TIME_SHARE_API_INTERVAL: ChartInterval = "1m";
 

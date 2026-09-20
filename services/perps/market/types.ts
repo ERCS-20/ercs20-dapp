@@ -36,8 +36,6 @@ export type KlineCurrentDayReq = {
 export type KlineListReq = {
   pairId: number;
   interval: string;
-  /** Default server-side (`kline-first-screen-limit`, typically 200). */
-  limit?: number;
   /** ISO-8601 UTC; fetch bars with `openTime` strictly before this instant. */
   beforeOpenTime?: string;
 };
