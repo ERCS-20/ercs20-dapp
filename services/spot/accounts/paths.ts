@@ -6,8 +6,4 @@ export const SpotAccountsApi = {
   withdrawalsPagination: "/spot/accounts/withdrawals/pagination",
   withdrawalsDetail: "/spot/accounts/withdrawals/detail",
   accountLedgerPagination: "/spot/accounts/accountLedger/pagination",
-  userPairs: "/spot/accounts/userPairs/pairs",
-  userPairsAdd: "/spot/accounts/userPairs/add",
-  userPairsDelete: "/spot/accounts/userPairs/delete",
-  userPairsReorder: "/spot/accounts/userPairs/reorder",
 } as const;

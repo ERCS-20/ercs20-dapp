@@ -10,5 +10,9 @@ export const SpotOrdersApi = {
   ordersCancel: "/spot/orders/orders/cancel",
   userBalance: "/spot/orders/user-balances/balance",
   userBalancesPair: "/spot/orders/user-balances/balances-pair",
+  userPairs: "/spot/orders/userPairs/pairs",
+  userPairsAdd: "/spot/orders/userPairs/add",
+  userPairsDelete: "/spot/orders/userPairs/delete",
+  userPairsReorder: "/spot/orders/userPairs/reorder",
   withdrawalsApply: "/spot/orders/withdrawals/apply",
 } as const;

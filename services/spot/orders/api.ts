@@ -19,6 +19,10 @@ import type {
   OrdersUserBalancesPairRsp,
   PairRsp,
   PlaceOrderReq,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
   WithdrawApplyReq,
 } from "@/services/spot/orders/types";
 
@@ -97,6 +101,32 @@ export function getPairBalances(req: OrdersUserBalancesPairReq) {
   return request.post<OrdersUserBalancesPairRsp>(SpotOrdersApi.userBalancesPair, {
     baseTokenAddress: req.baseTokenAddress.toLowerCase(),
     quoteTokenAddress: req.quoteTokenAddress.toLowerCase(),
+  });
+}
+
+/** POST /orders/userPairs/pairs — `userId` from gateway JWT headers. */
+export function listUserPairs() {
+  return request.post<UserPairsRsp>(SpotOrdersApi.userPairs);
+}
+
+/** POST /orders/userPairs/add — `userId` from gateway JWT headers. */
+export function addUserPair(req: UserPairAddReq) {
+  return request.post<UserPairsRsp>(SpotOrdersApi.userPairsAdd, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /orders/userPairs/delete — `userId` from gateway JWT headers. */
+export function deleteUserPair(req: UserPairDeleteReq) {
+  return request.post<UserPairsRsp>(SpotOrdersApi.userPairsDelete, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /orders/userPairs/reorder — `userId` from gateway JWT headers. */
+export function reorderUserPairs(req: UserPairsReorderReq) {
+  return request.post<void>(SpotOrdersApi.userPairsReorder, {
+    pairIds: req.pairIds,
   });
 }
 

@@ -23,11 +23,11 @@ import {
   useMarketUserPairs,
 } from "@/services/spot/market/hooks";
 import type { MarketPairRsp } from "@/services/spot/market/types";
-import { usePairEnginePriceDecimalMap } from "@/services/spot/orders/hooks";
 import {
+  usePairEnginePriceDecimalMap,
   useReorderUserPairs,
   useUserPairs,
-} from "@/services/spot/accounts/hooks";
+} from "@/services/spot/orders/hooks";
 
 const MARKET_PAIR_PAGE_SIZE = 100;
 

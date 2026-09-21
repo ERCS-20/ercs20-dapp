@@ -11,7 +11,7 @@ import {
   useAddUserPair,
   useDeleteUserPair,
   useUserPairs,
-} from "@/services/spot/accounts/hooks";
+} from "@/services/spot/orders/hooks";
 
 export function SpotFavoriteButton({
   pairId,
