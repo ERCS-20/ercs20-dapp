@@ -1,6 +1,5 @@
 import type {
-  MarketBidsAndAsks,
-  MarketOrderBookListRsp,
+  MarketBidsAndAsksRsp,
   MarketWsOrderBookDiff,
 } from "@/services/spot/market/types";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
@@ -13,7 +12,7 @@ export class OrderBookSideCache {
 
   constructor(private readonly ascending: boolean) {}
 
-  applyLevels(items: MarketBidsAndAsks["bids"] | undefined) {
+  applyLevels(items: MarketBidsAndAsksRsp["bids"] | undefined) {
     if (!items?.length) return;
 
     for (const row of items) {
@@ -32,7 +31,7 @@ export class OrderBookSideCache {
    * - clear previous state
    * - aggregate duplicate price entries by summing quantity
    */
-  replaceLevels(items: MarketBidsAndAsks["bids"] | undefined) {
+  replaceLevels(items: MarketBidsAndAsksRsp["bids"] | undefined) {
     this.clear();
     if (!items?.length) return;
 
@@ -100,9 +99,9 @@ export class OrderBookCache {
   }
 
   /** REST full snapshot — always authoritative. */
-  applySnapshot(rsp: MarketOrderBookListRsp): void {
-    this.bids.replaceLevels(rsp.bidsAndAsks?.bids);
-    this.asks.replaceLevels(rsp.bidsAndAsks?.asks);
+  applySnapshot(rsp: MarketBidsAndAsksRsp): void {
+    this.bids.replaceLevels(rsp.bids);
+    this.asks.replaceLevels(rsp.asks);
     this.sequence = rsp.sequence;
   }
 

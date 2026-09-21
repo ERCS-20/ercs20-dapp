@@ -28,7 +28,7 @@ import type {
   KlineListReq,
   KlineListRsp,
   MarketKlineCurrentDayRsp,
-  MarketOrderBookListRsp,
+  MarketBidsAndAsksRsp,
   MarketPairsPaginationReq,
   MarketPairsPaginationRsp,
   MarketPairsRsp,
@@ -93,28 +93,13 @@ export function useMarketUserPairs(
 export function useMarketPairsWs(options?: { enabled?: boolean }) {
   const { enabled = true } = options ?? {};
   const queryClient = useQueryClient();
-  const lastSequenceRef = useRef(-1);
 
   useEffect(() => {
     if (!enabled || !spotMarketWs.isConfigured()) return;
 
-    lastSequenceRef.current = -1;
-
     const onMessage: MarketWsMessageHandler = (msg) => {
       if (!("channel" in msg) || msg.channel !== "pairs") return;
       if (!isMarketWsPairPriceList(msg.data)) return;
-
-      // sequence=-1: day-roll / add — always apply. Else drop stale batches.
-      if (
-        msg.sequence >= 0 &&
-        lastSequenceRef.current >= 0 &&
-        msg.sequence < lastSequenceRef.current
-      ) {
-        return;
-      }
-      if (msg.sequence >= 0) {
-        lastSequenceRef.current = msg.sequence;
-      }
 
       const updates = msg.data;
       queryClient.setQueriesData<MarketPairsPaginationRsp>(
@@ -198,7 +183,7 @@ export function useKlineList(
 
 /**
  * After REST kline list: subscribe `kline` WS for `interval`.
- * Tail-only merge (`openTime` ≤ last ignored; equal overwrite; newer append).
+ * Tail-only merge (`openTime` older ignored; equal overwrites only if sequence is newer).
  * Reconnect → REST refetch.
  */
 export function useMarketKlineWs(
@@ -279,10 +264,11 @@ export function useMarketTrades(
   });
 }
 
-function isOrderBookDiff(data: unknown): data is MarketWsOrderBookDiff {
+function isOrderBookPush(data: unknown): data is MarketBidsAndAsksRsp {
   if (data == null || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
   return (
+    typeof d.sequence === "number" &&
     (d.bids == null || Array.isArray(d.bids)) &&
     (d.asks == null || Array.isArray(d.asks))
   );
@@ -452,7 +438,7 @@ export function useMarketOrderBook(
 ) {
   const { enabled = true, notifyError = false } = options ?? {};
 
-  return useApiQuery<MarketOrderBookListRsp>({
+  return useApiQuery<MarketBidsAndAsksRsp>({
     queryKey: marketOrderBookQueryKey(pairId!),
     queryFn: () => getMarketOrderBook(pairId!),
     enabled: enabled && pairId != null,
@@ -484,9 +470,8 @@ export function useMarketOrderBookWs(
     const onMessage: MarketWsMessageHandler = (msg) => {
       if (!("channel" in msg) || msg.channel !== "orderbook") return;
       if (msg.pairId !== pairId) return;
-      if (typeof msg.sequence !== "number") return;
-      if (!isOrderBookDiff(msg.data)) return;
-      onDiffRef.current?.(msg.sequence, msg.data);
+      if (!isOrderBookPush(msg.data)) return;
+      onDiffRef.current?.(msg.data.sequence, msg.data);
     };
 
     const onReconnect = () => {

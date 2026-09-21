@@ -2,7 +2,7 @@ import type { MarketKlineRsp } from "@/services/perps/market/types";
 
 /**
  * Merge a WS kline into the REST/cache bar list (tail-only).
- * - same `openTime` as last → overwrite
+ * - same `openTime` as last → overwrite only when `sequence` is newer
  * - newer → append (middle gaps filled on display)
  * - older → ignore
  */
@@ -16,6 +16,7 @@ export function mergeWsKlineBar(
   if (incoming.openTime < last.openTime) return bars;
 
   if (incoming.openTime === last.openTime) {
+    if (incoming.sequence <= last.sequence) return bars;
     const next = bars.slice();
     next[next.length - 1] = incoming;
     return next;
@@ -28,6 +29,7 @@ export function isMarketKlineBar(data: unknown): data is MarketKlineRsp {
   if (data == null || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
   return (
+    typeof d.sequence === "number" &&
     typeof d.openTime === "number" &&
     typeof d.interval === "string" &&
     typeof d.tradeCount === "number" &&

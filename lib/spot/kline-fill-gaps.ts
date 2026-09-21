@@ -105,9 +105,11 @@ function syntheticFlatBar(
   interval: ChartInterval,
   openTime: number,
   close: ApiBigInt,
-  closedBar: boolean
+  closedBar: boolean,
+  sequence: number
 ): MarketKlineRsp {
   return {
+    sequence,
     interval,
     openTime,
     open: close,
@@ -144,9 +146,10 @@ export function fillSparseKlineGaps(
   const fillFrom = options?.fillFromOpenTimeMs;
 
   if (fillFrom != null && prevClose != null && fillFrom < sorted[0].openTime) {
+    const sequence = sorted[0].sequence;
     let t = fillFrom;
     while (t < sorted[0].openTime && out.length < MAX_FILLED_BARS) {
-      out.push(syntheticFlatBar(interval, t, prevClose, true));
+      out.push(syntheticFlatBar(interval, t, prevClose, true, sequence));
       t = nextKlineOpenTimeMs(interval, t);
     }
   }
@@ -157,7 +160,7 @@ export function fillSparseKlineGaps(
       const prev = sorted[i - 1];
       let t = nextKlineOpenTimeMs(interval, prev.openTime);
       while (t < bar.openTime && out.length < MAX_FILLED_BARS) {
-        out.push(syntheticFlatBar(interval, t, prev.close, true));
+        out.push(syntheticFlatBar(interval, t, prev.close, true, prev.sequence));
         t = nextKlineOpenTimeMs(interval, t);
       }
     }
@@ -191,8 +194,9 @@ export function fillKlineGapsToNow(
   let t = nextKlineOpenTimeMs(interval, last.openTime);
   while (t <= currentOpen && out.length < MAX_FILLED_BARS) {
     const prevClose = out[out.length - 1].close;
+    const sequence = out[out.length - 1].sequence;
     const closedBar = nextKlineOpenTimeMs(interval, t) <= nowMs;
-    out.push(syntheticFlatBar(interval, t, prevClose, closedBar));
+    out.push(syntheticFlatBar(interval, t, prevClose, closedBar, sequence));
     t = nextKlineOpenTimeMs(interval, t);
   }
   return out;

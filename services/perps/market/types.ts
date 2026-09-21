@@ -1,10 +1,11 @@
 import type { PaginationCondition, PaginationRepertory } from "@/lib/api/pagination";
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 
-/** Mirrors `exchange.orbix.perps.market.store.dto.PairRsp`. */
+/** Mirrors `exchange.orbix.market.api.dto.MarketPairRsp`. */
 export type MarketPairRsp = {
   pairId: number;
   code: string;
+  sequence?: number;
   open: ApiBigInt;
   close: ApiBigInt;
   /** Matching-engine price scale (÷ 10^enginePriceDecimal). Omitted on some API versions. */
@@ -48,8 +49,9 @@ export type KlineListRsp = {
   prevClose: ApiBigInt | null;
 };
 
-/** Mirrors `exchange.orbix.perps.components.market.entity.MarketKline`. */
+/** Mirrors `exchange.orbix.market.api.dto.MarketKlineRsp`. */
 export type MarketKlineRsp = {
+  sequence: number;
   interval: string;
   openTime: number;
   open: ApiBigInt;
@@ -70,22 +72,17 @@ export type MarketKlineCurrentDayRsp = {
   current: MarketKlineRsp | null;
 };
 
-/** Mirrors `exchange.orbix.perps.components.market.entity.MarketPriceAndQuantity`. */
+/** Mirrors `exchange.orbix.market.api.dto.MarketPriceAndQuantityRsp`. */
 export type MarketPriceAndQuantity = {
   price: number;
   quantity: ApiBigInt;
 };
 
-/** Mirrors `exchange.orbix.perps.components.market.entity.MarketBidsAndAsks`. */
-export type MarketBidsAndAsks = {
+/** Mirrors `exchange.orbix.market.api.dto.MarketBidsAndAsksRsp` (REST snapshot + WS orderbook data). */
+export type MarketBidsAndAsksRsp = {
+  sequence: number;
   bids: MarketPriceAndQuantity[];
   asks: MarketPriceAndQuantity[];
-};
-
-/** Mirrors `exchange.orbix.perps.market.store.dto.OrderBookListRsp`. */
-export type MarketOrderBookListRsp = {
-  sequence: number;
-  bidsAndAsks: MarketBidsAndAsks;
 };
 
 /** Mirrors `exchange.orbix.perps.components.market.entity.MarketTrade`. */
@@ -133,7 +130,8 @@ export type MarketWsPushMessage = {
   channel: MarketWsChannel;
   /** Business pairId; for `pairs` channel this is always `0` (unused). */
   pairId: number;
-  sequence: number;
+  /** Present on older envelopes; newer channels carry sequence inside `data`. */
+  sequence?: number;
   data: unknown;
 };
 
@@ -142,9 +140,10 @@ export type MarketWsTradePushMessage = MarketWsPushMessage & {
   data: MarketTrade[];
 };
 
-/** WS `pairs` data item — list open/close only (涨跌幅前端自算). */
+/** WS `pairs` data item — mirrors `MarketPairPriceRsp`. */
 export type MarketWsPairPrice = {
   pairId: number;
+  sequence: number;
   open: ApiBigInt;
   close: ApiBigInt;
 };

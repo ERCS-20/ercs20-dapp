@@ -5,7 +5,7 @@ import type {
   KlineListReq,
   KlineListRsp,
   MarketKlineCurrentDayRsp,
-  MarketOrderBookListRsp,
+  MarketBidsAndAsksRsp,
   MarketPairsPaginationReq,
   MarketPairsPaginationRsp,
   MarketPairsRsp,
@@ -49,5 +49,5 @@ export function listMarketTrades(pairId: number) {
 
 /** GET /market/store/order-book/{pairId} */
 export function getMarketOrderBook(pairId: number) {
-  return request.get<MarketOrderBookListRsp>(SpotMarketApi.orderBook(pairId));
+  return request.get<MarketBidsAndAsksRsp>(SpotMarketApi.orderBook(pairId));
 }

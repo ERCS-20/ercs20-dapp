@@ -28,11 +28,18 @@ export function applyPairPriceUpdates(
   const next = pairs.map((p) => {
     const u = byId.get(p.pairId);
     if (!u) return p;
-    if (priceKey(p.open) === priceKey(u.open) && priceKey(p.close) === priceKey(u.close)) {
+    const prevSeq = p.sequence ?? -1;
+    // Stale push; equal sequence still applies (UTC day-roll keeps sequence).
+    if (u.sequence < prevSeq) return p;
+    if (
+      u.sequence === prevSeq &&
+      priceKey(p.open) === priceKey(u.open) &&
+      priceKey(p.close) === priceKey(u.close)
+    ) {
       return p;
     }
     changed = true;
-    return { ...p, open: u.open, close: u.close };
+    return { ...p, sequence: u.sequence, open: u.open, close: u.close };
   });
   return changed ? next : pairs;
 }
@@ -61,7 +68,10 @@ export function isMarketWsPairPriceList(data: unknown): data is MarketWsPairPric
     if (item == null || typeof item !== "object") return false;
     const row = item as Record<string, unknown>;
     return (
-      typeof row.pairId === "number" && row.open != null && row.close != null
+      typeof row.pairId === "number" &&
+      typeof row.sequence === "number" &&
+      row.open != null &&
+      row.close != null
     );
   });
 }

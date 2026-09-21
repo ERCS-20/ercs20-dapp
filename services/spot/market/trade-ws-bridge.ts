@@ -30,8 +30,10 @@ export function marketTradesQueryKey(pairId: number) {
   return ["spot", "market", "trades", pairId] as const;
 }
 
-function isTradeBatch(data: unknown): data is MarketTrade[] {
-  return Array.isArray(data);
+function isTradeListPush(data: unknown): data is Pick<MarketTradeListRsp, "sequence" | "trades"> {
+  if (data == null || typeof data !== "object") return false;
+  const d = data as Record<string, unknown>;
+  return typeof d.sequence === "number" && Array.isArray(d.trades);
 }
 
 function attachHandlers(bridge: PairTradeBridge): void {
@@ -40,11 +42,11 @@ function attachHandlers(bridge: PairTradeBridge): void {
   const onMessage: MarketWsMessageHandler = (msg) => {
     if (!("channel" in msg) || msg.channel !== "trade") return;
     if (msg.pairId !== pairId) return;
-    if (!isTradeBatch(msg.data) || msg.data.length === 0) return;
-    if (typeof msg.sequence !== "number") return;
+    if (!isTradeListPush(msg.data)) return;
 
-    const batch = msg.data;
-    const sequence = msg.sequence;
+    const batch = msg.data.trades.filter((t): t is MarketTrade => t != null);
+    if (batch.length === 0) return;
+    const sequence = msg.data.sequence;
 
     let applied = false;
     queryClient.setQueryData<MarketTradeListRsp>(
