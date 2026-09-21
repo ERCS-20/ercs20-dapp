@@ -52,9 +52,13 @@ function attachHandlers(bridge: PairTradeBridge): void {
     queryClient.setQueryData<MarketTradeListRsp>(
       marketTradesQueryKey(pairId),
       (prev) => {
-        if (!prev) return prev;
-        const next = appendWsTradesToListRsp(prev, batch, sequence);
-        if (next === prev) return prev;
+        const base: MarketTradeListRsp = prev ?? {
+          sequence: -1,
+          trades: [],
+          reverseFromIndex: null,
+        };
+        const next = appendWsTradesToListRsp(base, batch, sequence);
+        if (next === base) return prev;
         applied = true;
         return next;
       }
