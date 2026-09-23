@@ -9,13 +9,13 @@ import {
   dayStatsFromKlineCurrentDay,
   EMPTY_TICKER_STATS,
   type SpotTickerStats,
-} from "@/lib/spot/market-ticker-stats";
+} from "@/lib/market/market-ticker-stats";
 import {
   applyPairPricesToPagination,
   applyPairPricesToUserPairs,
   isMarketWsPairPriceList,
-} from "@/lib/spot/pairs-price-merge";
-import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/spot/kline-merge";
+} from "@/lib/market/pairs-price-merge";
+import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/market/kline-merge";
 import {
   getKlineCurrentDay,
   getMarketOrderBook,
@@ -140,7 +140,6 @@ export function useKlineCurrentDay(
 export function marketKlineListQueryKey(req: {
   pairId: number;
   interval: string;
-  limit?: number;
   beforeOpenTime?: string;
 }) {
   return [
@@ -150,7 +149,6 @@ export function marketKlineListQueryKey(req: {
     "list",
     req.pairId,
     req.interval,
-    req.limit,
     req.beforeOpenTime,
   ] as const;
 }
@@ -170,7 +168,6 @@ export function useKlineList(
       "list",
       req?.pairId,
       req?.interval,
-      req?.limit,
       req?.beforeOpenTime,
     ],
     queryFn: () => listKlines(req!),
@@ -191,11 +188,10 @@ export function useMarketKlineWs(
   interval: string | undefined,
   options?: {
     enabled?: boolean;
-    limit?: number;
     beforeOpenTime?: string;
   }
 ) {
-  const { enabled = true, limit, beforeOpenTime } = options ?? {};
+  const { enabled = true, beforeOpenTime } = options ?? {};
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -211,7 +207,6 @@ export function useMarketKlineWs(
     const queryKey = marketKlineListQueryKey({
       pairId,
       interval,
-      limit,
       beforeOpenTime,
     });
 
@@ -241,7 +236,7 @@ export function useMarketKlineWs(
       offReconnect();
       spotMarketWs.unsubscribe("kline", pairId, interval);
     };
-  }, [beforeOpenTime, enabled, interval, limit, pairId, queryClient]);
+  }, [beforeOpenTime, enabled, interval, pairId, queryClient]);
 }
 
 export function marketOrderBookQueryKey(pairId: number) {

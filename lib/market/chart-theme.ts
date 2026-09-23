@@ -1,4 +1,4 @@
-export type PerpsChartTheme = {
+export type ChartTheme = {
   background: string;
   text: string;
   grid: string;
@@ -13,7 +13,7 @@ export type PerpsChartTheme = {
  * Do not sample CSS vars on theme toggle — `resolvedTheme` can update before
  * the `dark` class is on `<html>`.
  */
-const LIGHT: PerpsChartTheme = {
+const LIGHT: ChartTheme = {
   background: "rgba(0, 0, 0, 0)",
   text: "#6b6b6b",
   grid: "#e4e4e4",
@@ -21,7 +21,7 @@ const LIGHT: PerpsChartTheme = {
   down: "#f06292",
 };
 
-const DARK: PerpsChartTheme = {
+const DARK: ChartTheme = {
   background: "rgba(0, 0, 0, 0)",
   text: "#9a9a9a",
   grid: "rgba(255, 255, 255, 0.14)",
@@ -30,7 +30,7 @@ const DARK: PerpsChartTheme = {
 };
 
 /** Resolve chart colors from next-themes `resolvedTheme` (or DOM class as fallback). */
-export function readPerpsChartTheme(mode?: string | null): PerpsChartTheme {
+export function readChartTheme(mode?: string | null): ChartTheme {
   if (mode === "dark") return DARK;
   if (mode === "light") return LIGHT;
 
@@ -40,3 +40,8 @@ export function readPerpsChartTheme(mode?: string | null): PerpsChartTheme {
 
   return LIGHT;
 }
+
+/** @deprecated Use {@link readChartTheme}. */
+export const readSpotChartTheme = readChartTheme;
+/** @deprecated Use {@link readChartTheme}. */
+export const readPerpsChartTheme = readChartTheme;

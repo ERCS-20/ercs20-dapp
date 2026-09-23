@@ -1,4 +1,4 @@
-import type { MarketKlineRsp } from "@/services/perps/market/types";
+import type { MarketKlineRsp } from "@/lib/market/dto";
 
 /**
  * Merge a WS kline into the REST/cache bar list (tail-only).

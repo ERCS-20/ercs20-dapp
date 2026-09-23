@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import {
   MARKET_TRADES_MAX,
   marketTradesToSpotTrades,
-} from "@/lib/spot/market-trades-parse";
+} from "@/lib/market/market-trades-parse";
 import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { SpotPair } from "@/lib/spot/types";
 import { formatLocalTime } from "@/lib/utils/format/datetime";

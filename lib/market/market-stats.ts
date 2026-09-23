@@ -1,10 +1,10 @@
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 
-import { enginePriceToNumber } from "@/lib/perps/engine-price-decimal";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 
-import type { MarketKlineRsp } from "@/services/perps/market/types";
-import type { PerpsMarketStats } from "@/lib/perps/types";
+import type { MarketKlineRsp } from "@/lib/market/dto";
+import type { MarketStats } from "@/lib/market/types";
 
 /** Change stats from API open/close (matching-engine integer, ÷ 10^enginePriceDecimal). */
 export function calcOpenCloseChange(
@@ -46,7 +46,7 @@ function quoteVolumeToNumber(raw: ApiBigInt, enginePriceDecimal: number): number
 export function marketKlineToStats(
   kline: MarketKlineRsp,
   enginePriceDecimal: number
-): PerpsMarketStats {
+): MarketStats {
   const { lastPrice, change24hPct } = calcOpenCloseChange(
     kline.open,
     kline.close,

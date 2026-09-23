@@ -2,7 +2,7 @@ import {
   defaultSpotOrderExpiry,
   SPOT_ORDER_TIME_IN_FORCE_GTC,
 } from "@/lib/config/spot-order";
-import { normalizePlaceOrderAmounts } from "@/lib/perps/order-place-amounts";
+import { normalizePlaceOrderAmounts } from "@/lib/market/order-place-amounts";
 import type { PerpsSide } from "@/lib/perps/types";
 
 /** Mirrors spot place-order fields for now; perps payload will diverge later. */
@@ -38,6 +38,7 @@ export function buildPlaceOrderFields(params: {
     enginePriceDecimal: params.enginePriceDecimal,
     quantity: params.quantity,
     quoteBudget: params.quoteBudget,
+    product: "perps",
   });
   if (normalized == null) {
     throw new Error("Invalid price or quantity");

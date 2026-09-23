@@ -17,7 +17,7 @@ import {
   formatPercentChange,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import type { SpotTickerStats } from "@/lib/spot/market-ticker-stats";
+import type { SpotTickerStats } from "@/lib/market/market-ticker-stats";
 import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/spot/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { SpotPair } from "@/lib/spot/types";

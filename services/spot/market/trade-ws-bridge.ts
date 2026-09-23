@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { appendWsTradesToListRsp } from "@/lib/spot/market-trades-parse";
+import { appendWsTradesToListRsp } from "@/lib/market/market-trades-parse";
 import type { MarketTrade, MarketTradeListRsp } from "@/services/spot/market/types";
 import {
   spotMarketWs,

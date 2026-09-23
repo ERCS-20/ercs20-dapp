@@ -3,7 +3,7 @@ import type {
   MarketPairsPaginationRsp,
   MarketPairsRsp,
   MarketWsPairPrice,
-} from "@/services/perps/market/types";
+} from "@/lib/market/dto";
 
 function priceKey(v: MarketPairRsp["open"]): string {
   return typeof v === "bigint" ? v.toString() : String(v);

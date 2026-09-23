@@ -12,7 +12,7 @@ import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import { getDefaultDecimals } from "@/lib/config/public-env";
 import { buildPlaceOrderFields } from "@/lib/perps/build-place-order";
 import { getPerpsOrderErrorMessage } from "@/lib/perps/order-error-message";
-import { parseEnginePrice } from "@/lib/perps/order-place-amounts";
+import { parseEnginePrice } from "@/lib/market/order-place-amounts";
 import { orderQuoteAmountBaseUnits } from "@/lib/perps/pair-api";
 import { debugPlaceOrder } from "@/lib/perps/place-order-debug";
 import { getPlaceOrderSignTypedData } from "@/lib/perps/place-order-eip712";

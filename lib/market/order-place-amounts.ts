@@ -1,10 +1,13 @@
-import { SPOT_ORDER_AMOUNT_DECIMALS } from "@/lib/config/spot-order";
-import { debugPlaceOrder } from "@/lib/perps/place-order-debug";
-import type { PerpsSide } from "@/lib/perps/types";
+import { getDefaultDecimals } from "@/lib/config/public-env";
+import { debugPlaceOrder } from "@/lib/market/place-order-debug";
+import type { OrderSide } from "@/lib/market/types";
 import { parseUnits } from "viem";
 
 export const ORDER_SIDE_BUY = 1;
 export const ORDER_SIDE_SELL = 2;
+
+/** Base/quote token amount decimals for matching-engine orders. */
+export const ORDER_AMOUNT_DECIMALS = getDefaultDecimals();
 
 const WAD = BigInt(10) ** BigInt(18);
 
@@ -49,7 +52,6 @@ export function parseEnginePrice(
 
 /**
  * Mirrors OrdersService: `price18 = quote × 10^18 / base` must be exact.
- * @see exchange.orbix.perps.orders.service.OrdersService#placeOrder
  */
 export function assertQuoteBaseDivisible(
   quoteAmount: bigint,
@@ -81,7 +83,7 @@ export function assertEnginePriceFromQuoteBase(
 
 /** @deprecated Use {@link assertQuoteBaseDivisible} with quote/base amounts. */
 export function assertPlaceOrderAmountsMatch(
-  side: PerpsSide,
+  side: OrderSide,
   makerAmount: bigint,
   takerAmount: bigint,
   enginePriceDecimal: number
@@ -105,16 +107,18 @@ export type NormalizedPlaceOrderAmounts = {
  * 3. Recompute quote = base × enginePrice ÷ 10^enginePriceDecimal
  */
 export function normalizePlaceOrderAmounts(params: {
-  side: PerpsSide;
+  side: OrderSide;
   price: string;
   enginePriceDecimal: number;
   quantity?: string;
   /** Buy: spend at most this quote budget; base = floor(quote × scale / enginePrice). */
   quoteBudget?: bigint;
+  product?: "spot" | "perps";
 }): NormalizedPlaceOrderAmounts | null {
+  const product = params.product ?? "spot";
   const enginePrice = parseEnginePrice(params.price, params.enginePriceDecimal);
   if (enginePrice == null) {
-    debugPlaceOrder("normalize:fail", {
+    debugPlaceOrder(product, "normalize:fail", {
       reason: "parseEnginePrice",
       price: params.price,
       enginePriceDecimal: params.enginePriceDecimal,
@@ -131,22 +135,29 @@ export function normalizePlaceOrderAmounts(params: {
     const quantity = params.quantity?.trim();
     if (!quantity) return null;
     try {
-      base = parseUnits(quantity, SPOT_ORDER_AMOUNT_DECIMALS);
+      base = parseUnits(quantity, ORDER_AMOUNT_DECIMALS);
     } catch (error) {
-      debugPlaceOrder("normalize:fail", { reason: "parseUnits quantity", quantity, error });
+      debugPlaceOrder(product, "normalize:fail", {
+        reason: "parseUnits quantity",
+        quantity,
+        error,
+      });
       return null;
     }
   }
 
   base = alignBaseToEnginePrice(base, enginePrice, scale);
   if (base <= BigInt(0)) {
-    debugPlaceOrder("normalize:fail", { reason: "base<=0", base: base.toString() });
+    debugPlaceOrder(product, "normalize:fail", {
+      reason: "base<=0",
+      base: base.toString(),
+    });
     return null;
   }
 
   const quote = (base * enginePrice) / scale;
   if (quote <= BigInt(0)) {
-    debugPlaceOrder("normalize:fail", {
+    debugPlaceOrder(product, "normalize:fail", {
       reason: "quote<=0",
       base: base.toString(),
       quote: quote.toString(),
@@ -157,7 +168,7 @@ export function normalizePlaceOrderAmounts(params: {
   try {
     assertEnginePriceFromQuoteBase(quote, base, params.enginePriceDecimal);
   } catch (error) {
-    debugPlaceOrder("normalize:fail", {
+    debugPlaceOrder(product, "normalize:fail", {
       reason: "assertEnginePriceFromQuoteBase",
       base: base.toString(),
       quote: quote.toString(),

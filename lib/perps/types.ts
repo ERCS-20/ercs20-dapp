@@ -1,98 +1,43 @@
-export type PerpsSide = "buy" | "sell";
+/** Perps UI aliases over shared market domain types. */
 
-export type PerpsOrderType = "limit";
+export type {
+  OrderSide as PerpsSide,
+  OrderType as PerpsOrderType,
+  OrderStatus as PerpsOrderStatus,
+  CancelStatus as PerpsCancelStatus,
+  TradingPair as PerpsPair,
+  MarketStats as PerpsMarketStats,
+  OrderBookLevel,
+  OrderBookSnapshot as PerpsOrderBook,
+  MarketTradeRow as PerpsMarketTrade,
+  OrderDraft as PerpsOrderDraft,
+} from "@/lib/market/types";
 
-export type PerpsOrderStatus = "open" | "filled" | "cancelled" | "partial";
+export type { ChartInterval, ChartTimeframe } from "@/lib/market/chart-interval";
 
-export type PerpsCancelStatus = "normal" | "cancelling" | "cancelClaim";
-
-export type PerpsPair = {
-  pairId?: number;
-  enginePriceDecimal?: number;
-  baseSymbol: string;
-  baseName: string;
-  baseAddress: `0x${string}`;
-  quoteSymbol: string;
-  quoteAddress: `0x${string}`;
-  pairCode: string;
-  /** Minimum order total in quote token base units (18 decimals). */
-  minTradeAmount?: bigint;
-};
-
-export type PerpsMarketStats = {
-  lastPrice: number;
-  change24hPct: number;
-  high24h: number;
-  low24h: number;
-  volume24h: number;
-  volumeBase: number;
-};
-
-export type OrderBookLevel = {
+export type PerpsUserTrade = {
+  id: string;
+  pairLabel: string;
+  side: import("@/lib/market/types").OrderSide;
   price: number;
-  size: number;
-};
-
-export type PerpsOrderBook = {
-  asks: OrderBookLevel[];
-  bids: OrderBookLevel[];
-  midPrice: number;
-  spread: number;
-  spreadPct: number;
+  quantity: number;
+  fee: number;
+  txHash: string;
+  time: number;
 };
 
 export type PerpsOrder = {
   id: string;
   orderId: string;
   pairLabel: string;
-  side: PerpsSide;
+  side: import("@/lib/market/types").OrderSide;
   price: number;
   amount: number;
   filled: number;
   average: number;
   fee: number;
-  status: PerpsOrderStatus;
-  cancelStatus: PerpsCancelStatus;
+  status: import("@/lib/market/types").OrderStatus;
+  cancelStatus: import("@/lib/market/types").CancelStatus;
   txHash: string;
   createdAt: number;
-};
-
-export type PerpsMarketTrade = {
-  id: string;
-  price: number;
-  quantity: number;
-  isBuy: boolean;
-  time: number;
-};
-
-export type PerpsUserTrade = {
-  id: string;
-  pairLabel: string;
-  side: PerpsSide;
-  price: number;
-  quantity: number;
-  fee: number;
-  txHash: string;
-  time: number;
-};
-
-export type ChartInterval =
-  | "1s"
-  | "1m"
-  | "5m"
-  | "15m"
-  | "30m"
-  | "1h"
-  | "2h"
-  | "1d"
-  | "1w"
-  | "1M"
-  | "1y";
-
-/** @deprecated Use {@link ChartInterval}. */
-export type ChartTimeframe = ChartInterval;
-
-export type PerpsOrderDraft = {
-  price: string;
-  quantity: string;
 };

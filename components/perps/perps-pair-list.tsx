@@ -7,7 +7,7 @@ import { GripVerticalIcon, SearchIcon } from "lucide-react";
 import { PerpsFavoriteButton } from "@/components/perps/perps-favorite-button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { calcOpenCloseChange } from "@/lib/perps/market-stats";
+import { calcOpenCloseChange } from "@/lib/market/market-stats";
 import { formatPercentChange, formatSubscriptPrice } from "@/lib/utils/price";
 import {
   pairLabelFromCode,
@@ -23,11 +23,11 @@ import {
   useMarketUserPairs,
 } from "@/services/perps/market/hooks";
 import type { MarketPairRsp } from "@/services/perps/market/types";
-import { usePairEnginePriceDecimalMap } from "@/services/perps/orders/hooks";
 import {
+  usePairEnginePriceDecimalMap,
   useReorderUserPairs,
   useUserPairs,
-} from "@/services/perps/accounts/hooks";
+} from "@/services/perps/orders/hooks";
 
 const MARKET_PAIR_PAGE_SIZE = 100;
 

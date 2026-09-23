@@ -103,30 +103,3 @@ export type PerpsAccountLedgerRsp = {
 export type PerpsAccountLedgerPaginationReq =
   PaginationCondition<PerpsAccountLedgerPaginationCondition>;
 export type PerpsAccountLedgerPaginationRsp = PaginationRepertory<PerpsAccountLedgerRsp>;
-
-/** Mirrors `exchange.orbix.perps.accounts.dto.UserPairRsp`. */
-export type UserPairRsp = {
-  id: number;
-  pairId: number;
-  sortOrder: number;
-};
-
-/** Mirrors `exchange.orbix.perps.accounts.dto.UserPairsRsp`. */
-export type UserPairsRsp = {
-  pairs: UserPairRsp[];
-};
-
-/** Mirrors `exchange.orbix.perps.accounts.dto.UserPairAddReq`. */
-export type UserPairAddReq = {
-  pairId: number;
-};
-
-/** Mirrors `exchange.orbix.perps.accounts.dto.UserPairDeleteReq`. */
-export type UserPairDeleteReq = {
-  pairId: number;
-};
-
-/** Mirrors `exchange.orbix.perps.accounts.dto.UserPairsReorderReq`. */
-export type UserPairsReorderReq = {
-  pairIds: number[];
-};

@@ -17,7 +17,7 @@ import {
   formatPercentChange,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import type { PerpsTickerStats } from "@/lib/perps/market-ticker-stats";
+import type { PerpsTickerStats } from "@/lib/market/market-ticker-stats";
 import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/perps/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { PerpsPair } from "@/lib/perps/types";

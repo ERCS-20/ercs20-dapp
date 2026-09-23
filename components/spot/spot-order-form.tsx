@@ -12,7 +12,7 @@ import { getDefaultDecimals } from "@/lib/config/public-env";
 import { isSpotExchangeConfigured } from "@/lib/config/spot-exchange";
 import { buildPlaceOrderFields } from "@/lib/spot/build-place-order";
 import { getSpotOrderErrorMessage } from "@/lib/spot/order-error-message";
-import { parseEnginePrice } from "@/lib/spot/order-place-amounts";
+import { parseEnginePrice } from "@/lib/market/order-place-amounts";
 import { orderQuoteAmountBaseUnits } from "@/lib/spot/pair-api";
 import { debugPlaceOrder } from "@/lib/spot/place-order-debug";
 import { getPlaceOrderSignTypedData } from "@/lib/spot/place-order-eip712";

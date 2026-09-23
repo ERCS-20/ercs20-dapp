@@ -18,6 +18,10 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
 } from "@/services/perps/orders/types";
 
 /** GET /perps/orders/pairs/{baseToken}/{quoteToken} */
@@ -97,6 +101,32 @@ export function getPerpsOrdersUserBalance(req?: Partial<PerpsOrdersUserBalanceRe
 
 export function getOrdersUserBalance(req: PerpsOrdersUserBalanceReq) {
   return getPerpsOrdersUserBalance(req);
+}
+
+/** POST /perps/orders/userPairs/pairs — `userId` from gateway JWT headers. */
+export function listUserPairs() {
+  return request.post<UserPairsRsp>(PerpsOrdersApi.userPairs);
+}
+
+/** POST /perps/orders/userPairs/add — `userId` from gateway JWT headers. */
+export function addUserPair(req: UserPairAddReq) {
+  return request.post<UserPairsRsp>(PerpsOrdersApi.userPairsAdd, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /perps/orders/userPairs/delete — `userId` from gateway JWT headers. */
+export function deleteUserPair(req: UserPairDeleteReq) {
+  return request.post<UserPairsRsp>(PerpsOrdersApi.userPairsDelete, {
+    pairId: req.pairId,
+  });
+}
+
+/** POST /perps/orders/userPairs/reorder — `userId` from gateway JWT headers. */
+export function reorderUserPairs(req: UserPairsReorderReq) {
+  return request.post<void>(PerpsOrdersApi.userPairsReorder, {
+    pairIds: req.pairIds,
+  });
 }
 
 /** POST /perps/orders/withdrawals/apply — `userId` from gateway JWT headers. */

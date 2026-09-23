@@ -11,20 +11,19 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { enginePriceToNumber } from "@/lib/spot/engine-price-decimal";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import {
   CHART_INTERVAL_OPTIONS,
   chartViewLabel,
-  KLINE_FIRST_SCREEN_LIMIT,
   PRIMARY_CHART_VIEWS,
   resolveChartRequest,
   type ChartView,
-} from "@/lib/spot/chart-interval";
+} from "@/lib/market/chart-interval";
 import { useKlineLiveTick } from "@/hooks/use-kline-live-tick";
 import {
   fillKlineGapsToNow,
   fillSparseKlineGaps,
-} from "@/lib/spot/kline-fill-gaps";
+} from "@/lib/market/kline-fill-gaps";
 import { cn } from "@/lib/utils";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { utcSecondsToLocalChartTime } from "@/lib/utils/format/datetime";
@@ -120,7 +119,6 @@ export function SpotChartPanel({
     ? {
         pairId: pairId!,
         interval: apiInterval,
-        limit: KLINE_FIRST_SCREEN_LIMIT,
       }
     : undefined;
 
@@ -130,7 +128,6 @@ export function SpotChartPanel({
 
   useMarketKlineWs(pairId, apiInterval, {
     enabled: chartReady,
-    limit: KLINE_FIRST_SCREEN_LIMIT,
   });
 
   const liveTick = useKlineLiveTick(

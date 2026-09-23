@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
-import { useCachedOrderBook } from "@/hooks/use-cached-order-book";
-import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/perps/order-book-cache";
+import { useCachedPerpsOrderBook } from "@/hooks/use-cached-perps-order-book";
+import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/market/order-book-cache";
 import { formatPercentChange, formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { OrderBookLevel } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,7 @@ export function PerpsOrderBook({
   className?: string;
 }) {
   const { t } = useI18n();
-  const { bids, asks, isLoading } = useCachedOrderBook(pairId, enginePriceDecimal);
+  const { bids, asks, isLoading } = useCachedPerpsOrderBook(pairId, enginePriceDecimal);
 
   const askRows = useMemo(
     () => padAsks(withTotalsFromSpread(asks), ORDER_BOOK_DEPTH),

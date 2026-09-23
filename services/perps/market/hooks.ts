@@ -9,13 +9,13 @@ import {
   dayStatsFromKlineCurrentDay,
   EMPTY_TICKER_STATS,
   type PerpsTickerStats,
-} from "@/lib/perps/market-ticker-stats";
+} from "@/lib/market/market-ticker-stats";
 import {
   applyPairPricesToPagination,
   applyPairPricesToUserPairs,
   isMarketWsPairPriceList,
-} from "@/lib/perps/pairs-price-merge";
-import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/perps/kline-merge";
+} from "@/lib/market/pairs-price-merge";
+import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/market/kline-merge";
 import {
   getKlineCurrentDay,
   getMarketOrderBook,

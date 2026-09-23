@@ -11,7 +11,7 @@ import {
   useAddUserPair,
   useDeleteUserPair,
   useUserPairs,
-} from "@/services/perps/accounts/hooks";
+} from "@/services/perps/orders/hooks";
 
 export function PerpsFavoriteButton({
   pairId,

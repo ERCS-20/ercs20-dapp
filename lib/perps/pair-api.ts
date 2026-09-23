@@ -1,77 +1,28 @@
 import type { PairRsp } from "@/services/perps/orders/types";
-import type { PerpsPair, PerpsSide } from "@/lib/perps/types";
-import { normalizePlaceOrderAmounts } from "@/lib/perps/order-place-amounts";
-import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
+import {
+  orderQuoteAmountBaseUnits,
+  pairRspToTradingPair,
+} from "@/lib/market/pair-api";
+import {
+  pairLabel,
+  pairLabelFromCode,
+  pairPath,
+  pairPathFromCode,
+  pairPathFromSymbols,
+  parsePairCode,
+} from "@/lib/market/pair";
+import type { PerpsPair } from "@/lib/perps/types";
 
-/** Parse orders/market pair code `BASE_QUOTE`. */
-export function parsePairCode(code: string): { base: string; quote: string } | null {
-  const trimmed = code.trim();
-  const idx = trimmed.indexOf("_");
-  if (idx <= 0 || idx >= trimmed.length - 1) return null;
-  return {
-    base: trimmed.slice(0, idx),
-    quote: trimmed.slice(idx + 1),
-  };
-}
-
-export function pairLabelFromCode(code: string): string {
-  const parsed = parsePairCode(code);
-  return parsed ? `${parsed.base}/${parsed.quote}` : code;
-}
-
-export function pairPathFromSymbols(baseSymbol: string, quoteSymbol: string): string {
-  return `${baseSymbol.toLowerCase()}/${quoteSymbol.toLowerCase()}`;
-}
-
-export function pairPathFromCode(code: string): string {
-  const parsed = parsePairCode(code);
-  if (!parsed) return code.toLowerCase();
-  return pairPathFromSymbols(parsed.base, parsed.quote);
-}
+export {
+  orderQuoteAmountBaseUnits,
+  pairLabel,
+  pairLabelFromCode,
+  pairPath,
+  pairPathFromCode,
+  pairPathFromSymbols,
+  parsePairCode,
+};
 
 export function pairRspToPerpsPair(pair: PairRsp): PerpsPair {
-  const parsed = parsePairCode(pair.pairCode);
-  const baseSymbol = parsed?.base ?? pair.pairCode.split("_")[0] ?? "TOKEN";
-  const quoteSymbol = parsed?.quote ?? "USDC";
-
-  return {
-    pairId: pair.id,
-    enginePriceDecimal: pair.enginePriceDecimal,
-    baseSymbol,
-    baseName: baseSymbol,
-    baseAddress: pair.baseTokenAddress.toLowerCase() as `0x${string}`,
-    quoteSymbol,
-    quoteAddress: pair.quoteTokenAddress.toLowerCase() as `0x${string}`,
-    pairCode: `${baseSymbol}/${quoteSymbol}`,
-    minTradeAmount: parseApiBigInt(pair.minTradeAmount) ?? undefined,
-  };
-}
-
-/**
- * Quote-side total after base truncation + price realignment (see `normalizePlaceOrderAmounts`).
- */
-export function orderQuoteAmountBaseUnits(
-  quantity: string,
-  price: string,
-  enginePriceDecimal: number,
-  side: PerpsSide = "sell",
-  quoteBudget?: bigint
-): bigint | null {
-  return (
-    normalizePlaceOrderAmounts({
-      side,
-      price,
-      enginePriceDecimal,
-      quantity,
-      quoteBudget,
-    })?.quoteAmount ?? null
-  );
-}
-
-export function pairPath(pair: PerpsPair): string {
-  return pairPathFromSymbols(pair.baseSymbol, pair.quoteSymbol);
-}
-
-export function pairLabel(pair: PerpsPair): string {
-  return pair.pairCode;
+  return pairRspToTradingPair(pair);
 }

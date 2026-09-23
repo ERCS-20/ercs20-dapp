@@ -1,20 +1,25 @@
-import { enginePriceToNumber } from "@/lib/perps/engine-price-decimal";
-import { calcOpenCloseChange, marketKlineToStats } from "@/lib/perps/market-stats";
-import type { PerpsMarketStats } from "@/lib/perps/types";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
+import { calcOpenCloseChange, marketKlineToStats } from "@/lib/market/market-stats";
+import type { MarketStats } from "@/lib/market/types";
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 import type {
   MarketKlineCurrentDayRsp,
   MarketTrade,
-} from "@/services/perps/market/types";
+} from "@/lib/market/dto";
 
 const BASE_VOLUME_DECIMALS = 18;
 
-export type PerpsTickerStats = PerpsMarketStats & {
+export type TickerStats = MarketStats & {
   changeAmount: number;
 };
 
-export const EMPTY_TICKER_STATS: PerpsTickerStats = {
+/** @deprecated Use {@link TickerStats}. */
+export type SpotTickerStats = TickerStats;
+/** @deprecated Use {@link TickerStats}. */
+export type PerpsTickerStats = TickerStats;
+
+export const EMPTY_TICKER_STATS: TickerStats = {
   lastPrice: 0,
   change24hPct: 0,
   changeAmount: 0,
@@ -28,7 +33,7 @@ export const EMPTY_TICKER_STATS: PerpsTickerStats = {
 export function dayStatsFromKlineCurrentDay(
   kline: MarketKlineCurrentDayRsp,
   enginePriceDecimal: number
-): PerpsTickerStats | null {
+): TickerStats | null {
   const current = kline.current;
   if (!current) return null;
 
@@ -54,7 +59,7 @@ function changeFromPrevClose(
   prevClose: ApiBigInt,
   lastPrice: number,
   enginePriceDecimal: number
-): Pick<PerpsTickerStats, "change24hPct" | "changeAmount"> {
+): Pick<TickerStats, "change24hPct" | "changeAmount"> {
   const prev = enginePriceToNumber(prevClose, enginePriceDecimal);
   if (prev === 0) {
     return { change24hPct: 0, changeAmount: 0 };
@@ -69,11 +74,11 @@ function changeFromPrevClose(
  * Does not re-sum ring buffer — only incremental pushes since REST baseline.
  */
 export function applyTradesToDayStats(
-  stats: PerpsTickerStats,
+  stats: TickerStats,
   trades: MarketTrade[],
   prevClose: ApiBigInt,
   enginePriceDecimal: number
-): PerpsTickerStats {
+): TickerStats {
   if (trades.length === 0) return stats;
 
   let { lastPrice, high24h, low24h, volumeBase, volume24h } = stats;

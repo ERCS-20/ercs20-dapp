@@ -1,6 +1,6 @@
 import { formatUnits } from "viem";
 
-/** Format bigint balance for display in spot UI. */
+/** Format bigint balance for display in trading UI. */
 export function formatBalanceDisplay(
   value: bigint | undefined,
   decimals: number,

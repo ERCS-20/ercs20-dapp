@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { useCachedOrderBook } from "@/hooks/use-cached-order-book";
-import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/spot/order-book-cache";
+import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/market/order-book-cache";
 import { formatPercentChange, formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { OrderBookLevel } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";

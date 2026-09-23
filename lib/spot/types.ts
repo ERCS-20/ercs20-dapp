@@ -1,98 +1,43 @@
-export type SpotSide = "buy" | "sell";
+/** Spot UI aliases over shared market domain types. */
 
-export type SpotOrderType = "limit";
+export type {
+  OrderSide as SpotSide,
+  OrderType as SpotOrderType,
+  OrderStatus as SpotOrderStatus,
+  CancelStatus as SpotCancelStatus,
+  TradingPair as SpotPair,
+  MarketStats as SpotMarketStats,
+  OrderBookLevel,
+  OrderBookSnapshot as SpotOrderBook,
+  MarketTradeRow as SpotMarketTrade,
+  OrderDraft as SpotOrderDraft,
+} from "@/lib/market/types";
 
-export type SpotOrderStatus = "open" | "filled" | "cancelled" | "partial";
+export type { ChartInterval, ChartTimeframe } from "@/lib/market/chart-interval";
 
-export type SpotCancelStatus = "normal" | "cancelling" | "cancelClaim";
-
-export type SpotPair = {
-  pairId?: number;
-  enginePriceDecimal?: number;
-  baseSymbol: string;
-  baseName: string;
-  baseAddress: `0x${string}`;
-  quoteSymbol: string;
-  quoteAddress: `0x${string}`;
-  pairCode: string;
-  /** Minimum order total in quote token base units (18 decimals). */
-  minTradeAmount?: bigint;
-};
-
-export type SpotMarketStats = {
-  lastPrice: number;
-  change24hPct: number;
-  high24h: number;
-  low24h: number;
-  volume24h: number;
-  volumeBase: number;
-};
-
-export type OrderBookLevel = {
+export type SpotUserTrade = {
+  id: string;
+  pairLabel: string;
+  side: import("@/lib/market/types").OrderSide;
   price: number;
-  size: number;
-};
-
-export type SpotOrderBook = {
-  asks: OrderBookLevel[];
-  bids: OrderBookLevel[];
-  midPrice: number;
-  spread: number;
-  spreadPct: number;
+  quantity: number;
+  fee: number;
+  txHash: string;
+  time: number;
 };
 
 export type SpotOrder = {
   id: string;
   orderId: string;
   pairLabel: string;
-  side: SpotSide;
+  side: import("@/lib/market/types").OrderSide;
   price: number;
   amount: number;
   filled: number;
   average: number;
   fee: number;
-  status: SpotOrderStatus;
-  cancelStatus: SpotCancelStatus;
+  status: import("@/lib/market/types").OrderStatus;
+  cancelStatus: import("@/lib/market/types").CancelStatus;
   txHash: string;
   createdAt: number;
-};
-
-export type SpotMarketTrade = {
-  id: string;
-  price: number;
-  quantity: number;
-  isBuy: boolean;
-  time: number;
-};
-
-export type SpotUserTrade = {
-  id: string;
-  pairLabel: string;
-  side: SpotSide;
-  price: number;
-  quantity: number;
-  fee: number;
-  txHash: string;
-  time: number;
-};
-
-export type ChartInterval =
-  | "1s"
-  | "1m"
-  | "5m"
-  | "15m"
-  | "30m"
-  | "1h"
-  | "2h"
-  | "1d"
-  | "1w"
-  | "1M"
-  | "1y";
-
-/** @deprecated Use {@link ChartInterval}. */
-export type ChartTimeframe = ChartInterval;
-
-export type SpotOrderDraft = {
-  price: string;
-  quantity: string;
 };

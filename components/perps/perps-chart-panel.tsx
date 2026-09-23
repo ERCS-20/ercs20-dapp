@@ -11,19 +11,19 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { enginePriceToNumber } from "@/lib/perps/engine-price-decimal";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import {
   CHART_INTERVAL_OPTIONS,
   chartViewLabel,
   PRIMARY_CHART_VIEWS,
   resolveChartRequest,
   type ChartView,
-} from "@/lib/perps/chart-interval";
+} from "@/lib/market/chart-interval";
 import { useKlineLiveTick } from "@/hooks/use-kline-live-tick";
 import {
   fillKlineGapsToNow,
   fillSparseKlineGaps,
-} from "@/lib/perps/kline-fill-gaps";
+} from "@/lib/market/kline-fill-gaps";
 import { cn } from "@/lib/utils";
 import { formatBalance } from "@/lib/utils/format/balance";
 import { utcSecondsToLocalChartTime } from "@/lib/utils/format/datetime";

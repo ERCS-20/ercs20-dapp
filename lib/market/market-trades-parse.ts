@@ -1,7 +1,7 @@
-import { enginePriceToNumber } from "@/lib/spot/engine-price-decimal";
-import type { SpotMarketTrade } from "@/lib/spot/types";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
+import type { MarketTradeRow } from "@/lib/market/types";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
-import type { MarketTrade, MarketTradeListRsp } from "@/services/spot/market/types";
+import type { MarketTrade, MarketTradeListRsp } from "@/lib/market/dto";
 
 const BASE_VOLUME_DECIMALS = 18;
 const ORDER_SIDE_BUY = 1;
@@ -41,11 +41,11 @@ export function iterMarketTradesNewestFirst(rsp: MarketTradeListRsp): MarketTrad
   return out;
 }
 
-export function marketTradesToSpotTrades(
+export function marketTradesToRows(
   rsp: MarketTradeListRsp | undefined,
   enginePriceDecimal: number,
   limit = MARKET_TRADES_MAX
-): SpotMarketTrade[] {
+): MarketTradeRow[] {
   if (!rsp) return [];
 
   return iterMarketTradesNewestFirst(rsp)
@@ -61,6 +61,11 @@ export function marketTradesToSpotTrades(
       };
     });
 }
+
+/** @deprecated Use {@link marketTradesToRows}. */
+export const marketTradesToSpotTrades = marketTradesToRows;
+/** @deprecated Use {@link marketTradesToRows}. */
+export const marketTradesToPerpsTrades = marketTradesToRows;
 
 /**
  * Merge a WS trade batch into a REST list snapshot using envelope `sequence`.

@@ -136,3 +136,30 @@ export type OrdersTradeHistoryRsp = {
 
 export type OrdersTradeHistoryPaginationReq = PaginationCondition<Record<string, never>>;
 export type OrdersTradeHistoryPaginationRsp = PaginationRepertory<OrdersTradeHistoryRsp>;
+
+/** Mirrors `exchange.orbix.perps.orders.dto.UserPairRsp`. */
+export type UserPairRsp = {
+  id: number;
+  pairId: number;
+  sortOrder: number;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.UserPairsRsp`. */
+export type UserPairsRsp = {
+  pairs: UserPairRsp[];
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.UserPairAddReq`. */
+export type UserPairAddReq = {
+  pairId: number;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.UserPairDeleteReq`. */
+export type UserPairDeleteReq = {
+  pairId: number;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.UserPairsReorderReq`. */
+export type UserPairsReorderReq = {
+  pairIds: number[];
+};

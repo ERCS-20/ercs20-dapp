@@ -18,7 +18,7 @@ import { readCachedChartView, writeCachedChartView } from "@/lib/spot/cached-cha
 import {
   DEFAULT_CHART_VIEW,
   type ChartView,
-} from "@/lib/spot/chart-interval";
+} from "@/lib/market/chart-interval";
 import { pairRspToSpotPair } from "@/lib/spot/pair-api";
 import type { SpotPair, SpotSide } from "@/lib/spot/types";
 import { cn } from "@/lib/utils";

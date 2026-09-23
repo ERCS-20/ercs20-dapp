@@ -5,11 +5,11 @@ import type {
   UTCTimestamp,
 } from "lightweight-charts";
 
-import { enginePriceToNumber } from "@/lib/perps/engine-price-decimal";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 import { utcSecondsToLocalChartTime } from "@/lib/utils/format/datetime";
-import type { MarketKlineRsp } from "@/services/perps/market/types";
+import type { MarketKlineRsp } from "@/lib/market/dto";
 
 function baseVolumeToNumber(raw: ApiBigInt): number {
   const bi = parseApiBigInt(raw);

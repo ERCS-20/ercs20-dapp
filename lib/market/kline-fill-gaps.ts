@@ -1,6 +1,6 @@
-import type { ChartInterval } from "@/lib/perps/chart-interval";
+import type { ChartInterval } from "@/lib/market/chart-interval";
 import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
-import type { MarketKlineRsp } from "@/services/perps/market/types";
+import type { MarketKlineRsp } from "@/lib/market/dto";
 
 /** Cap synthetic bars so a huge idle gap cannot freeze the chart. */
 const MAX_FILLED_BARS = 20_000;

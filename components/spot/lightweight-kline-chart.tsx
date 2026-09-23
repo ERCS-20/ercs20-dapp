@@ -13,9 +13,9 @@ import {
 import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 
-import type { ChartType } from "@/lib/spot/chart-interval";
-import { readSpotChartTheme } from "@/lib/spot/chart-theme";
-import { marketKlinesToChartSeries } from "@/lib/spot/kline-to-chart";
+import type { ChartType } from "@/lib/market/chart-interval";
+import { readSpotChartTheme } from "@/lib/market/chart-theme";
+import { marketKlinesToChartSeries } from "@/lib/market/kline-to-chart";
 import { cn } from "@/lib/utils";
 import { formatSubscriptPrice } from "@/lib/utils/price";
 import type { MarketKlineRsp } from "@/services/spot/market/types";

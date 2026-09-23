@@ -3,11 +3,11 @@
 import {
   useMarketOrderBook,
   useMarketOrderBookWs,
-} from "@/services/spot/market/hooks";
+} from "@/services/perps/market/hooks";
 import { useCachedOrderBookWith } from "@/hooks/use-cached-order-book-core";
 import { ORDER_BOOK_DISPLAY_DEPTH } from "@/lib/market/order-book-cache";
 
-export function useCachedOrderBook(
+export function useCachedPerpsOrderBook(
   pairId: number | undefined,
   enginePriceDecimal: number | undefined,
   depth = ORDER_BOOK_DISPLAY_DEPTH

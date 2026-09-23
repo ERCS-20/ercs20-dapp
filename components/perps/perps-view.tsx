@@ -18,7 +18,7 @@ import { readCachedChartView, writeCachedChartView } from "@/lib/perps/cached-ch
 import {
   DEFAULT_CHART_VIEW,
   type ChartView,
-} from "@/lib/perps/chart-interval";
+} from "@/lib/market/chart-interval";
 import { pairRspToPerpsPair } from "@/lib/perps/pair-api";
 import type { PerpsPair, PerpsSide } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";

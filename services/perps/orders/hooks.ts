@@ -7,16 +7,20 @@ import { parsePairCode } from "@/lib/perps/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
 import {
+  addUserPair,
   applyPerpsWithdraw,
   cancelOrder,
+  deleteUserPair,
   getOrderSalt,
   getPairByCode,
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
+  listUserPairs,
   paginationOrders,
   paginationOrdersHistory,
   paginationOrdersTradeHistory,
   placeOrder,
+  reorderUserPairs,
 } from "@/services/perps/orders/api";
 import type { MarketPairRsp } from "@/services/perps/market/types";
 import type {
@@ -33,6 +37,10 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  UserPairAddReq,
+  UserPairDeleteReq,
+  UserPairsReorderReq,
+  UserPairsRsp,
 } from "@/services/perps/orders/types";
 
 export function perpsOrdersUserBalanceQueryKey(tokenAddress?: string) {
@@ -198,6 +206,68 @@ export function usePlaceOrder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
+    },
+  });
+}
+
+export function userPairsQueryKey() {
+  return ["perps", "orders", "user-pairs"] as const;
+}
+
+/** POST /orders/userPairs/pairs — favorite / pinned pairs for the signed-in user. */
+export function useUserPairs(options?: {
+  enabled?: boolean;
+  notifyError?: boolean;
+}) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<UserPairsRsp>({
+    queryKey: userPairsQueryKey(),
+    queryFn: () => listUserPairs(),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function useAddUserPair() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<UserPairsRsp, Error, UserPairAddReq>({
+    mutationFn: (req) => addUserPair(req),
+    onSuccess: (data) => {
+      queryClient.setQueryData(userPairsQueryKey(), data);
+      void queryClient.invalidateQueries({
+        queryKey: ["perps", "market", "pairs", "user-pairs"],
+      });
+    },
+  });
+}
+
+export function useDeleteUserPair() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<UserPairsRsp, Error, UserPairDeleteReq>({
+    mutationFn: (req) => deleteUserPair(req),
+    onSuccess: (data) => {
+      queryClient.setQueryData(userPairsQueryKey(), data);
+      void queryClient.invalidateQueries({
+        queryKey: ["perps", "market", "pairs", "user-pairs"],
+      });
+    },
+  });
+}
+
+export function useReorderUserPairs() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, UserPairsReorderReq>({
+    mutationFn: (req) => reorderUserPairs(req),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userPairsQueryKey() });
+      void queryClient.invalidateQueries({
+        queryKey: ["perps", "market", "pairs", "user-pairs"],
+      });
     },
   });
 }

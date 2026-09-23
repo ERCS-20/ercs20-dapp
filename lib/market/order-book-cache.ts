@@ -1,7 +1,7 @@
 import type {
   MarketBidsAndAsksRsp,
   MarketWsOrderBookDiff,
-} from "@/services/perps/market/types";
+} from "@/lib/market/dto";
 import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 
 /** Sorted price levels beyond UI depth; zero qty removes a level. */

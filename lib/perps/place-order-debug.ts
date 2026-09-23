@@ -1,10 +1,8 @@
-const LOG_PREFIX = "[spot-place-order]";
+import { debugPlaceOrder as debug } from "@/lib/market/place-order-debug";
 
-/** Structured logs for place-order troubleshooting (uses console.log — visible in default Console). */
-export function debugPlaceOrder(step: string, data?: Record<string, unknown>): void {
-  if (data) {
-    console.log(LOG_PREFIX, step, data);
-    return;
-  }
-  console.log(LOG_PREFIX, step);
+export function debugPlaceOrder(
+  step: string,
+  data?: Record<string, unknown>
+): void {
+  debug("perps", step, data);
 }

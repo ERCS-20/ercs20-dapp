@@ -7,7 +7,7 @@ import { GripVerticalIcon, SearchIcon } from "lucide-react";
 import { SpotFavoriteButton } from "@/components/spot/spot-favorite-button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { calcOpenCloseChange } from "@/lib/spot/market-stats";
+import { calcOpenCloseChange } from "@/lib/market/market-stats";
 import { formatPercentChange, formatSubscriptPrice } from "@/lib/utils/price";
 import {
   pairLabelFromCode,

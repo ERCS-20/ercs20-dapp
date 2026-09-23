@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import type { ChartInterval } from "@/lib/spot/chart-interval";
-import { msUntilNextKlineBucket } from "@/lib/spot/kline-fill-gaps";
+import type { ChartInterval } from "@/lib/market/chart-interval";
+import { msUntilNextKlineBucket } from "@/lib/market/kline-fill-gaps";
 
 /**
  * Bumps on each kline bucket boundary so the chart can forward-fill empty

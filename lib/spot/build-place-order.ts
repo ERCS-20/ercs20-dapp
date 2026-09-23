@@ -2,7 +2,7 @@ import {
   defaultSpotOrderExpiry,
   SPOT_ORDER_TIME_IN_FORCE_GTC,
 } from "@/lib/config/spot-order";
-import { normalizePlaceOrderAmounts } from "@/lib/spot/order-place-amounts";
+import { normalizePlaceOrderAmounts } from "@/lib/market/order-place-amounts";
 import type { SpotSide } from "@/lib/spot/types";
 
 export type PlaceOrderFields = {
@@ -37,6 +37,7 @@ export function buildPlaceOrderFields(params: {
     enginePriceDecimal: params.enginePriceDecimal,
     quantity: params.quantity,
     quoteBudget: params.quoteBudget,
+    product: "spot",
   });
   if (normalized == null) {
     throw new Error("Invalid price or quantity");
