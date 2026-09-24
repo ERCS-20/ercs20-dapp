@@ -2,7 +2,7 @@ import { getPerpsExchangeAddress } from "@/lib/config/perps-exchange";
 
 /**
  * Align with perps-orders EIP-712 domain (`perps.contract.exchange.eip712`).
- * Name/version from `NEXT_PUBLIC_EIP712_PERPS_CANCEL_ORDER_*` (defaults match PerpsExchange).
+ * Name/version from `NEXT_PUBLIC_PERPS_EIP712_CANCEL_ORDER_*` (defaults match PerpsExchange).
  */
 export function getCancelOrderEip712Domain(chainId: number) {
   const verifyingContract = getPerpsExchangeAddress();
@@ -12,12 +12,12 @@ export function getCancelOrderEip712Domain(chainId: number) {
 
   return {
     name:
-      process.env.NEXT_PUBLIC_EIP712_PERPS_CANCEL_ORDER_NAME?.trim() ||
-      process.env.NEXT_PUBLIC_EIP712_PERPS_EXCHANGE_NAME?.trim() ||
+      process.env.NEXT_PUBLIC_PERPS_EIP712_CANCEL_ORDER_NAME?.trim() ||
+      process.env.NEXT_PUBLIC_PERPS_EIP712_EXCHANGE_NAME?.trim() ||
       "PerpsExchange",
     version:
-      process.env.NEXT_PUBLIC_EIP712_PERPS_CANCEL_ORDER_VERSION?.trim() ||
-      process.env.NEXT_PUBLIC_EIP712_PERPS_EXCHANGE_VERSION?.trim() ||
+      process.env.NEXT_PUBLIC_PERPS_EIP712_CANCEL_ORDER_VERSION?.trim() ||
+      process.env.NEXT_PUBLIC_PERPS_EIP712_EXCHANGE_VERSION?.trim() ||
       "1",
     chainId,
     verifyingContract,

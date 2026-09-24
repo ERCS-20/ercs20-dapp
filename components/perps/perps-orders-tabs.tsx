@@ -13,7 +13,6 @@ import {
   ordersTradeHistoryRspToRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
-import { parsePairCode } from "@/lib/perps/pair-api";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
@@ -28,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
-import { getOrderSalt, getOrdersUserBalance, getPairByCode } from "@/services/perps/orders/api";
+import { getOrderSalt, getPerpsOrdersUserBalance } from "@/services/perps/orders/api";
 import {
   useCancelOrder,
   useOrdersHistoryPagination,
@@ -167,23 +166,9 @@ function OpenOrdersTable() {
     }
     if (row.status === "Cancelling" || cancellingOrderId != null) return;
 
-    const parsed = parsePairCode(row.pairCode);
-    if (!parsed) {
-      toast.error(t("perps.cancelFailed"));
-      return;
-    }
-
     setCancellingOrderId(row.orderId);
     try {
-      const pair = await getPairByCode({
-        baseToken: parsed.base,
-        quoteToken: parsed.quote,
-      });
-      // Cancel must use makerToken: buy pays quote, sell pays base.
-      const tokenAddress =
-        row.side === "buy" ? pair.quoteTokenAddress : pair.baseTokenAddress;
-
-      const balanceRsp = await getOrdersUserBalance({ tokenAddress });
+      const balanceRsp = await getPerpsOrdersUserBalance();
       if (balanceRsp.userBalanceId == null) {
         toast.error(t("perps.cancelFailed"));
         return;
@@ -200,7 +185,6 @@ function OpenOrdersTable() {
       await submitCancel({
         userBalanceId: balanceRsp.userBalanceId,
         orderId,
-        tokenAddress,
         salt: saltBi,
         signature,
       });
@@ -234,8 +218,8 @@ function OpenOrdersTable() {
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderAmount")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.filledPct")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.status")}</th>
           <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
@@ -281,10 +265,10 @@ function OpenOrdersTable() {
                   {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
                 </td>
                 <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                  {formatQuantity(row.quantity)}
+                  {formatQuoteAmount(row.total)}
                 </td>
                 <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                  {formatQuoteAmount(row.total)}
+                  {row.margin != null ? formatQuoteAmount(row.margin) : "—"}
                 </td>
                 <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                   {row.fillPercent.toLocaleString(undefined, {

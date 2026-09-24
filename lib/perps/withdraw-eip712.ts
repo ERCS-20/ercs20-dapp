@@ -3,8 +3,8 @@ import { zeroAddress } from "viem";
 /** Align with `perps.contract.withdrawals.eip712` in perps-orders `application.yml`. */
 export function getPerpsWithdrawEip712Domain(chainId: number) {
   return {
-    name: process.env.NEXT_PUBLIC_EIP712_PERPS_WITHDRAW_NAME?.trim() || "PerpsExchange",
-    version: process.env.NEXT_PUBLIC_EIP712_PERPS_WITHDRAW_VERSION?.trim() || "1",
+    name: process.env.NEXT_PUBLIC_PERPS_EIP712_WITHDRAW_NAME?.trim() || "PerpsExchange",
+    version: process.env.NEXT_PUBLIC_PERPS_EIP712_WITHDRAW_VERSION?.trim() || "1",
     chainId,
     verifyingContract: zeroAddress,
   } as const;

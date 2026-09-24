@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
    * 写成 `192.168.31.122:3000` 不会匹配，会导致 /_next 与 HMR WebSocket 403，页面上交互失效。
    * @see https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
    */
-  allowedDevOrigins: ["192.168.31.147"],
+  allowedDevOrigins: ["192.168.31.147", "192.168.1.100"],
 
   devIndicators: false,
 };

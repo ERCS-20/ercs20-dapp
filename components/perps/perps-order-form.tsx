@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSignTypedData } from "wagmi";
+
+import { MinusIcon, PlusIcon } from "lucide-react";
 
 import { PerpsSideSwitch } from "@/components/perps/perps-side-switch";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,18 @@ import { Label } from "@/components/ui/label";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import { getDefaultDecimals } from "@/lib/config/public-env";
 import { buildPlaceOrderFields } from "@/lib/perps/build-place-order";
+import {
+  clampPerpsLeverage,
+  estimateLiqPrice,
+  leverageToStopIndex,
+  PERPS_LEVERAGE_DEFAULT,
+  PERPS_LEVERAGE_MAX,
+  PERPS_LEVERAGE_MIN,
+  PERPS_LEVERAGE_STOPS,
+  readCachedPerpsLeverage,
+  stopIndexToLeverage,
+  writeCachedPerpsLeverage,
+} from "@/lib/perps/leverage";
 import { getPerpsOrderErrorMessage } from "@/lib/perps/order-error-message";
 import { parseEnginePrice } from "@/lib/market/order-place-amounts";
 import { orderQuoteAmountBaseUnits } from "@/lib/perps/pair-api";
@@ -88,6 +102,16 @@ export function PerpsOrderForm({
   const { mutateAsync: fetchOrderSalt, isPending: isSaltPending } = useOrderSalt();
   const { mutateAsync: submitPlaceOrder, isPending: isSubmitPending } = usePlaceOrder();
   const [sliderPct, setSliderPct] = useState(0);
+  /** SSR/hydration-safe default; restore from localStorage before paint. */
+  const [leverage, setLeverage] = useState(PERPS_LEVERAGE_DEFAULT);
+  const [leverageInput, setLeverageInput] = useState(String(PERPS_LEVERAGE_DEFAULT));
+  const [marginInput, setMarginInput] = useState("");
+
+  useLayoutEffect(() => {
+    const cached = readCachedPerpsLeverage();
+    setLeverage(cached);
+    setLeverageInput(String(cached));
+  }, []);
 
   const busy = isSigning || isSaltPending || isSubmitPending;
 
@@ -121,15 +145,69 @@ export function PerpsOrderForm({
     return q * effectivePrice;
   }, [quantity, effectivePrice]);
 
-  function applyPct(pct: number) {
+  const marginPreview = useMemo(() => {
+    if (total <= 0) return 0;
+    return total / leverage;
+  }, [total, leverage]);
+
+  const maxOpenNotional = useMemo(() => {
+    const avail = parseAvailableBalance(availableQuote);
+    if (avail <= 0) return 0;
+    return avail * leverage;
+  }, [availableQuote, leverage]);
+
+  const liqPricePreview = useMemo(() => {
+    if (effectivePrice <= 0) return null;
+    return estimateLiqPrice({
+      entryPrice: effectivePrice,
+      leverage,
+      side,
+    });
+  }, [effectivePrice, leverage, side]);
+
+  function applyMargin(raw: string, lev = leverage) {
+    const sanitized = sanitizeDecimal(raw);
+    setMarginInput(sanitized);
+    setSliderPct(0);
+
+    const margin = Number(sanitized);
+    if (!Number.isFinite(margin) || margin <= 0 || effectivePrice <= 0) {
+      onQuantityChange("");
+      return;
+    }
+    // amount (base) = margin × leverage / price
+    const amount = (margin * lev) / effectivePrice;
+    onQuantityChange(formatInputDecimal(amount));
+  }
+
+  function applyLeverage(next: number) {
+    const lev = clampPerpsLeverage(next);
+    setLeverage(lev);
+    setLeverageInput(String(lev));
+    writeCachedPerpsLeverage(lev);
+    if (sliderPct > 0) {
+      applyPct(sliderPct, lev);
+    } else if (marginInput.trim()) {
+      applyMargin(marginInput, lev);
+    }
+  }
+
+  function commitLeverageInput() {
+    const parsed = Number(leverageInput.replace(/[^\d]/g, ""));
+    applyLeverage(Number.isFinite(parsed) ? parsed : leverage);
+  }
+
+  function applyPct(pct: number, lev = leverage) {
     setSliderPct(pct);
     if (effectivePrice <= 0) return;
 
     const ratio = pct / 100;
     const quoteAvail = parseAvailableBalance(availableQuote);
     if (quoteAvail <= 0) return;
-    const quoteUse = quoteAvail * ratio;
-    const amount = quoteUse / effectivePrice;
+    // Size % = share of available balance used as margin → notional = margin × leverage.
+    const marginUse = quoteAvail * ratio;
+    setMarginInput(formatInputDecimal(marginUse));
+    const amount = (marginUse * lev) / effectivePrice;
     onQuantityChange(formatInputDecimal(amount));
   }
 
@@ -144,6 +222,7 @@ export function PerpsOrderForm({
       effectivePrice,
       enginePriceDecimal: pair.enginePriceDecimal,
       sliderPct,
+      leverage,
       pairId: pair.pairId,
       chainId,
     });
@@ -205,24 +284,15 @@ export function PerpsOrderForm({
       enginePriceDecimal,
     });
 
-    let quoteBudget: bigint | undefined;
-    if (sliderPct > 0 && usdcBalance) {
-      const quoteBal = parseApiBigInt(usdcBalance.balance);
-      if (quoteBal != null && quoteBal > BigInt(0)) {
-        quoteBudget = (quoteBal * BigInt(sliderPct)) / BigInt(100);
-      }
-    }
-
     const quoteAmount = orderQuoteAmountBaseUnits(
       quantity,
       submitPrice,
       enginePriceDecimal,
-      side,
-      quoteBudget
+      side
     );
     debugPlaceOrder("submit:normalizedQuote", {
-      quoteBudget: quoteBudget?.toString(),
       quoteAmount: quoteAmount?.toString(),
+      leverage,
     });
     const minTrade = pair.minTradeAmount;
     if (
@@ -247,26 +317,24 @@ export function PerpsOrderForm({
           price: submitPrice,
           quantity,
           enginePriceDecimal,
-          baseTokenAddress: pair.baseAddress,
-          quoteTokenAddress: pair.quoteAddress,
           maker: address,
           salt: BigInt(salt),
-          quoteBudget,
+          leverage,
         });
 
         debugPlaceOrder("submit:fields", {
           userBalanceId,
-          makerAmount: fields.makerAmount.toString(),
-          takerAmount: fields.takerAmount.toString(),
-          makerToken: fields.makerToken,
-          takerToken: fields.takerToken,
+          amount: fields.amount.toString(),
+          margin: fields.margin.toString(),
+          priceX18: fields.priceX18.toString(),
+          leverage: fields.leverage,
+          side: fields.side,
           expiry: fields.expiry.toString(),
           salt: fields.salt.toString(),
         });
 
         const available = parseApiBigInt(usdcBalance?.balance);
-        const required = side === "buy" ? fields.makerAmount : quoteAmount;
-        if (available == null || required == null || available < required) {
+        if (available == null || available < fields.margin) {
           toast.error(t("perps.insufficientBalance"));
           return;
         }
@@ -274,14 +342,14 @@ export function PerpsOrderForm({
         const signature = await signTypedDataAsync(
           getPlaceOrderSignTypedData(
             {
-              maker: fields.maker,
-              makerToken: fields.makerToken,
-              takerToken: fields.takerToken,
-              makerAmount: fields.makerAmount,
-              takerAmount: fields.takerAmount,
+              trader: fields.maker,
+              marketId: fields.pairId,
+              amount: fields.amount,
+              margin: fields.margin,
+              priceX18: fields.priceX18,
+              isBuy: side === "buy",
+              nonce: fields.salt,
               expiry: fields.expiry,
-              salt: fields.salt,
-              timeInForce: fields.timeInForce,
             },
             chainId
           )
@@ -291,20 +359,22 @@ export function PerpsOrderForm({
           userBalanceId,
           pairId: fields.pairId,
           maker: fields.maker,
-          makerToken: fields.makerToken,
-          takerToken: fields.takerToken,
-          makerAmount: fields.makerAmount,
-          takerAmount: fields.takerAmount,
+          amount: fields.amount,
+          margin: fields.margin,
           timeInForce: fields.timeInForce,
           expiry: fields.expiry,
           salt: fields.salt,
           signature,
+          priceX18: fields.priceX18,
+          side: fields.side,
         });
 
         debugPlaceOrder("submit:success");
 
         toast.success(t("perps.orderPlaced"));
         setSliderPct(0);
+        setMarginInput("");
+        onQuantityChange("");
         onOrderPlaced?.();
       } catch (error) {
         debugPlaceOrder("submit:error", {
@@ -337,10 +407,138 @@ export function PerpsOrderForm({
         onSideChange={(s) => {
           onSideChange(s);
           setSliderPct(0);
+          setMarginInput("");
+          onQuantityChange("");
         }}
         buyLabel={t("perps.buy")}
         sellLabel={t("perps.sell")}
       />
+
+      <div className="border-input bg-background mt-3 grid grid-cols-3 gap-2 rounded-xl border px-3 py-2.5">
+        <div className="min-w-0 text-left">
+          <div className="text-muted-foreground text-[11px] leading-none">
+            {t("perps.maxOpen")} ({pair.quoteSymbol})
+          </div>
+          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
+            {maxOpenNotional > 0 ? formatQuoteAmount(maxOpenNotional) : "—"}
+          </div>
+        </div>
+        <div className="min-w-0 text-center">
+          <div className="text-muted-foreground text-[11px] leading-none">
+            {t("perps.liqPrice")}
+          </div>
+          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
+            {liqPricePreview != null && liqPricePreview > 0
+              ? formatSubscriptPrice(liqPricePreview)
+              : "—"}
+          </div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="text-muted-foreground text-[11px] leading-none">
+            {t("perps.totalLabel")} ({pair.quoteSymbol})
+          </div>
+          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
+            {total > 0 ? formatQuoteAmount(total) : "—"}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <Label htmlFor="perps-leverage" className="text-muted-foreground text-xs">
+          {t("perps.leverage")}
+        </Label>
+        <div className="border-input bg-background mt-1.5 flex h-11 items-center overflow-hidden rounded-xl border">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground size-11 shrink-0 rounded-none"
+            disabled={leverage <= PERPS_LEVERAGE_MIN}
+            onClick={() => applyLeverage(leverage - 1)}
+            aria-label="-"
+          >
+            <MinusIcon className="size-4" />
+          </Button>
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+            <Input
+              id="perps-leverage"
+              inputMode="numeric"
+              value={leverageInput}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, "");
+                setLeverageInput(raw);
+                if (raw === "") return;
+                const n = Number(raw);
+                if (!Number.isFinite(n)) return;
+                const lev = clampPerpsLeverage(n);
+                setLeverage(lev);
+                writeCachedPerpsLeverage(lev);
+                if (sliderPct > 0) applyPct(sliderPct, lev);
+              }}
+              onBlur={commitLeverageInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                }
+              }}
+              className="h-9 w-[3.25rem] border-0 bg-transparent p-0 text-center text-base shadow-none tabular-nums focus-visible:ring-0"
+              aria-valuemin={PERPS_LEVERAGE_MIN}
+              aria-valuemax={PERPS_LEVERAGE_MAX}
+              aria-valuenow={leverage}
+            />
+            <span className="text-muted-foreground text-sm leading-none">x</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground size-11 shrink-0 rounded-none"
+            disabled={leverage >= PERPS_LEVERAGE_MAX}
+            onClick={() => applyLeverage(leverage + 1)}
+            aria-label="+"
+          >
+            <PlusIcon className="size-4" />
+          </Button>
+        </div>
+        <div className="mt-2">
+          <input
+            type="range"
+            min={0}
+            max={PERPS_LEVERAGE_STOPS.length - 1}
+            step={1}
+            value={leverageToStopIndex(leverage)}
+            data-side={side}
+            onChange={(e) => applyLeverage(stopIndexToLeverage(Number(e.target.value)))}
+            className="size-slider w-full cursor-pointer"
+            aria-label={t("perps.leverage")}
+          />
+          <div className="relative mt-1.5 h-5" aria-hidden>
+            {PERPS_LEVERAGE_STOPS.map((stop, i) => (
+              <button
+                key={stop}
+                type="button"
+                tabIndex={-1}
+                className={cn(
+                  "absolute top-0 h-2 w-px -translate-x-1/2",
+                  i === 0 || i === PERPS_LEVERAGE_STOPS.length - 1
+                    ? "bg-muted-foreground/70"
+                    : "bg-border",
+                  leverageToStopIndex(leverage) === i && "bg-foreground"
+                )}
+                style={{
+                  left: `${(i / (PERPS_LEVERAGE_STOPS.length - 1)) * 100}%`,
+                }}
+                onClick={() => applyLeverage(stop)}
+              />
+            ))}
+            <div className="text-muted-foreground absolute inset-x-0 top-2.5 flex justify-between text-[11px] tabular-nums">
+              <span>{PERPS_LEVERAGE_MIN}x</span>
+              <span>50x</span>
+              <span>{PERPS_LEVERAGE_MAX}x</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-4 space-y-3">
         <div>
@@ -351,24 +549,17 @@ export function PerpsOrderForm({
             id="perps-price"
             inputMode="decimal"
             value={price}
-            onChange={(e) => onPriceChange(sanitizeDecimal(e.target.value))}
-            placeholder={formatSubscriptPrice(lastPrice)}
-            className="mt-1.5 h-11 rounded-xl tabular-nums"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="perps-quantity" className="text-muted-foreground text-xs">
-            {t("perps.amount")} ({pair.baseSymbol})
-          </Label>
-          <Input
-            id="perps-quantity"
-            inputMode="decimal"
-            value={quantity}
             onChange={(e) => {
-              onQuantityChange(sanitizeDecimal(e.target.value));
-              setSliderPct(0);
+              onPriceChange(sanitizeDecimal(e.target.value));
             }}
+            onBlur={() => {
+              if (sliderPct > 0) {
+                applyPct(sliderPct);
+              } else if (marginInput.trim()) {
+                applyMargin(marginInput);
+              }
+            }}
+            placeholder={formatSubscriptPrice(lastPrice)}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
         </div>
@@ -406,13 +597,14 @@ export function PerpsOrderForm({
         </div>
 
         <div>
-          <Label htmlFor="perps-total" className="text-muted-foreground text-xs">
-            {t("perps.totalLabel")} ({pair.quoteSymbol})
+          <Label htmlFor="perps-margin" className="text-muted-foreground text-xs">
+            {t("perps.marginRequired")} ({pair.quoteSymbol})
           </Label>
           <Input
-            id="perps-total"
-            readOnly
-            value={total > 0 ? formatQuoteAmount(total) : ""}
+            id="perps-margin"
+            inputMode="decimal"
+            value={marginInput}
+            onChange={(e) => applyMargin(e.target.value)}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
         </div>

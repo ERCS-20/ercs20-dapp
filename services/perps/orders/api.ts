@@ -46,14 +46,14 @@ export function placeOrder(req: PlaceOrderReq) {
     userBalanceId: req.userBalanceId,
     pairId: req.pairId,
     maker: req.maker.toLowerCase(),
-    makerToken: req.makerToken.toLowerCase(),
-    takerToken: req.takerToken.toLowerCase(),
-    makerAmount: apiBigIntToString(req.makerAmount),
-    takerAmount: apiBigIntToString(req.takerAmount),
+    amount: apiBigIntToString(req.amount),
+    margin: apiBigIntToString(req.margin),
     timeInForce: req.timeInForce,
     expiry: apiBigIntToString(req.expiry),
     salt: apiBigIntToString(req.salt),
     signature: req.signature,
+    priceX18: apiBigIntToString(req.priceX18),
+    side: req.side,
   });
 }
 
@@ -62,7 +62,6 @@ export function cancelOrder(req: CancelOrderReq) {
   return request.post<void>(PerpsOrdersApi.ordersCancel, {
     userBalanceId: req.userBalanceId,
     orderId: apiBigIntToString(req.orderId),
-    tokenAddress: req.tokenAddress.toLowerCase(),
     salt: apiBigIntToString(req.salt),
     signature: req.signature,
   });

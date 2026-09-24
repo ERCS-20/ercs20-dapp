@@ -110,6 +110,8 @@ export type OpenOrderRow = {
   quantity: number;
   /** Quote notional: price × quantity. */
   total: number;
+  /** Isolated margin (quote, same decimals as fee/amount). Perps open orders. */
+  margin?: number;
   fillPercent: number;
   status: string;
   enginePriceDecimal: number;

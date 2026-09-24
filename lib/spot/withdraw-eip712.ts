@@ -3,8 +3,8 @@ import { zeroAddress } from "viem";
 /** Align with `spot.contract.withdrawals.eip712` in spot-orders `application.yml`. */
 export function getWithdrawEip712Domain(chainId: number) {
   return {
-    name: process.env.NEXT_PUBLIC_EIP712_WITHDRAW_NAME?.trim() || "SpotWithdrawals",
-    version: process.env.NEXT_PUBLIC_EIP712_WITHDRAW_VERSION?.trim() || "1",
+    name: process.env.NEXT_PUBLIC_SPOT_EIP712_WITHDRAW_NAME?.trim() || "SpotWithdrawals",
+    version: process.env.NEXT_PUBLIC_SPOT_EIP712_WITHDRAW_VERSION?.trim() || "1",
     chainId,
     verifyingContract: zeroAddress,
   } as const;

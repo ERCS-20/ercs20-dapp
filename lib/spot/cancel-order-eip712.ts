@@ -2,7 +2,7 @@ import { getSpotExchangeAddress } from "@/lib/config/spot-exchange";
 
 /**
  * Align with `OrdersEIP712Signature` domain (`spot.contract.exchange.eip712`).
- * Name/version from `NEXT_PUBLIC_EIP712_CANCEL_ORDER_*` (defaults match application.yml).
+ * Name/version from `NEXT_PUBLIC_SPOT_EIP712_CANCEL_ORDER_*` (defaults match application.yml).
  */
 export function getCancelOrderEip712Domain(chainId: number) {
   const verifyingContract = getSpotExchangeAddress();
@@ -11,8 +11,8 @@ export function getCancelOrderEip712Domain(chainId: number) {
   }
 
   return {
-    name: process.env.NEXT_PUBLIC_EIP712_CANCEL_ORDER_NAME?.trim() || "SpotExchange",
-    version: process.env.NEXT_PUBLIC_EIP712_CANCEL_ORDER_VERSION?.trim() || "1",
+    name: process.env.NEXT_PUBLIC_SPOT_EIP712_CANCEL_ORDER_NAME?.trim() || "SpotExchange",
+    version: process.env.NEXT_PUBLIC_SPOT_EIP712_CANCEL_ORDER_VERSION?.trim() || "1",
     chainId,
     verifyingContract,
   } as const;

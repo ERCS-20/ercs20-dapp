@@ -8,8 +8,8 @@ export function getPlaceOrderEip712Domain(chainId: number) {
   }
 
   return {
-    name: process.env.NEXT_PUBLIC_EIP712_SPOT_EXCHANGE_NAME?.trim() || "SpotExchange",
-    version: process.env.NEXT_PUBLIC_EIP712_SPOT_EXCHANGE_VERSION?.trim() || "1",
+    name: process.env.NEXT_PUBLIC_SPOT_EIP712_EXCHANGE_NAME?.trim() || "SpotExchange",
+    version: process.env.NEXT_PUBLIC_SPOT_EIP712_EXCHANGE_VERSION?.trim() || "1",
     chainId,
     verifyingContract,
   } as const;

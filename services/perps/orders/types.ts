@@ -37,21 +37,26 @@ export type PlaceOrderReq = {
   userBalanceId: number;
   pairId: number;
   maker: string;
-  makerToken: string;
-  takerToken: string;
-  makerAmount: ApiBigInt;
-  takerAmount: ApiBigInt;
+  /** Base size (18 decimals). */
+  amount: ApiBigInt;
+  /** Isolated margin to lock (quote decimals). */
+  margin: ApiBigInt;
   timeInForce: number;
+  /** Unix epoch seconds. */
   expiry: ApiBigInt;
+  /** = EIP-712 `Order.nonce`. */
   salt: ApiBigInt;
   signature: string;
+  /** Limit price × 1e18 (quote/base). */
+  priceX18: ApiBigInt;
+  /** 1 = buy, 2 = sell. */
+  side: number;
 };
 
 /** Mirrors `exchange.orbix.perps.orders.dto.CancelOrderReq`. */
 export type CancelOrderReq = {
   userBalanceId: number;
   orderId: ApiBigInt;
-  tokenAddress: string;
   salt: ApiBigInt;
   signature: string;
 };
@@ -83,23 +88,23 @@ export type PerpsWithdrawApplyReq = {
 
 export type WithdrawApplyReq = PerpsWithdrawApplyReq;
 
-/** Mirrors `exchange.orbix.perps.orders.dto.OrdersRsp`. */
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersRsp`. Dates = Unix ms. */
 export type OrdersRsp = {
-  id: number;
+  id: ApiBigInt;
   pairId: number;
   pairCode: string;
-  makerAmount: ApiBigInt;
-  takerAmount: ApiBigInt;
+  amount: ApiBigInt;
+  margin: ApiBigInt;
   timeInForce: number;
   /** Unix epoch milliseconds. */
   expiry: number;
   salt: ApiBigInt;
+  priceX18: ApiBigInt;
   enginePrice: ApiBigInt;
   enginePriceDecimal: number;
-  quantity: ApiBigInt;
   side: number;
-  filledMakerAmount: ApiBigInt;
-  filledTakerAmount: ApiBigInt;
+  filledAmount: ApiBigInt;
+  lockedMargin: ApiBigInt;
   fee: ApiBigInt;
   status: string;
   /** Unix epoch milliseconds. */

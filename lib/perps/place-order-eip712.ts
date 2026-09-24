@@ -1,6 +1,9 @@
 import { getPerpsExchangeAddress } from "@/lib/config/perps-exchange";
 
-/** Align with `perps.contract.exchange.eip712` in perps-orders `application.yml`. */
+/**
+ * Align with `perps.contract.exchange.eip712` / `OrdersEIP712Signature`.
+ * Typehash: `Order(address trader,uint256 marketId,uint256 amount,uint256 margin,uint256 priceX18,bool isBuy,uint256 nonce,uint256 expiry)`.
+ */
 export function getPlaceOrderEip712Domain(chainId: number) {
   const verifyingContract = getPerpsExchangeAddress();
   if (!verifyingContract) {
@@ -8,52 +11,53 @@ export function getPlaceOrderEip712Domain(chainId: number) {
   }
 
   return {
-    name: process.env.NEXT_PUBLIC_EIP712_PERPS_EXCHANGE_NAME?.trim() || "PerpsExchange",
-    version: process.env.NEXT_PUBLIC_EIP712_PERPS_EXCHANGE_VERSION?.trim() || "1",
+    name: process.env.NEXT_PUBLIC_PERPS_EIP712_EXCHANGE_NAME?.trim() || "PerpsExchange",
+    version: process.env.NEXT_PUBLIC_PERPS_EIP712_EXCHANGE_VERSION?.trim() || "1",
     chainId,
     verifyingContract,
   } as const;
 }
 
 export const PLACE_ORDER_EIP712_TYPES = {
-  PerpsOrder: [
-    { name: "maker", type: "address" },
-    { name: "makerToken", type: "address" },
-    { name: "takerToken", type: "address" },
-    { name: "makerAmount", type: "uint256" },
-    { name: "takerAmount", type: "uint256" },
+  Order: [
+    { name: "trader", type: "address" },
+    { name: "marketId", type: "uint256" },
+    { name: "amount", type: "uint256" },
+    { name: "margin", type: "uint256" },
+    { name: "priceX18", type: "uint256" },
+    { name: "isBuy", type: "bool" },
+    { name: "nonce", type: "uint256" },
     { name: "expiry", type: "uint256" },
-    { name: "salt", type: "uint256" },
-    { name: "timeInForce", type: "uint8" },
   ],
 } as const;
 
 export function getPlaceOrderSignTypedData(
   params: {
-    maker: `0x${string}`;
-    makerToken: `0x${string}`;
-    takerToken: `0x${string}`;
-    makerAmount: bigint;
-    takerAmount: bigint;
+    trader: `0x${string}`;
+    marketId: number | bigint;
+    amount: bigint;
+    margin: bigint;
+    priceX18: bigint;
+    isBuy: boolean;
+    /** HTTP `salt` — signed as `nonce`. */
+    nonce: bigint;
     expiry: bigint;
-    salt: bigint;
-    timeInForce: number;
   },
   chainId: number
 ) {
   return {
     domain: getPlaceOrderEip712Domain(chainId),
     types: PLACE_ORDER_EIP712_TYPES,
-    primaryType: "PerpsOrder" as const,
+    primaryType: "Order" as const,
     message: {
-      maker: params.maker.toLowerCase() as `0x${string}`,
-      makerToken: params.makerToken.toLowerCase() as `0x${string}`,
-      takerToken: params.takerToken.toLowerCase() as `0x${string}`,
-      makerAmount: params.makerAmount,
-      takerAmount: params.takerAmount,
+      trader: params.trader.toLowerCase() as `0x${string}`,
+      marketId: BigInt(params.marketId),
+      amount: params.amount,
+      margin: params.margin,
+      priceX18: params.priceX18,
+      isBuy: params.isBuy,
+      nonce: params.nonce,
       expiry: params.expiry,
-      salt: params.salt,
-      timeInForce: params.timeInForce,
     },
   };
 }

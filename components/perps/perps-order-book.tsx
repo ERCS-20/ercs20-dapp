@@ -10,11 +10,17 @@ import type { OrderBookLevel } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 
-type LevelWithTotal = OrderBookLevel & { total: number; placeholder?: boolean };
+type LevelWithTotal = OrderBookLevel & {
+  total: number;
+  /** Quote notional = price × base size. */
+  quoteSize: number;
+  placeholder?: boolean;
+};
 
 const EMPTY_LEVEL: LevelWithTotal = {
   price: 0,
   size: 0,
+  quoteSize: 0,
   total: 0,
   placeholder: true,
 };
@@ -35,23 +41,30 @@ function padBids(rows: LevelWithTotal[], depth: number): LevelWithTotal[] {
   ];
 }
 
-/** Cumulative size from spread outward; `levels[0]` is farthest from mid. */
+function toQuoteLevel(row: OrderBookLevel): LevelWithTotal {
+  const quoteSize = row.price * row.size;
+  return { ...row, quoteSize, total: 0 };
+}
+
+/** Cumulative quote size from spread outward; `levels[0]` is farthest from mid. */
 function withTotalsFromSpread(levels: OrderBookLevel[]): LevelWithTotal[] {
   const n = levels.length;
   if (n === 0) return [];
   const out: LevelWithTotal[] = new Array(n);
   let acc = 0;
   for (let i = n - 1; i >= 0; i--) {
-    acc += levels[i].size;
-    out[i] = { ...levels[i], total: acc };
+    const row = toQuoteLevel(levels[i]);
+    acc += row.quoteSize;
+    out[i] = { ...row, total: acc };
   }
   return out;
 }
 
 function withTotals(levels: OrderBookLevel[]): LevelWithTotal[] {
   let acc = 0;
-  return levels.map((row) => {
-    acc += row.size;
+  return levels.map((level) => {
+    const row = toQuoteLevel(level);
+    acc += row.quoteSize;
     return { ...row, total: acc };
   });
 }
@@ -111,7 +124,9 @@ export function PerpsOrderBook({
         <span>
           {t("perps.price")} ({quoteSymbol})
         </span>
-        <span className="text-right">{t("perps.size")}</span>
+        <span className="text-right">
+          {t("perps.size")} ({quoteSymbol})
+        </span>
       </div>
 
       <div className="scrollbar-none shrink-0 px-1 sm:px-2">
@@ -217,7 +232,7 @@ function OrderBookRow({
           row.placeholder && "text-muted-foreground/40"
         )}
       >
-        {row.placeholder ? "—" : formatQuantity(row.size)}
+        {row.placeholder ? "—" : formatQuantity(row.quoteSize)}
       </span>
     </>
   );
