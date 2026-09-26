@@ -8,8 +8,7 @@ import type {
   GetPairByCodeReq,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
-  OrdersPaginationReq,
-  OrdersPaginationRsp,
+  OrdersListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
@@ -18,6 +17,7 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
   UserPairsReorderReq,
@@ -67,9 +67,14 @@ export function cancelOrder(req: CancelOrderReq) {
   });
 }
 
-/** POST /perps/orders/orders/pagination — `userId` from gateway JWT headers. */
-export function paginationOrders(req: OrdersPaginationReq) {
-  return request.post<OrdersPaginationRsp>(PerpsOrdersApi.ordersPagination, req);
+/** POST /perps/orders/orders/list — `userId` from gateway JWT headers; no body. */
+export function listOrders() {
+  return request.post<OrdersListRsp>(PerpsOrdersApi.ordersList);
+}
+
+/** POST /perps/orders/positions/list — `userId` from gateway JWT headers; no body. */
+export function listPositions() {
+  return request.post<PositionsListRsp>(PerpsOrdersApi.positionsList);
 }
 
 /** POST /perps/orders/orders-history/pagination */

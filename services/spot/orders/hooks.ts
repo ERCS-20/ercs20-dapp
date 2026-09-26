@@ -5,15 +5,14 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { parsePairCode } from "@/lib/spot/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
-import { addUserPair, applyWithdraw, cancelOrder, deleteUserPair, getOrderSalt, getOrdersUserBalance, getPairBalances, getPairByCode, listUserPairs, paginationOrders, paginationOrdersHistory, paginationOrdersTradeHistory, placeOrder, reorderUserPairs } from "@/services/spot/orders/api";
+import { addUserPair, applyWithdraw, cancelOrder, deleteUserPair, getOrderSalt, getOrdersUserBalance, getPairBalances, getPairByCode, listOrders, listUserPairs, paginationOrdersHistory, paginationOrdersTradeHistory, placeOrder, reorderUserPairs } from "@/services/spot/orders/api";
 import type { MarketPairRsp } from "@/services/spot/market/types";
 import type {
   CancelOrderReq,
   OrderSaltRsp,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
-  OrdersPaginationReq,
-  OrdersPaginationRsp,
+  OrdersListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   OrdersUserBalanceRsp,
@@ -95,15 +94,12 @@ export function useOrderSalt() {
   });
 }
 
-export function useOrdersPagination(
-  req: OrdersPaginationReq,
-  options?: { enabled?: boolean; notifyError?: boolean }
-) {
+export function useOrdersList(options?: { enabled?: boolean; notifyError?: boolean }) {
   const { enabled = true, notifyError = false } = options ?? {};
 
-  return useApiQuery<OrdersPaginationRsp>({
-    queryKey: ["spot", "orders", "open", "pagination", req],
-    queryFn: () => paginationOrders(req),
+  return useApiQuery<OrdersListRsp>({
+    queryKey: ["spot", "orders", "open", "list"],
+    queryFn: () => listOrders(),
     enabled,
     notifyError,
     staleTime: 30_000,

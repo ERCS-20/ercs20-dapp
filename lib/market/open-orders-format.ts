@@ -6,11 +6,21 @@ import type { OrdersHistoryRsp, OrdersRsp, OrdersTradeHistoryRsp } from "@/lib/m
 export const ORDER_SIDE_BUY = 1;
 export const ORDER_SIDE_SELL = 2;
 
+/** Mirrors `exchange.orbix.components.constants.MatchedSide`. */
+export const MATCHED_SIDE_TAKER = 1;
+export const MATCHED_SIDE_MAKER = 2;
+
 const BASE_QUANTITY_DECIMALS = 18;
 
 export function orderSideToLabel(side: number): "buy" | "sell" | null {
   if (side === ORDER_SIDE_BUY) return "buy";
   if (side === ORDER_SIDE_SELL) return "sell";
+  return null;
+}
+
+export function matchedSideToLabel(side: number): "maker" | "taker" | null {
+  if (side === MATCHED_SIDE_MAKER) return "maker";
+  if (side === MATCHED_SIDE_TAKER) return "taker";
   return null;
 }
 
@@ -112,6 +122,8 @@ export type OpenOrderRow = {
   total: number;
   /** Isolated margin (quote, same decimals as fee/amount). Perps open orders. */
   margin?: number;
+  /** Perps: isolated leverage ≈ notional / margin. */
+  leverage?: number | null;
   fillPercent: number;
   status: string;
   enginePriceDecimal: number;
@@ -146,8 +158,14 @@ export type OrderHistoryRow = {
   quantity: number;
   /** Filled base qty: buy ← filledTaker, sell ← filledMaker. */
   filledQuantity: number;
-  /** Quote notional: averagePrice × filledQuantity when filled. */
+  /** Order quote notional: price × quantity. */
   total: number | null;
+  /** Perps: locked margin (quote decimals). */
+  lockedMargin?: number;
+  /** Perps: filled quote notional = averagePrice × filledQuantity. */
+  filledValue?: number | null;
+  /** Perps: isolated leverage ≈ notional / margin. */
+  leverage?: number | null;
   status: string;
   fee: number;
   placedAt: number;
@@ -202,8 +220,15 @@ export type TradeHistoryRow = {
   orderId: string;
   pairLabel: string;
   placeSide: "buy" | "sell" | null;
+  /** Maker / taker role in the match (`matchedSide`). */
+  matchedSide: "maker" | "taker" | null;
   price: number;
   quantity: number;
+  /** Quote notional: price × quantity (same as order-history filled). */
+  filledValue: number;
+  /** Perps: isolated leverage ≈ (amount × price) / margin. */
+  leverage?: number | null;
+  fee: number;
   tradeTime: number;
   tradeStatus: string;
   txHash: string;
@@ -211,12 +236,17 @@ export type TradeHistoryRow = {
 };
 
 export function ordersTradeHistoryRspToRow(trade: OrdersTradeHistoryRsp): TradeHistoryRow {
+  const price = enginePriceToNumber(trade.enginePrice, trade.enginePriceDecimal);
+  const quantity = formatOrderQuantity(trade.quantity);
   return {
     orderId: formatOrderId(trade.orderId),
     pairLabel: pairLabelFromCode(trade.pairCode),
     placeSide: orderSideToLabel(trade.placeSide),
-    price: enginePriceToNumber(trade.enginePrice, trade.enginePriceDecimal),
-    quantity: formatOrderQuantity(trade.quantity),
+    matchedSide: matchedSideToLabel(trade.matchedSide),
+    price,
+    quantity,
+    filledValue: price * quantity,
+    fee: formatOrderFee(trade.fee),
     tradeTime: trade.tradeTime,
     tradeStatus: trade.tradeStatus,
     txHash: trade.txHash,

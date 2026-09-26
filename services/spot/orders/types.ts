@@ -90,9 +90,8 @@ export type OrdersRsp = {
   placedAt: number;
 };
 
-/** Mirrors `PaginationCondition<Void>` for open orders pagination. */
-export type OrdersPaginationReq = PaginationCondition<Record<string, never>>;
-export type OrdersPaginationRsp = PaginationRepertory<OrdersRsp>;
+/** Mirrors `OrdersController.list` — open orders for the JWT user. */
+export type OrdersListRsp = OrdersRsp[];
 
 /** Mirrors `exchange.orbix.spot.orders.dto.OrdersHistoryRsp`. BigInteger → string in JSON. */
 export type OrdersHistoryRsp = OrdersRsp & {

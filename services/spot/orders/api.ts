@@ -9,8 +9,7 @@ import type {
   OrderSaltRsp,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
-  OrdersPaginationReq,
-  OrdersPaginationRsp,
+  OrdersListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   OrdersUserBalanceReq,
@@ -66,9 +65,9 @@ export function cancelOrder(req: CancelOrderReq) {
   });
 }
 
-/** POST /orders/orders/pagination — `userId` from gateway JWT headers. */
-export function paginationOrders(req: OrdersPaginationReq) {
-  return request.post<OrdersPaginationRsp>(SpotOrdersApi.ordersPagination, req);
+/** POST /spot/orders/orders/list — `userId` from gateway JWT headers; no body. */
+export function listOrders() {
+  return request.post<OrdersListRsp>(SpotOrdersApi.ordersList);
 }
 
 /** POST /orders/orders-history/pagination — `userId` from gateway JWT headers. */

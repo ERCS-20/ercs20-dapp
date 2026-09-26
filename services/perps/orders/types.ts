@@ -111,8 +111,26 @@ export type OrdersRsp = {
   placedAt: number;
 };
 
-export type OrdersPaginationReq = PaginationCondition<Record<string, never>>;
-export type OrdersPaginationRsp = PaginationRepertory<OrdersRsp>;
+export type OrdersListRsp = OrdersRsp[];
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionsRsp`. */
+export type PositionsRsp = {
+  id: number;
+  pairId: number;
+  pairCode: string;
+  /** 1 = buy/long, 2 = sell/short. */
+  side: number;
+  margin: ApiBigInt;
+  position: ApiBigInt;
+  avgEntryX18: ApiBigInt;
+  liqPrice: ApiBigInt;
+  fundingTimestamp?: number;
+  fundingValue?: ApiBigInt;
+  /** Unix epoch milliseconds. */
+  updatedAt: number;
+};
+
+export type PositionsListRsp = PositionsRsp[];
 
 export type OrdersHistoryRsp = OrdersRsp & {
   /** Unix epoch milliseconds. */
@@ -122,15 +140,18 @@ export type OrdersHistoryRsp = OrdersRsp & {
 export type OrdersHistoryPaginationReq = PaginationCondition<Record<string, never>>;
 export type OrdersHistoryPaginationRsp = PaginationRepertory<OrdersHistoryRsp>;
 
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersTradeHistoryRsp`. */
 export type OrdersTradeHistoryRsp = {
   pairId: number;
   pairCode: string;
   orderId: ApiBigInt;
   enginePrice: ApiBigInt;
   enginePriceDecimal: number;
-  quantity: ApiBigInt;
+  /** Base size (18 decimals) — not spot's `quantity`. */
   amount: ApiBigInt;
+  margin: ApiBigInt;
   fee: ApiBigInt;
+  realizedPnl: ApiBigInt;
   placeSide: number;
   matchedSide: number;
   /** Unix epoch milliseconds. */

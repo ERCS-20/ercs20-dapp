@@ -15,8 +15,9 @@ import {
   getPairByCode,
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
+  listOrders,
+  listPositions,
   listUserPairs,
-  paginationOrders,
   paginationOrdersHistory,
   paginationOrdersTradeHistory,
   placeOrder,
@@ -28,8 +29,7 @@ import type {
   OrderSaltRsp,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
-  OrdersPaginationReq,
-  OrdersPaginationRsp,
+  OrdersListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
@@ -37,6 +37,7 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
   UserPairsReorderReq,
@@ -152,15 +153,24 @@ export function useOrderSalt() {
   });
 }
 
-export function useOrdersPagination(
-  req: OrdersPaginationReq,
-  options?: { enabled?: boolean; notifyError?: boolean }
-) {
+export function useOrdersList(options?: { enabled?: boolean; notifyError?: boolean }) {
   const { enabled = true, notifyError = false } = options ?? {};
 
-  return useApiQuery<OrdersPaginationRsp>({
-    queryKey: ["perps", "orders", "open", "pagination", req],
-    queryFn: () => paginationOrders(req),
+  return useApiQuery<OrdersListRsp>({
+    queryKey: ["perps", "orders", "open", "list"],
+    queryFn: () => listOrders(),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function usePositionsList(options?: { enabled?: boolean; notifyError?: boolean }) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<PositionsListRsp>({
+    queryKey: ["perps", "orders", "positions", "list"],
+    queryFn: () => listPositions(),
     enabled,
     notifyError,
     staleTime: 30_000,
@@ -205,6 +215,7 @@ export function usePlaceOrder() {
     notifyError: false,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "positions"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },
   });
@@ -279,6 +290,7 @@ export function useCancelOrder() {
     mutationFn: (req) => cancelOrder(req),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "positions"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },

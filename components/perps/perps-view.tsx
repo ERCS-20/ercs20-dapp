@@ -106,7 +106,7 @@ export function PerpsView({
     setQuantity("");
   }, [pair.baseAddress]);
 
-  const [ordersTab, setOrdersTab] = useState<PerpsOrdersTab>("open");
+  const [ordersTab, setOrdersTab] = useState<PerpsOrdersTab>("positions");
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("chart");
 
   const handlePairChange = useCallback(

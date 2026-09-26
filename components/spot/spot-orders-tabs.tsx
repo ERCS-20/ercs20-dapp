@@ -32,7 +32,7 @@ import { getOrderSalt, getOrdersUserBalance, getPairByCode } from "@/services/sp
 import {
   useCancelOrder,
   useOrdersHistoryPagination,
-  useOrdersPagination,
+  useOrdersList,
   useOrdersTradeHistoryPagination,
 } from "@/services/spot/orders/hooks";
 
@@ -142,19 +142,14 @@ function OpenOrdersTable() {
   const { mutateAsync: submitCancel } = useCancelOrder();
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
-  const paginationReq = useMemo(
-    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
-    []
-  );
-
-  const { data, isLoading, isFetching } = useOrdersPagination(paginationReq, {
+  const { data, isLoading, isFetching } = useOrdersList({
     enabled: isAuthenticated,
     notifyError: false,
   });
 
   const rows = useMemo(
-    () => (data?.pageItems ?? []).map(ordersRspToOpenOrderRow),
-    [data?.pageItems]
+    () => (data ?? []).map(ordersRspToOpenOrderRow),
+    [data]
   );
 
   async function handleCancel(row: OpenOrderRow) {

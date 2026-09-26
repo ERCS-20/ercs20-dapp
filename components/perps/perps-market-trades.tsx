@@ -51,36 +51,37 @@ export function PerpsMarketTrades({
 
       <div className="text-muted-foreground grid grid-cols-3 gap-2 px-3 py-2 text-[11px] font-medium sm:px-4 sm:text-xs">
         <span>{t("perps.price")}</span>
-        <span className="text-center">{pair.baseSymbol}</span>
+        <span className="text-center">{pair.quoteSymbol}</span>
         <span className="text-right">{t("perps.time")}</span>
       </div>
 
-      <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-2 sm:px-2">
+      <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-2 sm:px-4">
         {isLoading ? (
           <p className="text-muted-foreground py-6 text-center text-xs">{t("swap.loading")}</p>
         ) : (
-          <table className="w-full text-[11px] sm:text-xs">
-            <tbody>
-              {trades.map((trade) => (
-                <tr key={trade.id} className="hover:bg-muted/40">
-                  <td
-                    className={cn(
-                      "py-0.5 tabular-nums",
-                      trade.isBuy ? "text-brand" : "text-brand-alt"
-                    )}
-                  >
-                    {formatSubscriptPrice(trade.price, enginePriceDecimal ?? 8)}
-                  </td>
-                  <td className="text-foreground py-0.5 text-center tabular-nums">
-                    {formatQuantity(trade.quantity)}
-                  </td>
-                  <td className="text-muted-foreground py-0.5 text-right tabular-nums">
-                    {formatLocalTime(trade.time)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="w-full text-[11px] sm:text-xs">
+            {trades.map((trade) => (
+              <div
+                key={trade.id}
+                className="hover:bg-muted/40 grid grid-cols-3 gap-2 py-0.5"
+              >
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    trade.isBuy ? "text-brand" : "text-brand-alt"
+                  )}
+                >
+                  {formatSubscriptPrice(trade.price, enginePriceDecimal ?? 8)}
+                </span>
+                <span className="text-foreground text-center tabular-nums">
+                  {formatQuantity(trade.price * trade.quantity)}
+                </span>
+                <span className="text-muted-foreground text-right tabular-nums">
+                  {formatLocalTime(trade.time)}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
         {!isLoading && trades.length === 0 && (
           <p className="text-muted-foreground py-6 text-center text-xs">{t("perps.emptyTrades")}</p>

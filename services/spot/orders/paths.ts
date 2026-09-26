@@ -3,7 +3,7 @@ export const SpotOrdersApi = {
   pairByTokens: (baseToken: string, quoteToken: string) =>
     `/spot/orders/pairs/${encodeURIComponent(baseToken)}/${encodeURIComponent(quoteToken)}`,
   orderSalt: "/spot/orders/orders/salt",
-  ordersPagination: "/spot/orders/orders/pagination",
+  ordersList: "/spot/orders/orders/list",
   ordersHistoryPagination: "/spot/orders/orders-history/pagination",
   ordersTradeHistoryPagination: "/spot/orders/orders-trade-history/pagination",
   ordersPlace: "/spot/orders/orders/place",
