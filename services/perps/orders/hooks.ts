@@ -20,6 +20,7 @@ import {
   listUserPairs,
   paginationOrdersHistory,
   paginationOrdersTradeHistory,
+  paginationPositionHistory,
   placeOrder,
   reorderUserPairs,
 } from "@/services/perps/orders/api";
@@ -37,6 +38,8 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionHistoryPaginationReq,
+  PositionHistoryPaginationRsp,
   PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
@@ -177,6 +180,21 @@ export function usePositionsList(options?: { enabled?: boolean; notifyError?: bo
   });
 }
 
+export function usePositionHistoryPagination(
+  req: PositionHistoryPaginationReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<PositionHistoryPaginationRsp>({
+    queryKey: ["perps", "orders", "position-history", "pagination", req],
+    queryFn: () => paginationPositionHistory(req),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
 export function useOrdersHistoryPagination(
   req: OrdersHistoryPaginationReq,
   options?: { enabled?: boolean; notifyError?: boolean }
@@ -216,6 +234,7 @@ export function usePlaceOrder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "positions"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "position-history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },
   });
@@ -291,6 +310,7 @@ export function useCancelOrder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "open"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "positions"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "position-history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },

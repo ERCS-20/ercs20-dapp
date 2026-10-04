@@ -13,11 +13,12 @@ import {
   ordersTradeHistoryRspToRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
-import { positionsRspToRow } from "@/lib/perps/positions-format";
+import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import {
+  formatPercentChange,
   formatQuoteAmount,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
@@ -33,10 +34,16 @@ import {
   useOrdersHistoryPagination,
   useOrdersList,
   useOrdersTradeHistoryPagination,
+  usePositionHistoryPagination,
   usePositionsList,
 } from "@/services/perps/orders/hooks";
 
-export type PerpsOrdersTab = "positions" | "open" | "history" | "trades";
+export type PerpsOrdersTab =
+  | "positions"
+  | "open"
+  | "history"
+  | "trades"
+  | "position-history";
 
 const ORDERS_PAGE_SIZE = 50;
 
@@ -55,6 +62,7 @@ export function PerpsOrdersTabs({
     { id: "open", label: t("perps.openOrders") },
     { id: "history", label: t("perps.orderHistory") },
     { id: "trades", label: t("perps.tradeHistory") },
+    { id: "position-history", label: t("perps.positionHistory") },
   ];
 
   return (
@@ -88,6 +96,7 @@ export function PerpsOrdersTabs({
         {tab === "open" && <OpenOrdersTable />}
         {tab === "history" && <HistoryOrdersTable />}
         {tab === "trades" && <TradeHistoryTable />}
+        {tab === "position-history" && <PositionHistoryTable />}
       </div>
     </section>
   );
@@ -147,7 +156,7 @@ function PositionsTable() {
 
   const rows = useMemo(() => (data ?? []).map(positionsRspToRow), [data]);
 
-  const colSpan = 7;
+  const colSpan = 9;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -165,11 +174,13 @@ function PositionsTable() {
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.average")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.liqPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.updatedAt")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.liqPrice")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.markPrice")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
         </tr>
       </thead>
       <tbody>
@@ -195,19 +206,138 @@ function PositionsTable() {
                     : "—"}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {row.avgEntry > 0 ? formatSubscriptPrice(row.avgEntry, 8) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
+                {formatQuoteAmount(row.margin)}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.total > 0 ? formatQuoteAmount(row.total) : "—"}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.margin)}
+                {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                —
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                —
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                —
               </td>
               <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.updatedAt)}
+                {formatUtcDateTime(row.openedAt)}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function signedAmountClass(value: number) {
+  if (value > 0) return "text-brand";
+  if (value < 0) return "text-brand-alt";
+  return "text-muted-foreground";
+}
+
+function formatSignedQuote(value: number) {
+  if (!Number.isFinite(value)) return "—";
+  const abs = formatQuoteAmount(Math.abs(value));
+  if (value > 0) return `+${abs}`;
+  if (value < 0) return `-${abs}`;
+  return abs;
+}
+
+function PositionHistoryTable() {
+  const { t } = useI18n();
+  const { isAuthenticated, authReady } = useAuth();
+
+  const paginationReq = useMemo(
+    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
+    []
+  );
+
+  const { data, isLoading, isFetching } = usePositionHistoryPagination(paginationReq, {
+    enabled: isAuthenticated,
+    notifyError: false,
+  });
+
+  const rows = useMemo(
+    () => (data?.pageItems ?? []).map(positionHistoryRspToRow),
+    [data?.pageItems]
+  );
+
+  const colSpan = 10;
+  const emptyMessage = resolveOrdersTableMessage({
+    authReady,
+    isAuthenticated,
+    isLoading,
+    isFetching,
+    hasRows: rows.length > 0,
+    loadingMessage: t("swap.loading"),
+    loginMessage: t("perps.loginToViewOrders"),
+    emptyMessage: t("perps.emptyPositionHistory"),
+  });
+
+  return (
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+      <thead>
+        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.tradeAmount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.addedMargin")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.funding")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.settledAmount")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.closedAt")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {emptyMessage ? (
+          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+        ) : (
+          rows.map((row) => (
+            <tr key={row.key} className="border-border/40 border-b last:border-0">
+              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatQuoteAmount(row.totalTradeMargin)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatQuoteAmount(row.totalTradeFee)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatQuoteAmount(row.totalMarginAdjust)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatSignedQuote(row.totalFunding)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatQuoteAmount(row.totalMarginSettled)}
+              </td>
+              <td
+                className={cn(
+                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  signedAmountClass(row.realizedPnl)
+                )}
+              >
+                {formatSignedQuote(row.realizedPnl)}
+              </td>
+              <td
+                className={cn(
+                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  signedAmountClass(row.roiPct)
+                )}
+              >
+                {formatPercentChange(row.roiPct)}
+              </td>
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {formatUtcDateTime(row.openedAt)}
+              </td>
+              <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
+                {formatUtcDateTime(row.closedAt)}
               </td>
             </tr>
           ))
@@ -513,7 +643,7 @@ function TradeHistoryTable() {
     [data?.pageItems]
   );
 
-  const colSpan = 10;
+  const colSpan = 11;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -534,6 +664,7 @@ function TradeHistoryTable() {
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.price")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.filled")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.role")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.time")}</th>
@@ -574,6 +705,9 @@ function TradeHistoryTable() {
               </td>
               <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
                 {formatQuoteAmount(row.filledValue)}
+              </td>
+              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                {row.lockedMargin != null ? formatQuoteAmount(row.lockedMargin) : "—"}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}

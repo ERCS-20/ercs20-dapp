@@ -228,6 +228,8 @@ export type TradeHistoryRow = {
   filledValue: number;
   /** Perps: isolated leverage ≈ (amount × price) / margin. */
   leverage?: number | null;
+  /** Perps: fill `margin` (18-decimal quote). */
+  lockedMargin?: number;
   fee: number;
   tradeTime: number;
   tradeStatus: string;

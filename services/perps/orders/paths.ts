@@ -7,6 +7,7 @@ export const PerpsOrdersApi = {
   ordersCancel: "/perps/orders/orders/cancel",
   ordersList: "/perps/orders/orders/list",
   positionsList: "/perps/orders/positions/list",
+  positionHistoryPagination: "/perps/orders/position-history/pagination",
   ordersHistoryPagination: "/perps/orders/orders-history/pagination",
   ordersTradeHistoryPagination: "/perps/orders/orders-trade-history/pagination",
   userBalance: "/perps/orders/user-balances/balance",

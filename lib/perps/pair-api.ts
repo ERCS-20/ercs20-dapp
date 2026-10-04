@@ -11,6 +11,7 @@ import {
   pairPathFromSymbols,
   parsePairCode,
 } from "@/lib/market/pair";
+import { parseApiBigInt } from "@/lib/utils/coerce-bigint";
 import type { PerpsPair } from "@/lib/perps/types";
 
 export {
@@ -24,5 +25,8 @@ export {
 };
 
 export function pairRspToPerpsPair(pair: PairRsp): PerpsPair {
-  return pairRspToTradingPair(pair);
+  return {
+    ...pairRspToTradingPair(pair),
+    minCollateralX18: parseApiBigInt(pair.minCollateralX18) ?? undefined,
+  };
 }

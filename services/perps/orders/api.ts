@@ -17,6 +17,8 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionHistoryPaginationReq,
+  PositionHistoryPaginationRsp,
   PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
@@ -75,6 +77,14 @@ export function listOrders() {
 /** POST /perps/orders/positions/list — `userId` from gateway JWT headers; no body. */
 export function listPositions() {
   return request.post<PositionsListRsp>(PerpsOrdersApi.positionsList);
+}
+
+/** POST /perps/orders/position-history/pagination */
+export function paginationPositionHistory(req: PositionHistoryPaginationReq) {
+  return request.post<PositionHistoryPaginationRsp>(
+    PerpsOrdersApi.positionHistoryPagination,
+    req
+  );
 }
 
 /** POST /perps/orders/orders-history/pagination */

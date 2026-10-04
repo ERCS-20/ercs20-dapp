@@ -19,17 +19,23 @@ export type GetPairByCodeReq = {
 export type PairRsp = {
   id: number;
   pairCode: string;
-  blockNumber: string;
+  blockNumber: ApiBigInt;
   logIndex: number;
   txHash: string;
   baseTokenAddress: string;
   quoteTokenAddress: string;
   minTradeAmount: ApiBigInt;
   maxPriceFluctuation: number;
-  issuePrice: string;
+  issuePrice: ApiBigInt;
   enginePriceDecimal: number;
+  adlEquityThreshold: ApiBigInt;
+  minCollateralX18: ApiBigInt;
+  /** Unix epoch milliseconds. */
+  openingTime: number;
   /** Unix epoch milliseconds. */
   expiresAt: number;
+  status: string;
+  sortOrder: number;
 };
 
 /** Mirrors `exchange.orbix.perps.orders.dto.PlaceOrderReq`. */
@@ -118,19 +124,44 @@ export type PositionsRsp = {
   id: number;
   pairId: number;
   pairCode: string;
-  /** 1 = buy/long, 2 = sell/short. */
-  side: number;
-  margin: ApiBigInt;
-  position: ApiBigInt;
-  avgEntryX18: ApiBigInt;
+  balanceMargin: ApiBigInt;
+  balancePosition: ApiBigInt;
   liqPrice: ApiBigInt;
   fundingTimestamp?: number;
   fundingValue?: ApiBigInt;
+  totalTradeMargin: ApiBigInt;
+  totalTradeFee: ApiBigInt;
+  totalMarginAdjust: ApiBigInt;
+  totalMarginSettled?: ApiBigInt;
+  totalFunding?: ApiBigInt;
+  /** Unix epoch milliseconds. */
+  openedAt: number;
   /** Unix epoch milliseconds. */
   updatedAt: number;
 };
 
 export type PositionsListRsp = PositionsRsp[];
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionHistoryRsp`. */
+export type PositionHistoryRsp = {
+  pairId: number;
+  pairCode: string;
+  /** Unix epoch milliseconds. */
+  openedAt: number;
+  /** Unix epoch milliseconds. */
+  closedAt: number;
+  totalTradeMargin: ApiBigInt;
+  totalMarginAdjust: ApiBigInt;
+  totalMarginSettled: ApiBigInt;
+  totalTradeFee: ApiBigInt;
+  totalFunding: ApiBigInt;
+  realizedPnl: ApiBigInt;
+  /** Fraction × 1e18 (`realizedPnl / totalTradeMargin`). */
+  roi: ApiBigInt;
+};
+
+export type PositionHistoryPaginationReq = PaginationCondition<Record<string, never>>;
+export type PositionHistoryPaginationRsp = PaginationRepertory<PositionHistoryRsp>;
 
 export type OrdersHistoryRsp = OrdersRsp & {
   /** Unix epoch milliseconds. */

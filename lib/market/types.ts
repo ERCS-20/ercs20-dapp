@@ -19,6 +19,8 @@ export type TradingPair = {
   pairCode: string;
   /** Minimum order total in quote token base units (18 decimals). */
   minTradeAmount?: bigint;
+  /** Perps: isolated liq-price parameter (1e18). */
+  minCollateralX18?: bigint;
 };
 
 export type MarketStats = {

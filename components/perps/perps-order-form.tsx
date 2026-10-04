@@ -6,27 +6,33 @@ import { useSignTypedData } from "wagmi";
 
 import { MinusIcon, PlusIcon } from "lucide-react";
 
+import { parseUnits } from "viem";
+
 import { PerpsSideSwitch } from "@/components/perps/perps-side-switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import { getDefaultDecimals } from "@/lib/config/public-env";
-import { buildPlaceOrderFields } from "@/lib/perps/build-place-order";
+import { buildPlaceOrderFields, enginePriceToPriceX18 } from "@/lib/perps/build-place-order";
 import {
   clampPerpsLeverage,
-  estimateLiqPrice,
   leverageToStopIndex,
+  marginFromNotional,
   PERPS_LEVERAGE_DEFAULT,
   PERPS_LEVERAGE_MAX,
   PERPS_LEVERAGE_MIN,
   PERPS_LEVERAGE_STOPS,
+  previewIsolatedLiqPrice,
   readCachedPerpsLeverage,
   stopIndexToLeverage,
   writeCachedPerpsLeverage,
 } from "@/lib/perps/leverage";
 import { getPerpsOrderErrorMessage } from "@/lib/perps/order-error-message";
-import { parseEnginePrice } from "@/lib/market/order-place-amounts";
+import {
+  normalizePlaceOrderAmounts,
+  parseEnginePrice,
+} from "@/lib/market/order-place-amounts";
 import { orderQuoteAmountBaseUnits } from "@/lib/perps/pair-api";
 import { debugPlaceOrder } from "@/lib/perps/place-order-debug";
 import { getPlaceOrderSignTypedData } from "@/lib/perps/place-order-eip712";
@@ -157,13 +163,56 @@ export function PerpsOrderForm({
   }, [availableQuote, leverage]);
 
   const liqPricePreview = useMemo(() => {
-    if (effectivePrice <= 0) return null;
-    return estimateLiqPrice({
-      entryPrice: effectivePrice,
-      leverage,
+    const minCollateralX18 = pair.minCollateralX18;
+    const enginePriceDecimal = pair.enginePriceDecimal;
+    if (minCollateralX18 == null || minCollateralX18 <= BigInt(0)) return null;
+    if (enginePriceDecimal == null) return null;
+
+    const submitPrice = resolveSubmitPriceString(price, lastPrice);
+    if (submitPrice == null) return null;
+
+    const normalized = normalizePlaceOrderAmounts({
       side,
+      price: submitPrice,
+      enginePriceDecimal,
+      quantity,
+      product: "perps",
     });
-  }, [effectivePrice, leverage, side]);
+    if (normalized == null) return null;
+
+    let isolatedMargin: bigint | undefined;
+    const marginRaw = marginInput.trim();
+    if (marginRaw) {
+      try {
+        const parsed = parseUnits(marginRaw, getDefaultDecimals());
+        if (parsed > BigInt(0)) isolatedMargin = parsed;
+      } catch {
+        isolatedMargin = undefined;
+      }
+    }
+    if (isolatedMargin == null) {
+      isolatedMargin =
+        marginFromNotional(normalized.quoteAmount, leverage) ?? undefined;
+    }
+    if (isolatedMargin == null) return null;
+
+    return previewIsolatedLiqPrice({
+      side,
+      amount: normalized.baseAmount,
+      isolatedMargin,
+      priceX18: enginePriceToPriceX18(normalized.enginePrice, enginePriceDecimal),
+      minCollateralX18,
+    });
+  }, [
+    lastPrice,
+    leverage,
+    marginInput,
+    pair.enginePriceDecimal,
+    pair.minCollateralX18,
+    price,
+    quantity,
+    side,
+  ]);
 
   function applyMargin(raw: string, lev = leverage) {
     const sanitized = sanitizeDecimal(raw);
@@ -429,7 +478,10 @@ export function PerpsOrderForm({
           </div>
           <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
             {liqPricePreview != null && liqPricePreview > 0
-              ? formatSubscriptPrice(liqPricePreview)
+              ? formatSubscriptPrice(
+                  liqPricePreview,
+                  pair.enginePriceDecimal ?? 8
+                )
               : "—"}
           </div>
         </div>

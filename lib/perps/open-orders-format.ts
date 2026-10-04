@@ -159,6 +159,7 @@ export function ordersTradeHistoryRspToRow(
       trade.enginePrice,
       trade.enginePriceDecimal
     ),
+    lockedMargin: formatOrderFee(trade.margin),
     fee: formatOrderFee(trade.fee),
     tradeTime: trade.tradeTime,
     tradeStatus: trade.tradeStatus,
