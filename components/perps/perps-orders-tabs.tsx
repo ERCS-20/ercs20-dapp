@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSignTypedData } from "wagmi";
 
+import { PerpsPositionDetailDialog, type PositionDetailTarget } from "@/components/perps/perps-position-detail-dialog";
 import {
   formatLeveragePairSuffix,
   formatOrderHistoryStatus,
@@ -50,13 +51,16 @@ const ORDERS_PAGE_SIZE = 50;
 export function PerpsOrdersTabs({
   tab,
   onTabChange,
+  baseSymbol,
   className,
 }: {
   tab: PerpsOrdersTab;
   onTabChange: (t: PerpsOrdersTab) => void;
+  baseSymbol: string;
   className?: string;
 }) {
   const { t } = useI18n();
+  const [detailTarget, setDetailTarget] = useState<PositionDetailTarget | null>(null);
   const tabs: { id: PerpsOrdersTab; label: string }[] = [
     { id: "positions", label: t("perps.positions") },
     { id: "open", label: t("perps.openOrders") },
@@ -92,12 +96,20 @@ export function PerpsOrdersTabs({
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4">
-        {tab === "positions" && <PositionsTable />}
+        {tab === "positions" && (
+          <PositionsTable baseSymbol={baseSymbol} onDetails={setDetailTarget} />
+        )}
         {tab === "open" && <OpenOrdersTable />}
         {tab === "history" && <HistoryOrdersTable />}
         {tab === "trades" && <TradeHistoryTable />}
-        {tab === "position-history" && <PositionHistoryTable />}
+        {tab === "position-history" && <PositionHistoryTable onDetails={setDetailTarget} />}
       </div>
+      <PerpsPositionDetailDialog
+        target={detailTarget}
+        onOpenChange={(next) => {
+          if (!next) setDetailTarget(null);
+        }}
+      />
     </section>
   );
 }
@@ -145,7 +157,13 @@ function resolveOrdersTableMessage({
   return null;
 }
 
-function PositionsTable() {
+function PositionsTable({
+  baseSymbol,
+  onDetails,
+}: {
+  baseSymbol: string;
+  onDetails: (target: PositionDetailTarget) => void;
+}) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
 
@@ -156,7 +174,7 @@ function PositionsTable() {
 
   const rows = useMemo(() => (data ?? []).map(positionsRspToRow), [data]);
 
-  const colSpan = 9;
+  const colSpan = 10;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -175,12 +193,15 @@ function PositionsTable() {
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">
+            {t("perps.sizeSymbol").replace("{symbol}", baseSymbol)}
+          </th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.liqPrice")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.markPrice")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
         </tr>
       </thead>
       <tbody>
@@ -209,7 +230,7 @@ function PositionsTable() {
                 {formatQuoteAmount(row.margin)}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {row.total > 0 ? formatQuoteAmount(row.total) : "—"}
+                {row.size > 0 ? formatQuoteAmount(row.size) : "—"}
               </td>
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
@@ -223,8 +244,25 @@ function PositionsTable() {
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 —
               </td>
-              <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatUtcDateTime(row.openedAt)}
+              </td>
+              <td className="py-2.5 whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDetails({
+                      pairLabel: row.pairLabel,
+                      pairId: row.pairId,
+                      account: row.account,
+                      positionId: Number(row.id),
+                      openedAt: row.openedAt,
+                    })
+                  }
+                  className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                >
+                  {t("perps.details")}
+                </button>
               </td>
             </tr>
           ))
@@ -248,7 +286,11 @@ function formatSignedQuote(value: number) {
   return abs;
 }
 
-function PositionHistoryTable() {
+function PositionHistoryTable({
+  onDetails,
+}: {
+  onDetails: (target: PositionDetailTarget) => void;
+}) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
 
@@ -267,7 +309,7 @@ function PositionHistoryTable() {
     [data?.pageItems]
   );
 
-  const colSpan = 10;
+  const colSpan = 11;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -292,7 +334,8 @@ function PositionHistoryTable() {
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.closedAt")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.closedAt")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
         </tr>
       </thead>
       <tbody>
@@ -336,8 +379,25 @@ function PositionHistoryTable() {
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatUtcDateTime(row.openedAt)}
               </td>
-              <td className="text-muted-foreground py-2.5 tabular-nums whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatUtcDateTime(row.closedAt)}
+              </td>
+              <td className="py-2.5 whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDetails({
+                      pairLabel: row.pairLabel,
+                      pairId: row.pairId,
+                      positionId: row.positionId,
+                      openedAt: row.openedAt,
+                      closedAt: row.closedAt,
+                    })
+                  }
+                  className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                >
+                  {t("perps.details")}
+                </button>
               </td>
             </tr>
           ))

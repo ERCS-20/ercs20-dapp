@@ -122,6 +122,7 @@ export type OrdersListRsp = OrdersRsp[];
 /** Mirrors `exchange.orbix.perps.orders.dto.PositionsRsp`. */
 export type PositionsRsp = {
   id: number;
+  account: string;
   pairId: number;
   pairCode: string;
   balanceMargin: ApiBigInt;
@@ -137,13 +138,14 @@ export type PositionsRsp = {
   /** Unix epoch milliseconds. */
   openedAt: number;
   /** Unix epoch milliseconds. */
-  updatedAt: number;
+  closedAt?: number | null;
 };
 
 export type PositionsListRsp = PositionsRsp[];
 
 /** Mirrors `exchange.orbix.perps.orders.dto.PositionHistoryRsp`. */
 export type PositionHistoryRsp = {
+  id?: number;
   pairId: number;
   pairCode: string;
   /** Unix epoch milliseconds. */
@@ -175,6 +177,7 @@ export type OrdersHistoryPaginationRsp = PaginationRepertory<OrdersHistoryRsp>;
 export type OrdersTradeHistoryRsp = {
   pairId: number;
   pairCode: string;
+  account: string;
   orderId: ApiBigInt;
   enginePrice: ApiBigInt;
   enginePriceDecimal: number;
@@ -182,17 +185,86 @@ export type OrdersTradeHistoryRsp = {
   amount: ApiBigInt;
   margin: ApiBigInt;
   fee: ApiBigInt;
-  realizedPnl: ApiBigInt;
   placeSide: number;
   matchedSide: number;
   /** Unix epoch milliseconds. */
   tradeTime: number;
   tradeStatus: string;
   txHash: string;
+  /** Unix epoch milliseconds. */
+  blockTimestamp: number;
 };
 
 export type OrdersTradeHistoryPaginationReq = PaginationCondition<Record<string, never>>;
 export type OrdersTradeHistoryPaginationRsp = PaginationRepertory<OrdersTradeHistoryRsp>;
+
+/** Shared window for fills / margin / funding lists. Dates = Unix ms. */
+export type PerpsPositionEventsListReq = {
+  pairId: number;
+  account: string;
+  /** Unix epoch milliseconds. */
+  fromBlockTimestamp: number;
+  /** Unix epoch milliseconds. */
+  toBlockTimestamp: number;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersTradeHistoryListReq`. */
+export type OrdersTradeHistoryListReq = PerpsPositionEventsListReq;
+
+export type OrdersTradeHistoryListRsp = OrdersTradeHistoryRsp[];
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionCashLedgerListReq`. */
+export type PositionCashLedgerListReq = {
+  positionId: number;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionCashLedgerRsp`. */
+export type PositionCashLedgerRsp = {
+  positionId: number;
+  entryType: string;
+  amount: ApiBigInt;
+  refType: string;
+  refId: string;
+  /** Unix epoch milliseconds. */
+  createdAt: number;
+};
+
+export type PositionCashLedgerListRsp = PositionCashLedgerRsp[];
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionMarginEventsListReq`. */
+export type PositionMarginEventsListReq = PerpsPositionEventsListReq;
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PositionMarginEventsRsp`. */
+export type PositionMarginEventsRsp = {
+  account: string;
+  pairId: number;
+  eventType: string;
+  amount: ApiBigInt;
+  blockNumber: ApiBigInt;
+  blockLogIndex: number;
+  /** Unix epoch milliseconds. */
+  blockTimestamp: number;
+};
+
+export type PositionMarginEventsListRsp = PositionMarginEventsRsp[];
+
+/** Mirrors `exchange.orbix.perps.orders.dto.FundingSettlementsListReq`. */
+export type FundingSettlementsListReq = PerpsPositionEventsListReq;
+
+/** Mirrors `exchange.orbix.perps.orders.dto.FundingSettlementsRsp`. */
+export type FundingSettlementsRsp = {
+  pairId: number;
+  blockNumber: ApiBigInt;
+  blockLogIndex: number;
+  /** Unix epoch milliseconds. */
+  blockTimestamp: number;
+  account: string;
+  margin: ApiBigInt;
+  startTimestamp: number;
+  endTimestamp: number;
+};
+
+export type FundingSettlementsListRsp = FundingSettlementsRsp[];
 
 /** Mirrors `exchange.orbix.perps.orders.dto.UserPairRsp`. */
 export type UserPairRsp = {

@@ -230,6 +230,7 @@ export function PerpsView({
             <PerpsOrdersTabs
               tab={ordersTab}
               onTabChange={setOrdersTab}
+              baseSymbol={pair.baseSymbol}
               className="min-h-0 flex-[3] rounded-none"
             />
           </div>
@@ -300,7 +301,11 @@ export function PerpsView({
           />
         )}
         {mobilePanel === "orders" && (
-          <PerpsOrdersTabs tab={ordersTab} onTabChange={setOrdersTab} />
+          <PerpsOrdersTabs
+            tab={ordersTab}
+            onTabChange={setOrdersTab}
+            baseSymbol={pair.baseSymbol}
+          />
         )}
       </div>
     </PageShell>

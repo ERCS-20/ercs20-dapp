@@ -98,6 +98,9 @@ function LedgerRow({ row, symbol }: { row: AccountLedgerRsp; symbol: string }) {
 
   return (
     <TableRow>
+      <TableCell className="text-muted-foreground text-xs tabular-nums">
+        {formatUtcDateTime(row.createdAt)}
+      </TableCell>
       <TableCell className={cn("tabular-nums", deltaTone(row.deltaAvailable))}>
         {formatSignedBalanceDelta(row.deltaAvailable, symbol)}
       </TableCell>
@@ -106,9 +109,6 @@ function LedgerRow({ row, symbol }: { row: AccountLedgerRsp; symbol: string }) {
       </TableCell>
       <TableCell>{bizTypeLabel(t, row.bizType)}</TableCell>
       <TableCell>{bizSubTypeLabel(t, row.bizSubType)}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {formatUtcDateTime(row.createdAt)}
-      </TableCell>
     </TableRow>
   );
 }
@@ -230,6 +230,9 @@ export function ProfileAccountLedgerTable({
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="text-muted-foreground text-xs">
+              {t("profile.createdAt")}
+            </TableHead>
+            <TableHead className="text-muted-foreground text-xs">
               {t("profile.ledgerDeltaAvailable")}
             </TableHead>
             <TableHead className="text-muted-foreground text-xs">
@@ -240,9 +243,6 @@ export function ProfileAccountLedgerTable({
             </TableHead>
             <TableHead className="text-muted-foreground text-xs">
               {t("profile.ledgerBizSubType")}
-            </TableHead>
-            <TableHead className="text-muted-foreground text-xs">
-              {t("profile.createdAt")}
             </TableHead>
           </TableRow>
         </TableHeader>

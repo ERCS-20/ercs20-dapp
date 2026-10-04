@@ -9,6 +9,9 @@ import type {
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
   OrdersListRsp,
+  PerpsPositionEventsListReq,
+  OrdersTradeHistoryListReq,
+  OrdersTradeHistoryListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
@@ -17,8 +20,14 @@ import type {
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionCashLedgerListReq,
+  PositionCashLedgerListRsp,
   PositionHistoryPaginationReq,
   PositionHistoryPaginationRsp,
+  PositionMarginEventsListReq,
+  PositionMarginEventsListRsp,
+  FundingSettlementsListReq,
+  FundingSettlementsListRsp,
   PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
@@ -79,7 +88,7 @@ export function listPositions() {
   return request.post<PositionsListRsp>(PerpsOrdersApi.positionsList);
 }
 
-/** POST /perps/orders/position-history/pagination */
+/** POST /perps/orders/positions-history/pagination */
 export function paginationPositionHistory(req: PositionHistoryPaginationReq) {
   return request.post<PositionHistoryPaginationRsp>(
     PerpsOrdersApi.positionHistoryPagination,
@@ -97,6 +106,46 @@ export function paginationOrdersTradeHistory(req: OrdersTradeHistoryPaginationRe
   return request.post<OrdersTradeHistoryPaginationRsp>(
     PerpsOrdersApi.ordersTradeHistoryPagination,
     req
+  );
+}
+
+function timeRangeListBody(req: PerpsPositionEventsListReq) {
+  return {
+    pairId: req.pairId,
+    account: req.account.toLowerCase(),
+    fromBlockTimestamp: req.fromBlockTimestamp,
+    toBlockTimestamp: req.toBlockTimestamp,
+  };
+}
+
+/** POST /perps/orders/orders-trade-history/list */
+export function listOrdersTradeHistory(req: OrdersTradeHistoryListReq) {
+  return request.post<OrdersTradeHistoryListRsp>(
+    PerpsOrdersApi.ordersTradeHistoryList,
+    timeRangeListBody(req)
+  );
+}
+
+/** POST /perps/orders/position-cash-ledger/list */
+export function listPositionCashLedger(req: PositionCashLedgerListReq) {
+  return request.post<PositionCashLedgerListRsp>(PerpsOrdersApi.positionCashLedgerList, {
+    positionId: req.positionId,
+  });
+}
+
+/** POST /perps/orders/position-margin-events/list */
+export function listPositionMarginEvents(req: PositionMarginEventsListReq) {
+  return request.post<PositionMarginEventsListRsp>(
+    PerpsOrdersApi.positionMarginEventsList,
+    timeRangeListBody(req)
+  );
+}
+
+/** POST /perps/orders/funding-settlements/list */
+export function listFundingSettlements(req: FundingSettlementsListReq) {
+  return request.post<FundingSettlementsListRsp>(
+    PerpsOrdersApi.fundingSettlementsList,
+    timeRangeListBody(req)
   );
 }
 

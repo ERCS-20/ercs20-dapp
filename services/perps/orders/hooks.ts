@@ -16,6 +16,10 @@ import {
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
   listOrders,
+  listOrdersTradeHistory,
+  listPositionCashLedger,
+  listPositionMarginEvents,
+  listFundingSettlements,
   listPositions,
   listUserPairs,
   paginationOrdersHistory,
@@ -31,15 +35,24 @@ import type {
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
   OrdersListRsp,
+  OrdersTradeHistoryListReq,
+  OrdersTradeHistoryListRsp,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
+  PerpsPositionEventsListReq,
   PerpsOrderSaltRsp,
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
   PlaceOrderReq,
+  PositionCashLedgerListReq,
+  PositionCashLedgerListRsp,
   PositionHistoryPaginationReq,
   PositionHistoryPaginationRsp,
+  PositionMarginEventsListReq,
+  PositionMarginEventsListRsp,
+  FundingSettlementsListReq,
+  FundingSettlementsListRsp,
   PositionsListRsp,
   UserPairAddReq,
   UserPairDeleteReq,
@@ -220,6 +233,78 @@ export function useOrdersTradeHistoryPagination(
     queryKey: ["perps", "orders", "trade-history", "pagination", req],
     queryFn: () => paginationOrdersTradeHistory(req),
     enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+function isTimeRangeListReady(req: PerpsPositionEventsListReq) {
+  return (
+    Number.isFinite(req.pairId) &&
+    req.pairId >= 0 &&
+    Boolean(req.account) &&
+    Number.isFinite(req.fromBlockTimestamp) &&
+    req.fromBlockTimestamp > 0 &&
+    Number.isFinite(req.toBlockTimestamp) &&
+    req.toBlockTimestamp > 0
+  );
+}
+
+export function useOrdersTradeHistoryList(
+  req: OrdersTradeHistoryListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<OrdersTradeHistoryListRsp>({
+    queryKey: ["perps", "orders", "trade-history", "list", req],
+    queryFn: () => listOrdersTradeHistory(req),
+    enabled: enabled && isTimeRangeListReady(req),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function usePositionCashLedgerList(
+  req: PositionCashLedgerListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<PositionCashLedgerListRsp>({
+    queryKey: ["perps", "orders", "position-cash-ledger", "list", req],
+    queryFn: () => listPositionCashLedger(req),
+    enabled: enabled && Boolean(req.positionId),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function usePositionMarginEventsList(
+  req: PositionMarginEventsListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<PositionMarginEventsListRsp>({
+    queryKey: ["perps", "orders", "position-margin-events", "list", req],
+    queryFn: () => listPositionMarginEvents(req),
+    enabled: enabled && isTimeRangeListReady(req),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function useFundingSettlementsList(
+  req: FundingSettlementsListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<FundingSettlementsListRsp>({
+    queryKey: ["perps", "orders", "funding-settlements", "list", req],
+    queryFn: () => listFundingSettlements(req),
+    enabled: enabled && isTimeRangeListReady(req),
     notifyError,
     staleTime: 30_000,
   });

@@ -1,19 +1,22 @@
-import { formatOrderFee } from "@/lib/market/open-orders-format";
+import { formatOrderFee, formatOrderQuantity } from "@/lib/market/open-orders-format";
 import { pairLabelFromCode } from "@/lib/market/pair";
 import { parseApiBigInt, type ApiBigInt } from "@/lib/utils/coerce-bigint";
 import type { PositionHistoryRsp, PositionsRsp } from "@/services/perps/orders/types";
 
 export type PositionRow = {
   id: string;
+  account: string;
+  pairId: number;
   pairLabel: string;
   side: "buy" | "sell" | null;
   /** `totalTradeMargin − totalTradeFee + totalMarginAdjust`. */
   margin: number;
-  /** Open quote notional reconstructed from ledger. */
-  total: number;
+  /** `|balancePosition|` (base size, 18 decimals). */
+  size: number;
   liqPrice: number;
   leverage: number | null;
   openedAt: number;
+  closedAt?: number;
 };
 
 /** `liqPrice` is quote-per-base × 1e18. */
@@ -56,29 +59,36 @@ export function positionsRspToRow(pos: PositionsRsp): PositionRow {
   const position = apiInt(pos.balancePosition);
   const side: PositionRow["side"] =
     position > BigInt(0) ? "buy" : position < BigInt(0) ? "sell" : null;
+  const sizeBi = position < BigInt(0) ? -position : position;
   const marginBi = positionDisplayMargin(pos);
-  const totalBi = positionOpenNotional(pos);
+  const notionalBi = positionOpenNotional(pos);
   const margin = formatOrderFee(marginBi.toString());
-  const total = formatOrderFee(totalBi.toString());
+  const size = formatOrderQuantity(sizeBi.toString());
   let leverage: number | null = null;
-  if (marginBi > BigInt(0) && totalBi > BigInt(0)) {
-    const lev = Number(totalBi / marginBi);
+  if (marginBi > BigInt(0) && notionalBi > BigInt(0)) {
+    const lev = Number(notionalBi / marginBi);
     leverage = Number.isFinite(lev) && lev > 0 ? lev : null;
   }
   return {
     id: String(pos.id),
+    account: pos.account,
+    pairId: pos.pairId,
     pairLabel: pairLabelFromCode(pos.pairCode),
     side,
     margin,
-    total,
+    size,
     liqPrice: priceX18ToNumber(pos.liqPrice),
     leverage,
     openedAt: pos.openedAt,
+    closedAt: pos.closedAt ?? undefined,
   };
 }
 
 export type PositionHistoryRow = {
   key: string;
+  /** Same as live `positions.id` when the history row includes it. */
+  positionId?: number;
+  pairId: number;
   pairLabel: string;
   totalTradeMargin: number;
   totalTradeFee: number;
@@ -98,6 +108,8 @@ export function positionHistoryRspToRow(
 ): PositionHistoryRow {
   return {
     key: `${row.pairId}-${row.openedAt}-${row.closedAt}-${index}`,
+    positionId: row.id,
+    pairId: row.pairId,
     pairLabel: pairLabelFromCode(row.pairCode),
     totalTradeMargin: formatOrderFee(row.totalTradeMargin),
     totalTradeFee: formatOrderFee(row.totalTradeFee),
