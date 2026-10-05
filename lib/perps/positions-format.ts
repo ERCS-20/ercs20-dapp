@@ -1,5 +1,5 @@
 import { formatOrderFee, formatOrderQuantity } from "@/lib/market/open-orders-format";
-import { pairLabelFromCode } from "@/lib/market/pair";
+import { pairLabelFromCode, parsePairCode } from "@/lib/market/pair";
 import { parseApiBigInt, type ApiBigInt } from "@/lib/utils/coerce-bigint";
 import type { PositionHistoryRsp, PositionsRsp } from "@/services/perps/orders/types";
 
@@ -8,7 +8,10 @@ export type PositionRow = {
   account: string;
   pairId: number;
   pairLabel: string;
+  quoteSymbol: string;
   side: "buy" | "sell" | null;
+  /** Isolated remaining margin (`balanceMargin`, 18 decimals). */
+  balanceMargin: bigint;
   /** `totalTradeMargin − totalTradeFee + totalMarginAdjust`. */
   margin: number;
   /** `|balancePosition|` (base size, 18 decimals). */
@@ -74,7 +77,9 @@ export function positionsRspToRow(pos: PositionsRsp): PositionRow {
     account: pos.account,
     pairId: pos.pairId,
     pairLabel: pairLabelFromCode(pos.pairCode),
+    quoteSymbol: parsePairCode(pos.pairCode)?.quote ?? "USDC",
     side,
+    balanceMargin: apiInt(pos.balanceMargin),
     margin,
     size,
     liqPrice: priceX18ToNumber(pos.liqPrice),

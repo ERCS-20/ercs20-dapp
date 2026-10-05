@@ -6,6 +6,10 @@ import { useSignTypedData } from "wagmi";
 
 import { PerpsPositionDetailDialog, type PositionDetailTarget } from "@/components/perps/perps-position-detail-dialog";
 import {
+  PerpsAdjustMarginDialog,
+  type AdjustMarginTarget,
+} from "@/components/perps/perps-adjust-margin-dialog";
+import {
   formatLeveragePairSuffix,
   formatOrderHistoryStatus,
   formatTradeStatus,
@@ -61,6 +65,7 @@ export function PerpsOrdersTabs({
 }) {
   const { t } = useI18n();
   const [detailTarget, setDetailTarget] = useState<PositionDetailTarget | null>(null);
+  const [marginTarget, setMarginTarget] = useState<AdjustMarginTarget | null>(null);
   const tabs: { id: PerpsOrdersTab; label: string }[] = [
     { id: "positions", label: t("perps.positions") },
     { id: "open", label: t("perps.openOrders") },
@@ -97,7 +102,11 @@ export function PerpsOrdersTabs({
 
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4">
         {tab === "positions" && (
-          <PositionsTable baseSymbol={baseSymbol} onDetails={setDetailTarget} />
+          <PositionsTable
+            baseSymbol={baseSymbol}
+            onDetails={setDetailTarget}
+            onAdjustMargin={setMarginTarget}
+          />
         )}
         {tab === "open" && <OpenOrdersTable />}
         {tab === "history" && <HistoryOrdersTable />}
@@ -108,6 +117,12 @@ export function PerpsOrdersTabs({
         target={detailTarget}
         onOpenChange={(next) => {
           if (!next) setDetailTarget(null);
+        }}
+      />
+      <PerpsAdjustMarginDialog
+        target={marginTarget}
+        onOpenChange={(next) => {
+          if (!next) setMarginTarget(null);
         }}
       />
     </section>
@@ -160,9 +175,11 @@ function resolveOrdersTableMessage({
 function PositionsTable({
   baseSymbol,
   onDetails,
+  onAdjustMargin,
 }: {
   baseSymbol: string;
   onDetails: (target: PositionDetailTarget) => void;
+  onAdjustMargin: (target: AdjustMarginTarget) => void;
 }) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
@@ -248,21 +265,37 @@ function PositionsTable({
                 {formatUtcDateTime(row.openedAt)}
               </td>
               <td className="py-2.5 whitespace-nowrap">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onDetails({
-                      pairLabel: row.pairLabel,
-                      pairId: row.pairId,
-                      account: row.account,
-                      positionId: Number(row.id),
-                      openedAt: row.openedAt,
-                    })
-                  }
-                  className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
-                >
-                  {t("perps.details")}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAdjustMargin({
+                        pairLabel: row.pairLabel,
+                        pairId: row.pairId,
+                        quoteSymbol: row.quoteSymbol,
+                        balanceMargin: row.balanceMargin,
+                      })
+                    }
+                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t("perps.adjustMargin")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onDetails({
+                        pairLabel: row.pairLabel,
+                        pairId: row.pairId,
+                        account: row.account,
+                        positionId: Number(row.id),
+                        openedAt: row.openedAt,
+                      })
+                    }
+                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t("perps.details")}
+                  </button>
+                </div>
               </td>
             </tr>
           ))
