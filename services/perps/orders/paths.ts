@@ -11,6 +11,7 @@ export const PerpsOrdersApi = {
   ordersHistoryPagination: "/perps/orders/orders-history/pagination",
   ordersTradeHistoryPagination: "/perps/orders/orders-trade-history/pagination",
   ordersTradeHistoryList: "/perps/orders/orders-trade-history/list",
+  ordersCancelHistoryList: "/perps/orders/orders-cancel-history/list",
   positionCashLedgerList: "/perps/orders/position-cash-ledger/list",
   positionMarginEventsList: "/perps/orders/position-margin-events/list",
   fundingSettlementsList: "/perps/orders/funding-settlements/list",

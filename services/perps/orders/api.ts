@@ -10,6 +10,8 @@ import type {
   OrdersHistoryPaginationRsp,
   OrdersListRsp,
   PerpsPositionEventsListReq,
+  OrdersCancelHistoryListReq,
+  OrdersCancelHistoryListRsp,
   OrdersTradeHistoryListReq,
   OrdersTradeHistoryListRsp,
   OrdersTradeHistoryPaginationReq,
@@ -124,6 +126,13 @@ export function listOrdersTradeHistory(req: OrdersTradeHistoryListReq) {
     PerpsOrdersApi.ordersTradeHistoryList,
     timeRangeListBody(req)
   );
+}
+
+/** POST /perps/orders/orders-cancel-history/list */
+export function listOrdersCancelHistory(req: OrdersCancelHistoryListReq) {
+  return request.post<OrdersCancelHistoryListRsp>(PerpsOrdersApi.ordersCancelHistoryList, {
+    orderId: apiBigIntToString(req.orderId),
+  });
 }
 
 /** POST /perps/orders/position-cash-ledger/list */

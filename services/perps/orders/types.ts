@@ -213,6 +213,33 @@ export type OrdersTradeHistoryListReq = PerpsPositionEventsListReq;
 
 export type OrdersTradeHistoryListRsp = OrdersTradeHistoryRsp[];
 
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersCancelHistoryListReq`. */
+export type OrdersCancelHistoryListReq = {
+  orderId: ApiBigInt;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersCancelHistoryRsp`. */
+export type OrdersCancelHistoryRsp = {
+  id: ApiBigInt;
+  sequence: ApiBigInt;
+  tradeIndex: number;
+  pairId: number;
+  pairCode: string;
+  orderId: ApiBigInt;
+  userId: number;
+  tokenAddress: string;
+  amount: ApiBigInt;
+  margin: ApiBigInt;
+  reasonCode: string;
+  status: string;
+  /** Unix epoch milliseconds. */
+  createdAt: number;
+  /** Unix epoch milliseconds. */
+  updatedAt: number;
+};
+
+export type OrdersCancelHistoryListRsp = OrdersCancelHistoryRsp[];
+
 /** Mirrors `exchange.orbix.perps.orders.dto.PositionCashLedgerListReq`. */
 export type PositionCashLedgerListReq = {
   positionId: number;

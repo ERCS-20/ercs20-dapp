@@ -150,6 +150,7 @@ export function ordersRspToOpenOrderRow(order: OrdersRsp): OpenOrderRow {
 
 export type OrderHistoryRow = {
   orderId: string;
+  pairId?: number;
   pairLabel: string;
   side: "buy" | "sell" | null;
   /** Limit / order engine price. */

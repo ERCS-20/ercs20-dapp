@@ -6,6 +6,7 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { parsePairCode } from "@/lib/perps/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
+import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
 import {
   addUserPair,
   applyPerpsWithdraw,
@@ -16,6 +17,7 @@ import {
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
   listOrders,
+  listOrdersCancelHistory,
   listOrdersTradeHistory,
   listPositionCashLedger,
   listPositionMarginEvents,
@@ -32,6 +34,8 @@ import type { MarketPairRsp } from "@/services/perps/market/types";
 import type {
   CancelOrderReq,
   OrderSaltRsp,
+  OrdersCancelHistoryListReq,
+  OrdersCancelHistoryListRsp,
   OrdersHistoryPaginationReq,
   OrdersHistoryPaginationRsp,
   OrdersListRsp,
@@ -265,6 +269,22 @@ export function useOrdersTradeHistoryList(
   });
 }
 
+export function useOrdersCancelHistoryList(
+  req: OrdersCancelHistoryListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+  const orderId = apiBigIntToString(req.orderId);
+
+  return useApiQuery<OrdersCancelHistoryListRsp>({
+    queryKey: ["perps", "orders", "cancel-history", "list", orderId],
+    queryFn: () => listOrdersCancelHistory({ orderId }),
+    enabled: enabled && Boolean(orderId),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
 export function usePositionCashLedgerList(
   req: PositionCashLedgerListReq,
   options?: { enabled?: boolean; notifyError?: boolean }
@@ -397,6 +417,8 @@ export function useCancelOrder() {
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "positions"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "position-history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "history"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "trade-history"] });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "cancel-history"] });
       void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
     },
   });

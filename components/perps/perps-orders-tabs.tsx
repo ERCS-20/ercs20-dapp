@@ -6,16 +6,18 @@ import { useSignTypedData } from "wagmi";
 
 import { PerpsPositionDetailDialog, type PositionDetailTarget } from "@/components/perps/perps-position-detail-dialog";
 import {
+  PerpsOrderDetailDialog,
+  type OrderDetailTarget,
+} from "@/components/perps/perps-order-detail-dialog";
+import {
   PerpsAdjustMarginDialog,
   type AdjustMarginTarget,
 } from "@/components/perps/perps-adjust-margin-dialog";
 import {
   formatLeveragePairSuffix,
   formatOrderHistoryStatus,
-  formatTradeStatus,
   ordersHistoryRspToRow,
   ordersRspToOpenOrderRow,
-  ordersTradeHistoryRspToRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
 import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
@@ -27,7 +29,6 @@ import {
   formatQuoteAmount,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import { shortTxHash } from "@/lib/utils/format/address";
 import { formatUtcDateTime } from "@/lib/utils/format/datetime";
 import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
@@ -38,7 +39,6 @@ import {
   useCancelOrder,
   useOrdersHistoryPagination,
   useOrdersList,
-  useOrdersTradeHistoryPagination,
   usePositionHistoryPagination,
   usePositionsList,
 } from "@/services/perps/orders/hooks";
@@ -47,7 +47,6 @@ export type PerpsOrdersTab =
   | "positions"
   | "open"
   | "history"
-  | "trades"
   | "position-history";
 
 const ORDERS_PAGE_SIZE = 50;
@@ -64,13 +63,14 @@ export function PerpsOrdersTabs({
   className?: string;
 }) {
   const { t } = useI18n();
+  const { address } = useWallet();
   const [detailTarget, setDetailTarget] = useState<PositionDetailTarget | null>(null);
+  const [orderDetailTarget, setOrderDetailTarget] = useState<OrderDetailTarget | null>(null);
   const [marginTarget, setMarginTarget] = useState<AdjustMarginTarget | null>(null);
   const tabs: { id: PerpsOrdersTab; label: string }[] = [
     { id: "positions", label: t("perps.positions") },
     { id: "open", label: t("perps.openOrders") },
     { id: "history", label: t("perps.orderHistory") },
-    { id: "trades", label: t("perps.tradeHistory") },
     { id: "position-history", label: t("perps.positionHistory") },
   ];
 
@@ -108,15 +108,45 @@ export function PerpsOrdersTabs({
             onAdjustMargin={setMarginTarget}
           />
         )}
-        {tab === "open" && <OpenOrdersTable />}
-        {tab === "history" && <HistoryOrdersTable />}
-        {tab === "trades" && <TradeHistoryTable />}
+        {tab === "open" && (
+          <OpenOrdersTable
+            onOrderDetails={(row) =>
+              setOrderDetailTarget({
+                orderId: row.orderId,
+                pairLabel: row.pairLabel,
+                pairId: row.pairId,
+                account: (address ?? "").toLowerCase(),
+                placedAt: row.placedAt,
+              })
+            }
+          />
+        )}
+        {tab === "history" && (
+          <HistoryOrdersTable
+            onOrderDetails={(row) =>
+              setOrderDetailTarget({
+                orderId: row.orderId,
+                pairLabel: row.pairLabel,
+                pairId: row.pairId,
+                account: (address ?? "").toLowerCase(),
+                placedAt: row.placedAt,
+                completedAt: row.completedAt,
+              })
+            }
+          />
+        )}
         {tab === "position-history" && <PositionHistoryTable onDetails={setDetailTarget} />}
       </div>
       <PerpsPositionDetailDialog
         target={detailTarget}
         onOpenChange={(next) => {
           if (!next) setDetailTarget(null);
+        }}
+      />
+      <PerpsOrderDetailDialog
+        target={orderDetailTarget}
+        onOpenChange={(next) => {
+          if (!next) setOrderDetailTarget(null);
         }}
       />
       <PerpsAdjustMarginDialog
@@ -440,7 +470,11 @@ function PositionHistoryTable({
   );
 }
 
-function OpenOrdersTable() {
+function OpenOrdersTable({
+  onOrderDetails,
+}: {
+  onOrderDetails: (row: OpenOrderRow) => void;
+}) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
   const { address, chainId, isConnected } = useWallet();
@@ -582,20 +616,29 @@ function OpenOrdersTable() {
                   {formatUtcDateTime(row.placedAt)}
                 </td>
                 <td className="py-2.5 whitespace-nowrap">
-                  {row.status === "Cancelling" ? (
-                    <span className="text-muted-foreground text-xs">
-                      {t("perps.cancelling")}
-                    </span>
-                  ) : (
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      disabled={!canCancel || rowBusy}
-                      onClick={() => void handleCancel(row)}
-                      className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 disabled:text-muted-foreground inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium disabled:cursor-not-allowed"
+                      onClick={() => onOrderDetails(row)}
+                      className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
                     >
-                      {rowBusy ? t("perps.cancelling") : t("perps.cancel")}
+                      {t("perps.details")}
                     </button>
-                  )}
+                    {row.status === "Cancelling" ? (
+                      <span className="text-muted-foreground text-xs">
+                        {t("perps.cancelling")}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!canCancel || rowBusy}
+                        onClick={() => void handleCancel(row)}
+                        className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 disabled:text-muted-foreground inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium disabled:cursor-not-allowed"
+                      >
+                        {rowBusy ? t("perps.cancelling") : t("perps.cancel")}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -606,7 +649,11 @@ function OpenOrdersTable() {
   );
 }
 
-function HistoryOrdersTable() {
+function HistoryOrdersTable({
+  onOrderDetails,
+}: {
+  onOrderDetails: (row: ReturnType<typeof ordersHistoryRspToRow>) => void;
+}) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
 
@@ -625,7 +672,7 @@ function HistoryOrdersTable() {
     [data?.pageItems]
   );
 
-  const colSpan = 12;
+  const colSpan = 13;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -652,7 +699,8 @@ function HistoryOrdersTable() {
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.placedAt")}</th>
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.completedAt")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.status")}</th>
+          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.status")}</th>
+          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
         </tr>
       </thead>
       <tbody>
@@ -706,120 +754,17 @@ function HistoryOrdersTable() {
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatUtcDateTime(row.completedAt)}
               </td>
-              <td className="text-muted-foreground py-2.5 whitespace-nowrap">
+              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
                 {formatOrderHistoryStatus(row.status, t)}
               </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
-  );
-}
-
-function TradeHistoryTable() {
-  const { t } = useI18n();
-  const { isAuthenticated, authReady } = useAuth();
-
-  const paginationReq = useMemo(
-    () => ({ currentPage: 1, pageSize: ORDERS_PAGE_SIZE }),
-    []
-  );
-
-  const { data, isLoading, isFetching } = useOrdersTradeHistoryPagination(paginationReq, {
-    enabled: isAuthenticated,
-    notifyError: false,
-  });
-
-  const rows = useMemo(
-    () => (data?.pageItems ?? []).map(ordersTradeHistoryRspToRow),
-    [data?.pageItems]
-  );
-
-  const colSpan = 11;
-  const emptyMessage = resolveOrdersTableMessage({
-    authReady,
-    isAuthenticated,
-    isLoading,
-    isFetching,
-    hasRows: rows.length > 0,
-    loadingMessage: t("swap.loading"),
-    loginMessage: t("perps.loginToViewOrders"),
-    emptyMessage: t("perps.emptyTrades"),
-  });
-
-  return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.price")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.filled")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.role")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.time")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.status")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.txHash")}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {emptyMessage ? (
-          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
-        ) : (
-          rows.map((row, i) => (
-            <tr
-              key={`${row.orderId}-${row.tradeTime}-${row.txHash}-${i}`}
-              className="border-border/40 border-b last:border-0"
-            >
-              <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
-                {row.orderId}
-              </td>
-              <td className="py-2.5 pr-4 whitespace-nowrap">
-                {row.pairLabel}
-                {formatLeveragePairSuffix(row.leverage)}
-              </td>
-              <td
-                className={cn(
-                  "py-2.5 pr-4 font-medium whitespace-nowrap",
-                  row.placeSide ? sideClass(row.placeSide) : "text-muted-foreground"
-                )}
-              >
-                {row.placeSide === "buy"
-                  ? t("perps.buy")
-                  : row.placeSide === "sell"
-                    ? t("perps.sell")
-                    : "—"}
-              </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
-                {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
-              </td>
-              <td className="py-2.5 pr-4  tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.filledValue)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {row.lockedMargin != null ? formatQuoteAmount(row.lockedMargin) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
-                {row.matchedSide === "maker"
-                  ? t("perps.roleMaker")
-                  : row.matchedSide === "taker"
-                    ? t("perps.roleTaker")
-                    : "—"}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.tradeTime)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
-                {formatTradeStatus(row.tradeStatus, t)}
-              </td>
-              <td className="text-muted-foreground py-2.5 font-mono text-xs whitespace-nowrap">
-                {row.txHash ? shortTxHash(row.txHash) : "—"}
+              <td className="py-2.5 whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => onOrderDetails(row)}
+                  className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                >
+                  {t("perps.details")}
+                </button>
               </td>
             </tr>
           ))

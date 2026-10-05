@@ -89,6 +89,7 @@ export function ordersHistoryRspToRow(order: OrdersHistoryRsp): OrderHistoryRow 
       : null;
   return {
     orderId: apiBigIntToString(order.id),
+    pairId: order.pairId,
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
     price,
