@@ -69,6 +69,7 @@ export type CancelOrderReq = {
 
 /** Mirrors `exchange.orbix.perps.orders.dto.UserBalancesReq`. */
 export type PerpsOrdersUserBalanceReq = {
+  userBalancesId: number;
   tokenAddress: string;
 };
 

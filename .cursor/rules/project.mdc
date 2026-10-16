@@ -20,6 +20,7 @@ Tech stack: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn
 | `lib/market/` | Shared spot/perps market logic (kline, orderbook, chart, trades, stats) |
 | `lib/spot/`, `lib/perps/` | Product-specific EIP-712, salt, place-order builders |
 | `lib/web3/`, `lib/wagmi/`, `lib/contracts/`, `lib/config/` | Chain & contracts |
+| `lib/storage/` | Unified localStorage keys + helpers (`LocalStorageCatalog`) |
 | `lib/i18n/messages/` | en / zh-CN / zh-TW |
 | `providers/` | AppProviders, Web3, theme, i18n |
 

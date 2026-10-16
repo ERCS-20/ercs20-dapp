@@ -1,6 +1,12 @@
-import { allocateOrderSalt } from "@/lib/spot/order-salt";
+import { getAuthSession } from "@/lib/auth/session";
 import { request } from "@/lib/api/request";
-import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
+import {
+  loadSpotOrderSaltStorage,
+  saveSpotOrderSaltStorage,
+} from "@/lib/storage/local-storage";
+import { allocateCachedSalt } from "@/lib/utils/allocate-cached-salt";
+import { apiBigIntToString, parseApiBigInt } from "@/lib/utils/coerce-bigint";
+import { resolveSpotUserBalancesId } from "@/services/spot/accounts/api";
 import { resolveSpotBalanceTokenAddress } from "@/lib/tokens/spot-balance-token";
 import { SpotOrdersApi } from "@/services/spot/orders/paths";
 import type {
@@ -32,9 +38,43 @@ export function getPairByCode(req: GetPairByCodeReq) {
   return request.get<PairRsp>(SpotOrdersApi.pairByTokens(baseToken, quoteToken));
 }
 
+async function fetchRemoteSpotOrderSalt(): Promise<bigint> {
+  const data = await request.post<{ salt: bigint | number | string }>(SpotOrdersApi.orderSalt);
+  const salt = parseApiBigInt(data.salt);
+  if (salt == null) {
+    throw new Error("Invalid order salt from API");
+  }
+  return salt;
+}
+
+function readCachedSpotOrderSalt(): bigint | null {
+  const raw = loadSpotOrderSaltStorage(getAuthSession()?.userId);
+  if (!raw) return null;
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
+let spotOrderSaltChain: Promise<OrderSaltRsp> | null = null;
+
 /** POST /orders/orders/salt — cached client-side when sequence slot allows. */
 export function getOrderSalt(): Promise<OrderSaltRsp> {
-  return allocateOrderSalt();
+  if (typeof window === "undefined") {
+    return fetchRemoteSpotOrderSalt().then((salt) => ({ salt: salt.toString() }));
+  }
+
+  spotOrderSaltChain ??= allocateCachedSalt({
+    readCached: readCachedSpotOrderSalt,
+    writeCached: (salt) => {
+      saveSpotOrderSaltStorage(getAuthSession()?.userId, salt.toString());
+    },
+    fetchRemote: fetchRemoteSpotOrderSalt,
+  }).finally(() => {
+    spotOrderSaltChain = null;
+  });
+  return spotOrderSaltChain;
 }
 
 /** POST /orders/orders/place — `userId` from gateway JWT headers. */
@@ -84,23 +124,48 @@ export function paginationOrdersTradeHistory(req: OrdersTradeHistoryPaginationRe
 }
 
 /** POST /orders/user-balances/balance — `userId` from gateway JWT headers. */
-export function getOrdersUserBalance(req: OrdersUserBalanceReq) {
-  const tokenAddress = resolveSpotBalanceTokenAddress(req.tokenAddress);
+export async function getOrdersUserBalance(req: {
+  tokenAddress: string;
+  userBalancesId?: number;
+}) {
+  const tokenAddress = resolveSpotBalanceTokenAddress(req.tokenAddress)?.toLowerCase();
   if (!tokenAddress) {
     return Promise.reject(new Error("Missing token address for balance query"));
   }
+  const userBalancesId =
+    req.userBalancesId != null && req.userBalancesId > 0
+      ? req.userBalancesId
+      : await resolveSpotUserBalancesId(tokenAddress);
 
-  return request.post<OrdersUserBalanceRsp>(SpotOrdersApi.userBalance, {
-    tokenAddress: tokenAddress.toLowerCase(),
-  });
+  const body: OrdersUserBalanceReq = { userBalancesId, tokenAddress };
+  return request.post<OrdersUserBalanceRsp>(SpotOrdersApi.userBalance, body);
 }
 
 /** POST /orders/user-balances/balances-pair — `userId` from gateway JWT headers. */
-export function getPairBalances(req: OrdersUserBalancesPairReq) {
-  return request.post<OrdersUserBalancesPairRsp>(SpotOrdersApi.userBalancesPair, {
-    baseTokenAddress: req.baseTokenAddress.toLowerCase(),
-    quoteTokenAddress: req.quoteTokenAddress.toLowerCase(),
-  });
+export async function getPairBalances(req: {
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  baseUserBalancesId?: number;
+  quoteUserBalancesId?: number;
+}) {
+  const baseTokenAddress = req.baseTokenAddress.toLowerCase();
+  const quoteTokenAddress = req.quoteTokenAddress.toLowerCase();
+  const [baseUserBalancesId, quoteUserBalancesId] = await Promise.all([
+    req.baseUserBalancesId != null && req.baseUserBalancesId > 0
+      ? req.baseUserBalancesId
+      : resolveSpotUserBalancesId(baseTokenAddress),
+    req.quoteUserBalancesId != null && req.quoteUserBalancesId > 0
+      ? req.quoteUserBalancesId
+      : resolveSpotUserBalancesId(quoteTokenAddress),
+  ]);
+
+  const body: OrdersUserBalancesPairReq = {
+    baseUserBalancesId,
+    baseTokenAddress,
+    quoteUserBalancesId,
+    quoteTokenAddress,
+  };
+  return request.post<OrdersUserBalancesPairRsp>(SpotOrdersApi.userBalancesPair, body);
 }
 
 /** POST /orders/userPairs/pairs — `userId` from gateway JWT headers. */

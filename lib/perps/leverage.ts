@@ -1,10 +1,13 @@
+import {
+  loadPerpsLeverageStorage,
+  savePerpsLeverageStorage,
+} from "@/lib/storage/local-storage";
+
 /** Isolated leverage for perps place-order (margin = notional / leverage). */
 
 export const PERPS_LEVERAGE_MIN = 1;
 export const PERPS_LEVERAGE_MAX = 100;
 export const PERPS_LEVERAGE_DEFAULT = 5;
-
-const STORAGE_KEY = "orbix.perps.leverage";
 
 /**
  * Slider stops: 10 segments from 1x → 100x
@@ -22,32 +25,17 @@ export function clampPerpsLeverage(value: number): number {
   );
 }
 
-function canUseStorage(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
 /** Read last selected leverage (clamped); falls back to default. */
 export function readCachedPerpsLeverage(): number {
-  if (!canUseStorage()) return PERPS_LEVERAGE_DEFAULT;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw == null || raw === "") return PERPS_LEVERAGE_DEFAULT;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return PERPS_LEVERAGE_DEFAULT;
-    return clampPerpsLeverage(n);
-  } catch {
-    return PERPS_LEVERAGE_DEFAULT;
-  }
+  const raw = loadPerpsLeverageStorage();
+  if (raw == null || raw === "") return PERPS_LEVERAGE_DEFAULT;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return PERPS_LEVERAGE_DEFAULT;
+  return clampPerpsLeverage(n);
 }
 
 export function writeCachedPerpsLeverage(leverage: number): void {
-  if (!canUseStorage()) return;
-  const lev = clampPerpsLeverage(leverage);
-  try {
-    window.localStorage.setItem(STORAGE_KEY, String(lev));
-  } catch {
-    /* ignore */
-  }
+  savePerpsLeverageStorage(String(clampPerpsLeverage(leverage)));
 }
 
 /** Nearest stop index for the leverage range slider. */

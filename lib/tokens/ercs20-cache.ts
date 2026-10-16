@@ -1,30 +1,24 @@
 import type { Ercs20TokenMeta } from "@/lib/tokens/ercs20-types";
-
-const STORAGE_KEY = "ercs20-token-cache-v1";
+import {
+  loadErcs20TokenCacheStorage,
+  saveErcs20TokenCacheStorage,
+} from "@/lib/storage/local-storage";
 
 function readAll(): Ercs20TokenMeta[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (x): x is Ercs20TokenMeta =>
-        typeof x === "object" &&
-        x != null &&
-        typeof (x as Ercs20TokenMeta).address === "string" &&
-        typeof (x as Ercs20TokenMeta).symbol === "string" &&
-        typeof (x as Ercs20TokenMeta).name === "string"
-    );
-  } catch {
-    return [];
-  }
+  const parsed = loadErcs20TokenCacheStorage();
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(
+    (x): x is Ercs20TokenMeta =>
+      typeof x === "object" &&
+      x != null &&
+      typeof (x as Ercs20TokenMeta).address === "string" &&
+      typeof (x as Ercs20TokenMeta).symbol === "string" &&
+      typeof (x as Ercs20TokenMeta).name === "string"
+  );
 }
 
 function writeAll(items: Ercs20TokenMeta[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  saveErcs20TokenCacheStorage(items);
 }
 
 export function getCachedErcs20Tokens(): Ercs20TokenMeta[] {

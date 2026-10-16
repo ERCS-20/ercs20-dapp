@@ -1,7 +1,13 @@
-import { allocatePerpsOrderSalt } from "@/lib/perps/order-salt";
+import { getAuthSession } from "@/lib/auth/session";
 import { request } from "@/lib/api/request";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
-import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
+import {
+  loadPerpsOrderSaltStorage,
+  savePerpsOrderSaltStorage,
+} from "@/lib/storage/local-storage";
+import { allocateCachedSalt } from "@/lib/utils/allocate-cached-salt";
+import { apiBigIntToString, parseApiBigInt } from "@/lib/utils/coerce-bigint";
+import { resolvePerpsUserBalancesId } from "@/services/perps/accounts/api";
 import { PerpsOrdersApi } from "@/services/perps/orders/paths";
 import type {
   CancelOrderReq,
@@ -44,9 +50,43 @@ export function getPairByCode(req: GetPairByCodeReq) {
   return request.get<PairRsp>(PerpsOrdersApi.pairByTokens(baseToken, quoteToken));
 }
 
+async function fetchRemotePerpsOrderSalt(): Promise<bigint> {
+  const data = await request.post<{ salt: bigint | number | string }>(PerpsOrdersApi.orderSalt);
+  const salt = parseApiBigInt(data.salt);
+  if (salt == null) {
+    throw new Error("Invalid perps order salt from API");
+  }
+  return salt;
+}
+
+function readCachedPerpsOrderSalt(): bigint | null {
+  const raw = loadPerpsOrderSaltStorage(getAuthSession()?.userId);
+  if (!raw) return null;
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
+let perpsOrderSaltChain: Promise<PerpsOrderSaltRsp> | null = null;
+
 /** POST /perps/orders/orders/salt — cached client-side when sequence slot allows. */
 export function getPerpsOrderSalt(): Promise<PerpsOrderSaltRsp> {
-  return allocatePerpsOrderSalt();
+  if (typeof window === "undefined") {
+    return fetchRemotePerpsOrderSalt().then((salt) => ({ salt: salt.toString() }));
+  }
+
+  perpsOrderSaltChain ??= allocateCachedSalt({
+    readCached: readCachedPerpsOrderSalt,
+    writeCached: (salt) => {
+      savePerpsOrderSaltStorage(getAuthSession()?.userId, salt.toString());
+    },
+    fetchRemote: fetchRemotePerpsOrderSalt,
+  }).finally(() => {
+    perpsOrderSaltChain = null;
+  });
+  return perpsOrderSaltChain;
 }
 
 export function getOrderSalt(): Promise<PerpsOrderSaltRsp> {
@@ -161,17 +201,25 @@ export function listFundingSettlements(req: FundingSettlementsListReq) {
 /**
  * POST /perps/orders/user-balances/balance — `userId` from gateway JWT headers.
  * Defaults to configured native USDC ledger token (`0xeee…`).
+ * Resolves `userBalancesId` from a cached accounts list (refetch only on miss).
  */
-export function getPerpsOrdersUserBalance(req?: Partial<PerpsOrdersUserBalanceReq>) {
+export async function getPerpsOrdersUserBalance(req?: {
+  tokenAddress?: string;
+  userBalancesId?: number;
+}) {
   const tokenAddress = (
     req?.tokenAddress?.trim() || getPerpsNativeTokenAddress()
   ).toLowerCase();
-  return request.post<PerpsOrdersUserBalanceRsp>(PerpsOrdersApi.userBalance, {
-    tokenAddress,
-  });
+  const userBalancesId =
+    req?.userBalancesId != null && req.userBalancesId > 0
+      ? req.userBalancesId
+      : await resolvePerpsUserBalancesId(tokenAddress);
+
+  const body: PerpsOrdersUserBalanceReq = { userBalancesId, tokenAddress };
+  return request.post<PerpsOrdersUserBalanceRsp>(PerpsOrdersApi.userBalance, body);
 }
 
-export function getOrdersUserBalance(req: PerpsOrdersUserBalanceReq) {
+export function getOrdersUserBalance(req: { tokenAddress: string; userBalancesId?: number }) {
   return getPerpsOrdersUserBalance(req);
 }
 

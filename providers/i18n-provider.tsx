@@ -17,8 +17,10 @@ import {
   type Locale,
   type Messages,
 } from "@/lib/i18n/messages";
-
-const STORAGE_KEY = "ercs20-locale";
+import {
+  loadLocaleStorage,
+  saveLocaleStorage,
+} from "@/lib/storage/local-storage";
 
 type I18nContextValue = {
   locale: Locale;
@@ -30,8 +32,7 @@ type I18nContextValue = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 function readStoredLocale(): Locale | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  const raw = loadLocaleStorage();
   if (raw === "en" || raw === "zh-CN" || raw === "zh-TW") return raw;
   return null;
 }
@@ -56,11 +57,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
+    saveLocaleStorage(next);
   }, []);
 
   const messages = dictionaries[locale];

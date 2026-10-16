@@ -2,7 +2,10 @@
 
 import { useCallback, useLayoutEffect, useState } from "react";
 
-const STORAGE_KEY = "ercs20-swap-settings-v1";
+import {
+  loadSwapSettingsStorage,
+  saveSwapSettingsStorage,
+} from "@/lib/storage/local-storage";
 
 export const DEFAULT_SLIPPAGE_BPS = 50;
 export const DEFAULT_DEADLINE_MINUTES = 20;
@@ -35,20 +38,14 @@ function parseDeadlineMinutes(raw: unknown): number | undefined {
 }
 
 function readStored(): Partial<Stored> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const o = JSON.parse(raw) as Record<string, unknown>;
-    const slippageBps = parseSlippageBps(o.slippageBps);
-    const deadlineMinutes = parseDeadlineMinutes(o.deadlineMinutes);
-    const out: Partial<Stored> = {};
-    if (slippageBps !== undefined) out.slippageBps = slippageBps;
-    if (deadlineMinutes !== undefined) out.deadlineMinutes = deadlineMinutes;
-    return out;
-  } catch {
-    return {};
-  }
+  const o = loadSwapSettingsStorage<Record<string, unknown>>();
+  if (!o) return {};
+  const slippageBps = parseSlippageBps(o.slippageBps);
+  const deadlineMinutes = parseDeadlineMinutes(o.deadlineMinutes);
+  const out: Partial<Stored> = {};
+  if (slippageBps !== undefined) out.slippageBps = slippageBps;
+  if (deadlineMinutes !== undefined) out.deadlineMinutes = deadlineMinutes;
+  return out;
 }
 
 export function useSwapSettings() {
@@ -66,12 +63,11 @@ export function useSwapSettings() {
   /** Pass `next` when saving right after `setState` — the hook state is still stale in the same tick. */
   const persist = useCallback(
     (next?: Partial<Stored>) => {
-      if (typeof window === "undefined") return;
       const payload: Stored = {
         slippageBps: next?.slippageBps ?? slippageBps,
         deadlineMinutes: next?.deadlineMinutes ?? deadlineMinutes,
       };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      saveSwapSettingsStorage(payload);
     },
     [slippageBps, deadlineMinutes]
   );

@@ -127,6 +127,7 @@ export type OrdersTradeHistoryPaginationRsp = PaginationRepertory<OrdersTradeHis
 
 /** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesReq`. */
 export type OrdersUserBalanceReq = {
+  userBalancesId: number;
   tokenAddress: string;
 };
 
@@ -139,7 +140,9 @@ export type OrdersUserBalanceRsp = {
 
 /** Mirrors `exchange.orbix.spot.orders.dto.UserBalancesPairReq`. */
 export type OrdersUserBalancesPairReq = {
+  baseUserBalancesId: number;
   baseTokenAddress: string;
+  quoteUserBalancesId: number;
   quoteTokenAddress: string;
 };
 

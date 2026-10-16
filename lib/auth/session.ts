@@ -1,3 +1,9 @@
+import {
+  clearAuthSessionStorage,
+  loadAuthSessionStorage,
+  saveAuthSessionStorage,
+} from "@/lib/storage/local-storage";
+
 export type AuthSession = {
   userId: string;
   sessionId: number;
@@ -6,46 +12,23 @@ export type AuthSession = {
   jwtRefreshToken: string;
 };
 
-const STORAGE_KEY = "orbix.exchange.auth.session";
-
-function canUseStorage(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
 export function getAuthSession(): AuthSession | null {
-  if (!canUseStorage()) return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as AuthSession;
-    if (!parsed?.jwtToken || !parsed?.jwtRefreshToken) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const parsed = loadAuthSessionStorage<AuthSession>();
+  if (!parsed?.jwtToken || !parsed?.jwtRefreshToken) return null;
+  return parsed;
 }
 
 export function setAuthSession(session: AuthSession): void {
-  if (!canUseStorage()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  saveAuthSessionStorage(session);
 }
 
 export function clearAuthSession(): void {
-  if (!canUseStorage()) return;
-  window.localStorage.removeItem(STORAGE_KEY);
+  clearAuthSessionStorage();
 }
 
 export function getAccessToken(): string | null {
-  if (!canUseStorage()) return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<AuthSession>;
-    const token = parsed?.jwtToken?.trim();
-    return token || null;
-  } catch {
-    return null;
-  }
+  const token = getAuthSession()?.jwtToken?.trim();
+  return token || null;
 }
 
 export function getRefreshToken(): string | null {
