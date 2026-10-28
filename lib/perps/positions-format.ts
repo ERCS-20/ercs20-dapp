@@ -91,8 +91,9 @@ export function positionsRspToRow(pos: PositionsRsp): PositionRow {
 
 export type PositionHistoryRow = {
   key: string;
-  /** Same as live `positions.id` when the history row includes it. */
-  positionId?: number;
+  /** Same as live `positions.id`. */
+  id: string;
+  account: string;
   pairId: number;
   pairLabel: string;
   totalTradeMargin: number;
@@ -112,8 +113,9 @@ export function positionHistoryRspToRow(
   index: number
 ): PositionHistoryRow {
   return {
-    key: `${row.pairId}-${row.openedAt}-${row.closedAt}-${index}`,
-    positionId: row.id,
+    key: `${row.id}-${row.pairId}-${row.closedAt}-${index}`,
+    id: String(row.id),
+    account: row.account,
     pairId: row.pairId,
     pairLabel: pairLabelFromCode(row.pairCode),
     totalTradeMargin: formatOrderFee(row.totalTradeMargin),

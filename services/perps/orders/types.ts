@@ -146,7 +146,10 @@ export type PositionsListRsp = PositionsRsp[];
 
 /** Mirrors `exchange.orbix.perps.orders.dto.PositionHistoryRsp`. */
 export type PositionHistoryRsp = {
-  id?: number;
+  /** Same as live `positions.id` — cash-ledger detail key. */
+  id: number;
+  /** Wallet account — same as `PositionsRsp.account`. */
+  account: string;
   pairId: number;
   pairCode: string;
   /** Unix epoch milliseconds. */

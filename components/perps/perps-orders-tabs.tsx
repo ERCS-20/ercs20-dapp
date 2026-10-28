@@ -135,7 +135,20 @@ export function PerpsOrdersTabs({
             }
           />
         )}
-        {tab === "position-history" && <PositionHistoryTable onDetails={setDetailTarget} />}
+        {tab === "position-history" && (
+          <PositionHistoryTable
+            onDetails={(row) =>
+              setDetailTarget({
+                pairLabel: row.pairLabel,
+                pairId: row.pairId,
+                account: row.account,
+                positionId: Number(row.id),
+                openedAt: row.openedAt,
+                closedAt: row.closedAt,
+              })
+            }
+          />
+        )}
       </div>
       <PerpsPositionDetailDialog
         target={detailTarget}
@@ -352,7 +365,14 @@ function formatSignedQuote(value: number) {
 function PositionHistoryTable({
   onDetails,
 }: {
-  onDetails: (target: PositionDetailTarget) => void;
+  onDetails: (row: {
+    id: string;
+    account: string;
+    pairLabel: string;
+    pairId: number;
+    openedAt: number;
+    closedAt: number;
+  }) => void;
 }) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
@@ -448,15 +468,7 @@ function PositionHistoryTable({
               <td className="py-2.5 whitespace-nowrap">
                 <button
                   type="button"
-                  onClick={() =>
-                    onDetails({
-                      pairLabel: row.pairLabel,
-                      pairId: row.pairId,
-                      positionId: row.positionId,
-                      openedAt: row.openedAt,
-                      closedAt: row.closedAt,
-                    })
-                  }
+                  onClick={() => onDetails(row)}
                   className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
                 >
                   {t("perps.details")}
