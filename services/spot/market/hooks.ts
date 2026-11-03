@@ -8,7 +8,7 @@ import {
   applyTradesToDayStats,
   dayStatsFromKlineCurrentDay,
   EMPTY_TICKER_STATS,
-  type SpotTickerStats,
+  type TickerStats,
 } from "@/lib/market/market-ticker-stats";
 import {
   applyPairPricesToPagination,
@@ -307,7 +307,7 @@ export function useMarketTradesWs(
  * Stored in React Query so toolbar always observes the same source as merges.
  */
 export type MarketTickerCache = {
-  stats: SpotTickerStats;
+  stats: TickerStats;
   /** Last applied WS trade sequence; when set, REST baseline must not wipe stats. */
   liveSequence: number | null;
   prevClose: MarketKlineCurrentDayRsp["prevClose"] | null;

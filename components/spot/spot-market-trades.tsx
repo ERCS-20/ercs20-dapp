@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import {
   MARKET_TRADES_MAX,
-  marketTradesToSpotTrades,
+  marketTradesToRows,
 } from "@/lib/market/market-trades-parse";
 import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { SpotPair } from "@/lib/spot/types";
@@ -32,7 +32,7 @@ export function SpotMarketTrades({
   const trades = useMemo(
     () =>
       enginePriceDecimal != null
-        ? marketTradesToSpotTrades(data, enginePriceDecimal, MARKET_TRADES_MAX)
+        ? marketTradesToRows(data, enginePriceDecimal, MARKET_TRADES_MAX)
         : [],
     [data, enginePriceDecimal]
   );

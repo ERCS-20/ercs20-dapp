@@ -2,6 +2,7 @@
 export const PerpsOrdersApi = {
   pairByTokens: (baseToken: string, quoteToken: string) =>
     `/perps/orders/pairs/${encodeURIComponent(baseToken)}/${encodeURIComponent(quoteToken)}`,
+  pairsByIds: "/perps/orders/pairs/ids",
   orderSalt: "/perps/orders/orders/salt",
   ordersPlace: "/perps/orders/orders/place",
   ordersCancel: "/perps/orders/orders/cancel",

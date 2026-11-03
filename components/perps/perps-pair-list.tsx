@@ -24,12 +24,19 @@ import {
 } from "@/services/perps/market/hooks";
 import type { MarketPairRsp } from "@/services/perps/market/types";
 import {
-  usePairEnginePriceDecimalMap,
+  usePairsByIds,
   useReorderUserPairs,
   useUserPairs,
 } from "@/services/perps/orders/hooks";
+import type { PairRsp } from "@/services/perps/orders/types";
 
 const MARKET_PAIR_PAGE_SIZE = 100;
+
+function decimalMap(pairs: Map<number, PairRsp>): Map<number, number> {
+  const map = new Map<number, number>();
+  for (const [id, pair] of pairs) map.set(id, pair.enginePriceDecimal);
+  return map;
+}
 
 function filterMarketPairs(pairs: MarketPairRsp[], query: string): MarketPairRsp[] {
   const q = query.trim().toLowerCase();
@@ -255,10 +262,16 @@ export function PerpsPairList({
       .filter((p): p is MarketPairRsp => p != null);
   }, [favoriteMarketData?.pairs, favoritePairIds]);
 
-  const enginePriceDecimalMap = usePairEnginePriceDecimalMap([
-    ...allPairs,
-    ...favoritePairs,
-  ]);
+  const allPairIds = useMemo(() => allPairs.map((p) => p.pairId), [allPairs]);
+  const allPairsById = usePairsByIds(allPairIds);
+  const favoritePairsById = usePairsByIds(favoritePairIds, {
+    enabled: isAuthenticated && favoritePairIds.length > 0,
+  });
+  const allDecimals = useMemo(() => decimalMap(allPairsById), [allPairsById]);
+  const favoriteDecimals = useMemo(
+    () => decimalMap(favoritePairsById),
+    [favoritePairsById]
+  );
 
   const allFiltered = useMemo(
     () => filterMarketPairs(allPairs, query),
@@ -345,7 +358,7 @@ export function PerpsPairList({
                 <PairListItems
                   pairs={favoritesFiltered}
                   activePair={activePair}
-                  enginePriceDecimalMap={enginePriceDecimalMap}
+                  enginePriceDecimalMap={favoriteDecimals}
                   emptyMessage={
                     query.trim() ? t("perps.noPairsFound") : t("perps.emptyFavorites")
                   }
@@ -368,7 +381,7 @@ export function PerpsPairList({
                 <PairListItems
                   pairs={allFiltered}
                   activePair={activePair}
-                  enginePriceDecimalMap={enginePriceDecimalMap}
+                  enginePriceDecimalMap={allDecimals}
                   emptyMessage={t("perps.noPairsFound")}
                 />
               )}

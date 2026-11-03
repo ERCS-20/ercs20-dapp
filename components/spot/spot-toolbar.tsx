@@ -17,7 +17,7 @@ import {
   formatPercentChange,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import type { SpotTickerStats } from "@/lib/market/market-ticker-stats";
+import type { TickerStats } from "@/lib/market/market-ticker-stats";
 import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/spot/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { SpotPair } from "@/lib/spot/types";
@@ -126,7 +126,7 @@ export function SpotToolbar({
   onPairChange: (path: string) => void;
   hidePairSelectorOnWide?: boolean;
   /** When set (e.g. from `SpotView`), skip an extra ticker subscription. */
-  stats?: SpotTickerStats;
+  stats?: TickerStats;
   statsLoading?: boolean;
   className?: string;
 }) {

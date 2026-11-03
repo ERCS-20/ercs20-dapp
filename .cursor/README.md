@@ -14,7 +14,7 @@
 |------|--------|------|
 | `project.mdc` | 全局 | 栈、目录、bigint、npm、Git |
 | `security.mdc` | 全局 | 依赖、密钥、链上安全 |
-| `code-style.mdc` | `**/*.{ts,tsx}` | 文件/函数长度、early return |
+| `code-style.mdc` | `**/*.{ts,tsx}` | 函数长度、嵌套、early return |
 | `frontend.mdc` | `app/`, `components/`, … | 路由、i18n、shadcn、Client 边界 |
 | `ui.mdc` | UI 文件 | Orbix token、间距、暗色、标杆组件 |
 | `web3.mdc` | 链相关路径 | viem/wagmi、ERCS-20 buy/sell、env |

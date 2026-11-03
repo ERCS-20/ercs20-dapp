@@ -14,6 +14,10 @@ import {
   type AdjustMarginTarget,
 } from "@/components/perps/perps-adjust-margin-dialog";
 import {
+  PerpsClosePositionDialog,
+  type ClosePositionTarget,
+} from "@/components/perps/perps-close-position-dialog";
+import {
   formatLeveragePairSuffix,
   formatOrderHistoryStatus,
   ordersHistoryRspToRow,
@@ -22,6 +26,7 @@ import {
 } from "@/lib/perps/open-orders-format";
 import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
 import { getApiErrorMessage } from "@/lib/api/errors";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import {
@@ -35,10 +40,13 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 import { getOrderSalt, getPerpsOrdersUserBalance } from "@/services/perps/orders/api";
+import { useMarketUserPairs } from "@/services/perps/market/hooks";
+import type { MarketPairRsp } from "@/services/perps/market/types";
 import {
   useCancelOrder,
   useOrdersHistoryPagination,
   useOrdersList,
+  usePairsByIds,
   usePositionHistoryPagination,
   usePositionsList,
 } from "@/services/perps/orders/hooks";
@@ -67,6 +75,7 @@ export function PerpsOrdersTabs({
   const [detailTarget, setDetailTarget] = useState<PositionDetailTarget | null>(null);
   const [orderDetailTarget, setOrderDetailTarget] = useState<OrderDetailTarget | null>(null);
   const [marginTarget, setMarginTarget] = useState<AdjustMarginTarget | null>(null);
+  const [closeTarget, setCloseTarget] = useState<ClosePositionTarget | null>(null);
   const tabs: { id: PerpsOrdersTab; label: string }[] = [
     { id: "positions", label: t("perps.positions") },
     { id: "open", label: t("perps.openOrders") },
@@ -106,6 +115,7 @@ export function PerpsOrdersTabs({
             baseSymbol={baseSymbol}
             onDetails={setDetailTarget}
             onAdjustMargin={setMarginTarget}
+            onClose={setCloseTarget}
           />
         )}
         {tab === "open" && (
@@ -168,6 +178,12 @@ export function PerpsOrdersTabs({
           if (!next) setMarginTarget(null);
         }}
       />
+      <PerpsClosePositionDialog
+        target={closeTarget}
+        onOpenChange={(next) => {
+          if (!next) setCloseTarget(null);
+        }}
+      />
     </section>
   );
 }
@@ -215,22 +231,81 @@ function resolveOrdersTableMessage({
   return null;
 }
 
+const NO_MARKET_PAIRS: MarketPairRsp[] = [];
+
+type PositionMark = {
+  /** Display label, including subscript formatting. */
+  label: string;
+  /** Plain decimal for the close-price input. */
+  input: string;
+};
+
+function formatMarkInput(value: number, priceDecimal: number): string {
+  const digits = Math.min(Math.max(priceDecimal, 0), 18);
+  const fixed = value.toFixed(digits);
+  if (!fixed.includes(".")) return fixed;
+  return fixed.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+}
+
+function formatPairMark(
+  pair: MarketPairRsp,
+  enginePriceDecimal: number | undefined
+): PositionMark | null {
+  if (enginePriceDecimal == null) return null;
+  const price = enginePriceToNumber(pair.close, enginePriceDecimal);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return {
+    label: formatSubscriptPrice(price, enginePriceDecimal),
+    input: formatMarkInput(price, enginePriceDecimal),
+  };
+}
+
+function usePositionPairQuotes(positions: { pairId: number }[] | undefined, settled: boolean) {
+  const pairIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const row of positions ?? []) {
+      if (Number.isInteger(row.pairId) && row.pairId >= 0) ids.add(row.pairId);
+    }
+    return [...ids].sort((a, b) => a - b);
+  }, [positions]);
+
+  const quotesEnabled = settled && pairIds.length > 0;
+  const { data } = useMarketUserPairs(pairIds, {
+    enabled: quotesEnabled,
+    notifyError: false,
+  });
+  const pairs = data?.pairs ?? NO_MARKET_PAIRS;
+  const pairInfo = usePairsByIds(pairIds, { enabled: quotesEnabled });
+
+  return useMemo(() => {
+    const marks = new Map<number, PositionMark>();
+    for (const pair of pairs) {
+      const mark = formatPairMark(pair, pairInfo.get(pair.pairId)?.enginePriceDecimal);
+      if (mark != null) marks.set(pair.pairId, mark);
+    }
+    return marks;
+  }, [pairs, pairInfo]);
+}
+
 function PositionsTable({
   baseSymbol,
   onDetails,
   onAdjustMargin,
+  onClose,
 }: {
   baseSymbol: string;
   onDetails: (target: PositionDetailTarget) => void;
   onAdjustMargin: (target: AdjustMarginTarget) => void;
+  onClose: (target: ClosePositionTarget) => void;
 }) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
 
-  const { data, isLoading, isFetching } = usePositionsList({
+  const { data, isLoading, isFetching, isSuccess } = usePositionsList({
     enabled: isAuthenticated,
     notifyError: false,
   });
+  const markByPair = usePositionPairQuotes(data, isSuccess);
 
   const rows = useMemo(() => (data ?? []).map(positionsRspToRow), [data]);
 
@@ -268,7 +343,10 @@ function PositionsTable({
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
-          rows.map((row) => (
+          rows.map((row) => {
+            const mark = markByPair.get(row.pairId);
+            const markLabel = mark?.label ?? "—";
+            return (
             <tr key={row.id} className="border-border/40 border-b last:border-0">
               <td className="py-2.5 pr-4 whitespace-nowrap">
                 {row.pairLabel}
@@ -295,8 +373,13 @@ function PositionsTable({
               <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
               </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                —
+              <td
+                className={cn(
+                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  markLabel === "—" && "text-muted-foreground"
+                )}
+              >
+                {markLabel}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 —
@@ -325,6 +408,31 @@ function PositionsTable({
                   </button>
                   <button
                     type="button"
+                    onClick={() => toast.info(t("perps.positionActionComingSoon"))}
+                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t("perps.tpSl")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onClose({
+                        pairDisplay: `${row.pairLabel}${formatLeveragePairSuffix(row.leverage)}`,
+                        pairId: row.pairId,
+                        quoteSymbol: row.quoteSymbol,
+                        baseSymbol: row.pairLabel.split("/")[0] ?? row.pairLabel,
+                        side: row.side,
+                        size: row.size,
+                        markPrice: markLabel,
+                        markInput: mark?.input ?? "",
+                      })
+                    }
+                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t("perps.closePosition")}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() =>
                       onDetails({
                         pairLabel: row.pairLabel,
@@ -338,10 +446,18 @@ function PositionsTable({
                   >
                     {t("perps.details")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => toast.info(t("perps.positionActionComingSoon"))}
+                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
+                  >
+                    {t("perps.flashClose")}
+                  </button>
                 </div>
               </td>
             </tr>
-          ))
+            );
+          })
         )}
       </tbody>
     </table>

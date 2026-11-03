@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { parsePairCode } from "@/lib/perps/pair-api";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import { getPerpsNativeTokenAddress } from "@/lib/config/perps-native-token";
 import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
@@ -30,7 +29,11 @@ import {
   placeOrder,
   reorderUserPairs,
 } from "@/services/perps/orders/api";
-import type { MarketPairRsp } from "@/services/perps/market/types";
+import {
+  getPairsByIds,
+  normalizePairIds,
+  peekPairsByIds,
+} from "@/services/perps/orders/pairs-by-ids";
 import type {
   CancelOrderReq,
   OrderSaltRsp,
@@ -130,40 +133,43 @@ export function usePairByCode(
   });
 }
 
-/** pairId → enginePriceDecimal from orders `getPairByCode` (shared react-query cache). */
-export function usePairEnginePriceDecimalMap(marketPairs: MarketPairRsp[]) {
-  const lookups = useMemo(() => {
-    const items: { pairId: number; base: string; quote: string }[] = [];
-    const seenPairIds = new Set<number>();
+/**
+ * Pair metadata for this id list via `getPairsByIds` (localStorage, then one POST for misses).
+ * Each caller passes its own ids; this hook does not merge lists across screens.
+ */
+export function usePairsByIds(
+  pairIds: readonly number[],
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? true;
+  const idsKey = useMemo(() => normalizePairIds(pairIds).join(","), [pairIds]);
+  const ids = useMemo(() => (idsKey ? idsKey.split(",").map(Number) : []), [idsKey]);
+  const [pairs, setPairs] = useState<PairRsp[]>([]);
 
-    for (const row of marketPairs) {
-      if (seenPairIds.has(row.pairId)) continue;
-      seenPairIds.add(row.pairId);
-
-      const parsed = parsePairCode(row.code);
-      if (!parsed) continue;
-      items.push({ pairId: row.pairId, base: parsed.base, quote: parsed.quote });
+  useLayoutEffect(() => {
+    if (!enabled) {
+      setPairs([]);
+      return;
     }
-    return items;
-  }, [marketPairs]);
-
-  const queries = useQueries({
-    queries: lookups.map(({ base, quote }) => ({
-      queryKey: pairByCodeQueryKey(base, quote),
-      queryFn: () => getPairByCode({ baseToken: base, quoteToken: quote }),
-      staleTime: 60_000,
-      retry: false,
-    })),
-  });
+    setPairs(peekPairsByIds(ids));
+    let cancelled = false;
+    void getPairsByIds(ids)
+      .then((rows) => {
+        if (!cancelled) setPairs(rows);
+      })
+      .catch(() => {
+        // Keep pairs already read from localStorage.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, ids]);
 
   return useMemo(() => {
-    const map = new Map<number, number>();
-    lookups.forEach(({ pairId }, i) => {
-      const dec = queries[i]?.data?.enginePriceDecimal;
-      if (typeof dec === "number") map.set(pairId, dec);
-    });
+    const map = new Map<number, PairRsp>();
+    for (const pair of pairs) map.set(pair.id, pair);
     return map;
-  }, [lookups, queries]);
+  }, [pairs]);
 }
 
 /** Fetch a fresh order/withdraw salt before EIP-712 signing. */

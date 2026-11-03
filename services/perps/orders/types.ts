@@ -38,6 +38,16 @@ export type PairRsp = {
   sortOrder: number;
 };
 
+/** Mirrors `exchange.orbix.perps.orders.api.dto.PairsIdsReq`. */
+export type PairsIdsReq = {
+  pairIds: number[];
+};
+
+/** Mirrors `exchange.orbix.perps.orders.api.dto.PairsIdsRsp`. */
+export type PairsIdsRsp = {
+  pairs: PairRsp[];
+};
+
 /** Mirrors `exchange.orbix.perps.orders.dto.PlaceOrderReq`. */
 export type PlaceOrderReq = {
   userBalanceId: number;

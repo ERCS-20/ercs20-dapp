@@ -23,6 +23,8 @@ import type {
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
+  PairsIdsReq,
+  PairsIdsRsp,
   PerpsOrderSaltRsp,
   PerpsOrdersUserBalanceReq,
   PerpsOrdersUserBalanceRsp,
@@ -48,6 +50,13 @@ export function getPairByCode(req: GetPairByCodeReq) {
   const baseToken = req.baseToken.toUpperCase();
   const quoteToken = req.quoteToken.toUpperCase();
   return request.get<PairRsp>(PerpsOrdersApi.pairByTokens(baseToken, quoteToken));
+}
+
+/** POST /perps/orders/pairs/ids. Callers use `getPairsByIds`, which reads localStorage first. */
+export function listPairsByIds(req: PairsIdsReq) {
+  return request.post<PairsIdsRsp>(PerpsOrdersApi.pairsByIds, {
+    pairIds: req.pairIds,
+  });
 }
 
 async function fetchRemotePerpsOrderSalt(): Promise<bigint> {

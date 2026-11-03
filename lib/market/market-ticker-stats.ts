@@ -14,11 +14,6 @@ export type TickerStats = MarketStats & {
   changeAmount: number;
 };
 
-/** @deprecated Use {@link TickerStats}. */
-export type SpotTickerStats = TickerStats;
-/** @deprecated Use {@link TickerStats}. */
-export type PerpsTickerStats = TickerStats;
-
 export const EMPTY_TICKER_STATS: TickerStats = {
   lastPrice: 0,
   change24hPct: 0,

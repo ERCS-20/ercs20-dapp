@@ -12,7 +12,7 @@ export type PositionRow = {
   side: "buy" | "sell" | null;
   /** Isolated remaining margin (`balanceMargin`, 18 decimals). */
   balanceMargin: bigint;
-  /** `totalTradeMargin − totalTradeFee + totalMarginAdjust`. */
+  /** `totalTradeMargin − totalTradeFee + totalMarginAdjust + totalFunding`. */
   margin: number;
   /** `|balancePosition|` (base size, 18 decimals). */
   size: number;
@@ -34,27 +34,29 @@ function apiInt(raw: ApiBigInt | undefined): bigint {
 }
 
 /**
- * Display margin: `totalTradeMargin − totalTradeFee + totalMarginAdjust`.
+ * Display margin: `totalTradeMargin − totalTradeFee + totalMarginAdjust + totalFunding`.
  */
 export function positionDisplayMargin(pos: PositionsRsp): bigint {
-  return apiInt(pos.totalTradeMargin) - apiInt(pos.totalTradeFee) + apiInt(pos.totalMarginAdjust);
+  return (
+    apiInt(pos.totalTradeMargin) -
+    apiInt(pos.totalTradeFee) +
+    apiInt(pos.totalMarginAdjust) +
+    apiInt(pos.totalFunding)
+  );
 }
 
 /**
- * Approximate open quote notional from cash ledger:
- * long:  margin − balanceMargin + funding
- * short: balanceMargin − margin − funding
+ * Approximate open quote notional from cash ledger (margin already includes funding):
+ * long:  margin − balanceMargin
+ * short: balanceMargin − margin
  */
 export function positionOpenNotional(pos: PositionsRsp): bigint {
   const position = apiInt(pos.balancePosition);
   if (position === BigInt(0)) return BigInt(0);
   const margin = positionDisplayMargin(pos);
   const balanceMargin = apiInt(pos.balanceMargin);
-  const funding = apiInt(pos.totalFunding);
   const notional =
-    position > BigInt(0)
-      ? margin - balanceMargin + funding
-      : balanceMargin - margin - funding;
+    position > BigInt(0) ? margin - balanceMargin : balanceMargin - margin;
   return notional > BigInt(0) ? notional : BigInt(0);
 }
 

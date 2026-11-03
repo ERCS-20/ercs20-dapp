@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Always
 
-- Keep files ≤ **300 lines**; functions ≤ **50 lines**; nesting ≤ **3 levels**.
+- Keep functions ≤ **50 lines**; nesting ≤ **3 levels**.
 - Prefer **early return** and **descriptive names** (avoid cryptic abbreviations).
 
 ## Never

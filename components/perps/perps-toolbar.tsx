@@ -17,8 +17,8 @@ import {
   formatPercentChange,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
-import type { PerpsTickerStats } from "@/lib/market/market-ticker-stats";
-import { pairLabel, pairLabelFromCode, pairPathFromCode } from "@/lib/perps/pair-api";
+import type { TickerStats } from "@/lib/market/market-ticker-stats";
+import { pairLabelFromCode, pairPathFromCode } from "@/lib/perps/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { PerpsPair } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ function SpotBaseIcon({ symbol }: { symbol: string }) {
   if (failed) {
     return (
       <span
-        className="bg-muted text-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1 ring-border/60 sm:size-10"
+        className="bg-muted text-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1 ring-border/60"
         aria-hidden
       >
         {label.slice(0, 2)}
@@ -46,23 +46,72 @@ function SpotBaseIcon({ symbol }: { symbol: string }) {
       alt=""
       width={40}
       height={40}
-      className="size-9 shrink-0 rounded-full ring-1 ring-border/60 sm:size-10"
+      className="size-8 shrink-0 rounded-full ring-1 ring-border/60"
       onError={() => setFailed(true)}
       unoptimized
     />
   );
 }
 
+function TickerStat({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="shrink-0 whitespace-nowrap">
+      <dt className="text-muted-foreground text-[11px] leading-4">{label}</dt>
+      <dd
+        className={cn(
+          "mt-0.5 text-[13px] leading-5 font-medium tabular-nums tracking-tight",
+          muted ? "text-muted-foreground" : "text-foreground"
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function LastPrice({
+  price,
+  change,
+  amount,
+  up,
+}: {
+  price: string;
+  change: string;
+  amount: string;
+  up: boolean;
+}) {
+  const tone = up ? "text-brand" : "text-brand-alt";
+  return (
+    <div className={cn("flex shrink-0 flex-col", tone)}>
+      <p className="text-xl leading-none font-semibold tabular-nums tracking-tight">
+        {price}
+      </p>
+      <p className="mt-1 flex items-center gap-1.5 text-[11px] leading-none tabular-nums">
+        <span>{change}</span>
+        <span className="opacity-80">{amount}</span>
+      </p>
+    </div>
+  );
+}
+
 function PairSelector({
   pair,
+  label,
   onPairChange,
   className,
-  compact = false,
 }: {
   pair: PerpsPair;
+  label: string;
   onPairChange: (path: string) => void;
   className?: string;
-  compact?: boolean;
 }) {
   const { data } = useMarketPairsPagination({ currentPage: 1, pageSize: 100 });
   const pairs = data?.pageItems ?? [];
@@ -73,22 +122,14 @@ function PairSelector({
         <Button
           type="button"
           variant="ghost"
-          aria-label={pairLabel(pair)}
+          aria-label={label}
           className={cn(
-            compact
-              ? "text-muted-foreground size-8 shrink-0 rounded-full p-0 hover:bg-muted/60"
-              : "text-muted-foreground h-auto gap-0.5 rounded-md px-1 py-0 text-xs font-normal hover:bg-transparent",
+            "text-foreground h-9 max-w-full gap-1 rounded-lg px-2 text-sm font-semibold tracking-tight hover:bg-muted/60 sm:text-base",
             className
           )}
         >
-          {compact ? (
-            <ChevronDownIcon className="size-4 opacity-70" aria-hidden />
-          ) : (
-            <>
-              <span>{pairLabel(pair)}</span>
-              <ChevronDownIcon className="size-3.5 opacity-60" aria-hidden />
-            </>
-          )}
+          <span className="truncate">{label}</span>
+          <ChevronDownIcon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-44">
@@ -110,6 +151,69 @@ function PairSelector({
   );
 }
 
+function PairHeading({
+  pair,
+  onPairChange,
+  hideSelectorOnWide,
+}: {
+  pair: PerpsPair;
+  onPairChange: (path: string) => void;
+  hideSelectorOnWide: boolean;
+}) {
+  const label = `${pair.baseSymbol}/${pair.quoteSymbol}`;
+  return (
+    <div className="flex min-w-0 items-center">
+      {hideSelectorOnWide ? (
+        <span className="text-foreground hidden truncate text-sm font-semibold tracking-tight 2xl:inline sm:text-base">
+          {label}
+        </span>
+      ) : null}
+      <PairSelector
+        pair={pair}
+        label={label}
+        onPairChange={onPairChange}
+        className={hideSelectorOnWide ? "2xl:hidden" : undefined}
+      />
+      <PerpsFavoriteButton pairId={pair.pairId} className="size-6" />
+    </div>
+  );
+}
+
+function ToolbarStats({
+  pair,
+  stats,
+  enginePriceDecimal,
+}: {
+  pair: PerpsPair;
+  stats: TickerStats;
+  enginePriceDecimal: number | undefined;
+}) {
+  const { t } = useI18n();
+  const volumeDigits = { maximumFractionDigits: 2 } as const;
+  return (
+    <dl className="border-border/60 grid grid-cols-3 gap-x-3 gap-y-2.5 border-t pt-2.5 sm:grid-cols-4 lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:justify-between lg:gap-x-3 lg:overflow-x-auto lg:border-t-0 lg:pt-0 scrollbar-none">
+      <TickerStat label={t("perps.mark")} value="—" muted />
+      <TickerStat label={t("perps.fundingRate")} value="—" muted />
+      <TickerStat
+        label={t("perps.high24h")}
+        value={formatSubscriptPrice(stats.high24h, enginePriceDecimal)}
+      />
+      <TickerStat
+        label={t("perps.low24h")}
+        value={formatSubscriptPrice(stats.low24h, enginePriceDecimal)}
+      />
+      <TickerStat
+        label={t("perps.vol24hSymbol").replace("{symbol}", pair.baseSymbol)}
+        value={stats.volumeBase.toLocaleString("en-US", volumeDigits)}
+      />
+      <TickerStat
+        label={t("perps.vol24hSymbol").replace("{symbol}", pair.quoteSymbol)}
+        value={stats.volume24h.toLocaleString("en-US", volumeDigits)}
+      />
+    </dl>
+  );
+}
+
 export function PerpsToolbar({
   pair,
   pairId,
@@ -126,11 +230,10 @@ export function PerpsToolbar({
   onPairChange: (path: string) => void;
   hidePairSelectorOnWide?: boolean;
   /** When set (e.g. from `PerpsView`), skip an extra ticker subscription. */
-  stats?: PerpsTickerStats;
+  stats?: TickerStats;
   statsLoading?: boolean;
   className?: string;
 }) {
-  const { t } = useI18n();
   const live = usePerpsTickerStats(pairId, enginePriceDecimal, {
     // Parent passes `stats` from PerpsView — do not run a second live pipeline here.
     enabled: statsProp === undefined,
@@ -139,75 +242,40 @@ export function PerpsToolbar({
   const isLoading = statsLoadingProp ?? live.isLoading;
 
   const up = stats.change24hPct >= 0;
-  const changeTone = up ? "text-brand" : "text-brand-alt";
   const changeAmountLabel =
     stats.changeAmount === 0 && isLoading
       ? "…"
       : `${stats.changeAmount >= 0 ? "+" : ""}${formatSubscriptPrice(stats.changeAmount, enginePriceDecimal)}`;
 
+  const priceLabel =
+    isLoading && stats.lastPrice === 0
+      ? "…"
+      : formatSubscriptPrice(stats.lastPrice, enginePriceDecimal);
+
   return (
     <div
       className={cn(
-        "border-border/60 bg-card/80 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4",
-        "lg:gap-6 lg:py-3",
+        "border-border/60 bg-card/80 flex min-w-0 flex-col gap-3 rounded-xl border px-3 py-2.5 sm:px-4 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-4",
         className
       )}
     >
-      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+      <div className="flex shrink-0 items-center gap-2.5">
         <SpotBaseIcon symbol={pair.baseSymbol} />
-
-        <div className="min-w-0">
-          <p className="text-foreground text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
-            {isLoading && stats.lastPrice === 0 ? "…" : formatSubscriptPrice(stats.lastPrice, enginePriceDecimal)}
-          </p>
-          <div
-            className={cn(
-              "mt-0.5 flex items-center gap-2 text-xs tabular-nums sm:text-sm",
-              changeTone
-            )}
-          >
-            <span>{formatPercentChange(stats.change24hPct)}</span>
-            <span>{changeAmountLabel}</span>
-          </div>
-        </div>
-
-        {hidePairSelectorOnWide ? (
-          <PairSelector
-            pair={pair}
-            onPairChange={onPairChange}
-            compact
-            className="2xl:hidden"
-          />
-        ) : (
-          <PairSelector pair={pair} onPairChange={onPairChange} compact />
-        )}
+        <PairHeading
+          pair={pair}
+          onPairChange={onPairChange}
+          hideSelectorOnWide={hidePairSelectorOnWide}
+        />
+        <span className="bg-border/80 mx-1 hidden h-8 w-px shrink-0 lg:block" aria-hidden />
+        <LastPrice
+          price={priceLabel}
+          change={formatPercentChange(stats.change24hPct)}
+          amount={changeAmountLabel}
+          up={up}
+        />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <PerpsFavoriteButton pairId={pair.pairId} />
-        <dl className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4 sm:gap-x-5 sm:text-sm lg:gap-x-6">
-          <div>
-            <dt>{t("perps.high24h")}</dt>
-            <dd className="text-foreground tabular-nums">{formatSubscriptPrice(stats.high24h, enginePriceDecimal)}</dd>
-          </div>
-          <div>
-            <dt>{t("perps.low24h")}</dt>
-            <dd className="text-foreground tabular-nums">{formatSubscriptPrice(stats.low24h, enginePriceDecimal)}</dd>
-          </div>
-          <div>
-            <dt>{t("perps.vol24hSymbol").replace("{symbol}", pair.baseSymbol)}</dt>
-            <dd className="text-foreground tabular-nums">
-              {stats.volumeBase.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-            </dd>
-          </div>
-          <div>
-            <dt>{t("perps.vol24hSymbol").replace("{symbol}", pair.quoteSymbol)}</dt>
-            <dd className="text-foreground tabular-nums">
-              {stats.volume24h.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-            </dd>
-          </div>
-        </dl>
-      </div>
+      <ToolbarStats pair={pair} stats={stats} enginePriceDecimal={enginePriceDecimal} />
     </div>
   );
 }

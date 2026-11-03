@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import {
   MARKET_TRADES_MAX,
-  marketTradesToPerpsTrades,
+  marketTradesToRows,
 } from "@/lib/market/market-trades-parse";
 import { formatQuantity, formatSubscriptPrice } from "@/lib/utils/price";
 import type { PerpsPair } from "@/lib/perps/types";
@@ -32,7 +32,7 @@ export function PerpsMarketTrades({
   const trades = useMemo(
     () =>
       enginePriceDecimal != null
-        ? marketTradesToPerpsTrades(data, enginePriceDecimal, MARKET_TRADES_MAX)
+        ? marketTradesToRows(data, enginePriceDecimal, MARKET_TRADES_MAX)
         : [],
     [data, enginePriceDecimal]
   );

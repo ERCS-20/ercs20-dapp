@@ -62,11 +62,6 @@ export function marketTradesToRows(
     });
 }
 
-/** @deprecated Use {@link marketTradesToRows}. */
-export const marketTradesToSpotTrades = marketTradesToRows;
-/** @deprecated Use {@link marketTradesToRows}. */
-export const marketTradesToPerpsTrades = marketTradesToRows;
-
 /**
  * Merge a WS trade batch into a REST list snapshot using envelope `sequence`.
  * Batch is chronological (old→new); result is dense newest-first with
