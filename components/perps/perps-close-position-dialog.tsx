@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
 import { useI18n } from "@/providers/i18n-provider";
 
 export type ClosePositionTarget = {
@@ -28,6 +29,8 @@ export type ClosePositionTarget = {
   side: "buy" | "sell" | null;
   /** Size (base token) from the selected row. */
   size: number;
+  /** List break-even at the moment the dialog opened. Later funding-index pushes do not replace it. */
+  breakEvenPrice: number;
   /** Formatted mark, or an em dash when the quote is not ready. */
   markPrice: string;
   /** Plain mark decimal captured when the dialog opens. Empty when the quote is missing. */
@@ -267,7 +270,8 @@ function ClosePositionFields({
   return (
     <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
       <PositionContext
-        entryLabel={t("perps.entryPrice")}
+        entryLabel={t("perps.breakEvenPrice")}
+        entry={target.breakEvenPrice > 0 ? formatSubscriptPrice(target.breakEvenPrice, 8) : "—"}
         markLabel={t("perps.markPrice")}
         mark={target.markPrice}
         qtyLabel={t("perps.positionQty")}
@@ -296,19 +300,29 @@ function ClosePositionFields({
           side={target.side === "sell" ? "buy" : "sell"}
         />
       </AmountField>
-      <EstimateRow label={`${t("perps.estPnl")} (${target.quoteSymbol})`} value="—" />
+      <EstimateRow
+        label={`${t("perps.closeNotional")} (${target.quoteSymbol})`}
+        value={formatCloseNotional(closePrice, sizeInput)}
+      />
+      <EstimateRow
+        label={`${t("perps.estPnl")} (${target.quoteSymbol})`}
+        value={formatClosePnl(target.side, target.breakEvenPrice, closePrice, sizeInput)}
+        signed
+      />
     </div>
   );
 }
 
 function PositionContext({
   entryLabel,
+  entry,
   markLabel,
   mark,
   qtyLabel,
   qty,
 }: {
   entryLabel: string;
+  entry: string;
   markLabel: string;
   mark: string;
   qtyLabel: string;
@@ -316,9 +330,9 @@ function PositionContext({
 }) {
   const qtyMuted = qty === "—";
   return (
-    <div className="border-border/70 bg-muted/30 overflow-hidden rounded-xl border">
+    <div className="border-input bg-background overflow-hidden rounded-xl border">
       <div className="grid grid-cols-2 divide-x divide-border/60">
-        <QuoteStat label={entryLabel} value="—" muted />
+        <QuoteStat label={entryLabel} value={entry} muted={entry === "—"} />
         <QuoteStat label={markLabel} value={mark} muted={mark === "—"} />
       </div>
       <div className="border-border/60 flex items-baseline justify-between gap-4 border-t px-4 py-2.5">
@@ -466,11 +480,62 @@ function AmountField({
   );
 }
 
-function EstimateRow({ label, value }: { label: string; value: string }) {
+function formatCloseNotional(priceRaw: string, sizeRaw: string): string {
+  const price = parsePositiveDecimal(priceRaw);
+  const size = parsePositiveDecimal(sizeRaw);
+  if (price == null || size == null) return "—";
+  return formatQuoteAmount(price * size);
+}
+
+function closePnlAmount(
+  side: ClosePositionTarget["side"],
+  breakEvenPrice: number,
+  priceRaw: string,
+  sizeRaw: string
+): number | null {
+  const price = parsePositiveDecimal(priceRaw);
+  const size = parsePositiveDecimal(sizeRaw);
+  if (price == null || size == null || !(breakEvenPrice > 0)) return null;
+  if (side === "buy") return (price - breakEvenPrice) * size;
+  if (side === "sell") return (breakEvenPrice - price) * size;
+  return null;
+}
+
+function formatClosePnl(
+  side: ClosePositionTarget["side"],
+  breakEvenPrice: number,
+  priceRaw: string,
+  sizeRaw: string
+): string {
+  const pnl = closePnlAmount(side, breakEvenPrice, priceRaw, sizeRaw);
+  if (pnl == null || !Number.isFinite(pnl)) return "—";
+  const abs = formatQuoteAmount(Math.abs(pnl));
+  if (pnl > 0) return `+${abs}`;
+  if (pnl < 0) return `-${abs}`;
+  return abs;
+}
+
+function EstimateRow({
+  label,
+  value,
+  signed = false,
+}: {
+  label: string;
+  value: string;
+  signed?: boolean;
+}) {
+  const pending = value === "—";
+  const valueTone = pending
+    ? "text-muted-foreground"
+    : signed && value.startsWith("+")
+      ? "text-brand"
+      : signed && value.startsWith("-")
+        ? "text-brand-alt"
+        : "text-foreground";
   return (
-    <div className="bg-muted/40 flex items-center justify-between gap-4 rounded-xl px-4 py-3">
+    <div className="border-input bg-background flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
       <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="text-muted-foreground text-sm font-medium tabular-nums">{value}</span>
+      <span className={cn("text-sm font-medium tabular-nums", valueTone)}>{value}</span>
     </div>
   );
 }

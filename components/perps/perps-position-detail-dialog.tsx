@@ -324,7 +324,7 @@ function NumericHead({ children, className }: { children: ReactNode; className?:
   return (
     <TableHead
       className={cn(
-        "text-muted-foreground h-9 bg-muted/40 px-3 text-right text-xs font-medium",
+        "text-muted-foreground h-9 bg-muted/40 px-3 text-left text-xs font-medium",
         className
       )}
     >
@@ -379,7 +379,7 @@ function LedgerTable({
               const amount = cashLedgerAmount(row);
               return (
                 <TableRow key={`${row.positionId}-${row.refType}-${row.refId}-${i}`}>
-                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                     {formatUtcDateTime(row.createdAt)}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-sm">
@@ -387,7 +387,7 @@ function LedgerTable({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "px-3 py-2.5 text-right text-sm font-medium tabular-nums",
+                      "px-3 py-2.5 text-sm font-medium tabular-nums",
                       signedAmountClass(amount)
                     )}
                   >
@@ -432,13 +432,13 @@ function FillsTable({
               <NumericHead>{t("perps.filled")}</NumericHead>
               <NumericHead>{t("perps.marginRequired")}</NumericHead>
               <NumericHead>{t("perps.fee")}</NumericHead>
-              <TextHead className="text-right">{t("perps.role")}</TextHead>
+              <TextHead>{t("perps.role")}</TextHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row, i) => (
               <TableRow key={`${row.orderId}-${row.tradeTime}-${i}`}>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                   {formatUtcDateTime(row.tradeTime)}
                 </TableCell>
                 <TableCell
@@ -460,19 +460,19 @@ function FillsTable({
                     {formatLeveragePairSuffix(row.leverage)}
                   </span>
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatQuoteAmount(row.filledValue)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {row.lockedMargin != null ? formatQuoteAmount(row.lockedMargin) : "—"}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-right text-xs">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs">
                   {row.matchedSide === "maker"
                     ? t("perps.roleMaker")
                     : row.matchedSide === "taker"
@@ -521,7 +521,7 @@ function MarginTable({
               const amount = marginEventAmount(row);
               return (
                 <TableRow key={`${row.pairId}-${row.blockNumber}-${row.blockLogIndex}-${i}`}>
-                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                     {formatUtcDateTime(row.blockTimestamp)}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-sm">
@@ -529,7 +529,7 @@ function MarginTable({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "px-3 py-2.5 text-right text-sm font-medium tabular-nums",
+                      "px-3 py-2.5 text-sm font-medium tabular-nums",
                       signedAmountClass(amount)
                     )}
                   >
@@ -578,7 +578,7 @@ function FundingTable({
               const amount = fundingPaymentAmount(row);
               return (
                 <TableRow key={`${row.pairId}-${row.blockNumber}-${row.blockLogIndex}-${i}`}>
-                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                     {formatUtcDateTime(row.blockTimestamp)}
                   </TableCell>
                   <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
@@ -586,7 +586,7 @@ function FundingTable({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "px-3 py-2.5 text-right text-sm font-medium tabular-nums",
+                      "px-3 py-2.5 text-sm font-medium tabular-nums",
                       signedAmountClass(amount)
                     )}
                   >

@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { PerpsPositionDetailDialog, type PositionDetailTarget } from "@/components/perps/perps-position-detail-dialog";
 import {
@@ -97,26 +98,22 @@ export function PerpsOrdersTabs({
         className
       )}
     >
-      <div className="border-border/60 flex gap-1 overflow-x-auto border-b px-2 pt-2 sm:px-3">
-        {tabs.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onTabChange(id)}
-            className={cn(
-              "relative shrink-0 px-3 py-2 text-sm font-medium transition-colors",
-              tab === id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {label}
-            {tab === id && (
-              <span className="bg-primary absolute inset-x-3 -bottom-px h-0.5 rounded-full" />
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => onTabChange(value as PerpsOrdersTab)}
+        className="min-h-0 flex-1 gap-0"
+      >
+        <div className="shrink-0 overflow-x-auto pb-2">
+          <TabsList className="h-9 w-full min-w-max rounded-none">
+            {tabs.map(({ id, label }) => (
+              <TabsTrigger key={id} value={id} className="rounded-none px-3 text-xs sm:text-sm">
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
         {tab === "positions" && (
           <PositionsTable
             baseSymbol={baseSymbol}
@@ -159,7 +156,8 @@ export function PerpsOrdersTabs({
             }
           />
         )}
-      </div>
+        </div>
+      </Tabs>
       <PerpsPositionDetailDialog
         target={detailTarget}
         onOpenChange={(next) => {
@@ -189,8 +187,8 @@ export function PerpsOrdersTabs({
 }
 
 const textCell = "px-3 py-2.5 text-sm";
-const numericCell = "px-3 py-2.5 text-right tabular-nums";
-const timeCell = "text-muted-foreground px-3 py-2.5 text-right text-xs tabular-nums";
+const numericCell = "px-3 py-2.5 tabular-nums";
+const timeCell = "text-muted-foreground px-3 py-2.5 text-sm tabular-nums";
 const idCell = "text-muted-foreground px-3 py-2.5 text-xs tabular-nums";
 
 function OrdersTableFrame({ children }: { children: ReactNode }) {
@@ -219,7 +217,7 @@ function TextHead({ children, className }: { children: ReactNode; className?: st
 }
 
 function NumericHead({ children }: { children: ReactNode }) {
-  return <TextHead className="text-right">{children}</TextHead>;
+  return <TextHead>{children}</TextHead>;
 }
 
 function OrdersTableMessageRow({
@@ -319,10 +317,11 @@ function PositionsTable({
           markX18: pairQuotes.marksById.get(pos.pairId)?.markX18,
         })
       ),
+    // `fundingById` changes when a newer `fundingIndex` push arrives, so break-even rebuilds with the list.
     [data, pairQuotes]
   );
 
-  const colSpan = 10;
+  const colSpan = 11;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -341,12 +340,13 @@ function PositionsTable({
         <TextHead>{t("perps.side")}</TextHead>
         <NumericHead>{t("perps.marginRequired")}</NumericHead>
         <NumericHead>{t("perps.sizeSymbol").replace("{symbol}", baseSymbol)}</NumericHead>
+        <NumericHead>{t("perps.breakEvenPrice")}</NumericHead>
         <NumericHead>{t("perps.liqPrice")}</NumericHead>
         <NumericHead>{t("perps.markPrice")}</NumericHead>
         <NumericHead>{t("perps.pnl")}</NumericHead>
         <NumericHead>{t("perps.roi")}</NumericHead>
         <NumericHead>{t("perps.openedAt")}</NumericHead>
-        <TextHead className="text-right">{t("perps.action")}</TextHead>
+        <TextHead>{t("perps.action")}</TextHead>
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
@@ -378,6 +378,9 @@ function PositionsTable({
               <TableCell className={numericCell}>
                 {row.size > 0 ? formatQuoteAmount(row.size) : "—"}
               </TableCell>
+              <TableCell className={cn(numericCell, row.breakEvenPrice <= 0 && "text-muted-foreground")}>
+                {row.breakEvenPrice > 0 ? formatSubscriptPrice(row.breakEvenPrice, 8) : "—"}
+              </TableCell>
               <TableCell className={numericCell}>
                 {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
               </TableCell>
@@ -403,8 +406,8 @@ function PositionsTable({
                 {row.roiPct == null ? "—" : formatPercentChange(row.roiPct)}
               </TableCell>
               <TableCell className={timeCell}>{formatUtcDateTime(row.openedAt)}</TableCell>
-              <TableCell className="px-3 py-2.5 text-right">
-                <div className="flex items-center justify-end gap-1.5">
+              <TableCell className="px-3 py-2.5">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() =>
@@ -436,6 +439,7 @@ function PositionsTable({
                         baseSymbol: row.pairLabel.split("/")[0] ?? row.pairLabel,
                         side: row.side,
                         size: row.size,
+                        breakEvenPrice: row.breakEvenPrice,
                         markPrice: markLabel,
                         markInput: mark?.input ?? "",
                       })
@@ -546,7 +550,7 @@ function PositionHistoryTable({
         <NumericHead>{t("perps.roi")}</NumericHead>
         <NumericHead>{t("perps.openedAt")}</NumericHead>
         <NumericHead>{t("perps.closedAt")}</NumericHead>
-        <TextHead className="text-right">{t("perps.action")}</TextHead>
+        <TextHead>{t("perps.action")}</TextHead>
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
@@ -568,7 +572,7 @@ function PositionHistoryTable({
               </TableCell>
               <TableCell className={timeCell}>{formatUtcDateTime(row.openedAt)}</TableCell>
               <TableCell className={timeCell}>{formatUtcDateTime(row.closedAt)}</TableCell>
-              <TableCell className="px-3 py-2.5 text-right">
+              <TableCell className="px-3 py-2.5">
                 <button
                   type="button"
                   onClick={() => onDetails(row)}
@@ -671,7 +675,7 @@ function OpenOrdersTable({
         <NumericHead>{t("perps.marginRequired")}</NumericHead>
         <NumericHead>{t("perps.filledPct")}</NumericHead>
         <NumericHead>{t("perps.time")}</NumericHead>
-        <TextHead className="text-right">{t("perps.action")}</TextHead>
+        <TextHead>{t("perps.action")}</TextHead>
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
@@ -723,8 +727,8 @@ function OpenOrdersTable({
                   %
                 </TableCell>
                 <TableCell className={timeCell}>{formatUtcDateTime(row.placedAt)}</TableCell>
-                <TableCell className="px-3 py-2.5 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
+                <TableCell className="px-3 py-2.5">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => onOrderDetails(row)}
@@ -807,7 +811,7 @@ function HistoryOrdersTable({
         <NumericHead>{t("perps.placedAt")}</NumericHead>
         <NumericHead>{t("perps.completedAt")}</NumericHead>
         <TextHead>{t("perps.status")}</TextHead>
-        <TextHead className="text-right">{t("perps.action")}</TextHead>
+        <TextHead>{t("perps.action")}</TextHead>
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
@@ -858,7 +862,7 @@ function HistoryOrdersTable({
               <TableCell className="text-muted-foreground px-3 py-2.5 text-sm">
                 {formatOrderHistoryStatus(row.status, t)}
               </TableCell>
-              <TableCell className="px-3 py-2.5 text-right">
+              <TableCell className="px-3 py-2.5">
                 <button
                   type="button"
                   onClick={() => onOrderDetails(row)}

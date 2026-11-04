@@ -165,13 +165,13 @@ function FillsPane({ orderId }: { orderId: string }) {
               <NumericHead>{t("perps.filled")}</NumericHead>
               <NumericHead>{t("perps.marginRequired")}</NumericHead>
               <NumericHead>{t("perps.fee")}</NumericHead>
-              <TextHead className="text-right">{t("perps.role")}</TextHead>
+              <TextHead>{t("perps.role")}</TextHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row, i) => (
               <TableRow key={`${row.orderId}-${row.tradeTime}-${i}`}>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                   {formatUtcDateTime(row.tradeTime)}
                 </TableCell>
                 <TableCell
@@ -193,19 +193,19 @@ function FillsPane({ orderId }: { orderId: string }) {
                     {formatLeveragePairSuffix(row.leverage)}
                   </span>
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatQuoteAmount(row.filledValue)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {row.lockedMargin != null ? formatQuoteAmount(row.lockedMargin) : "—"}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-right text-xs">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs">
                   {row.matchedSide === "maker"
                     ? t("perps.roleMaker")
                     : row.matchedSide === "taker"
@@ -243,25 +243,25 @@ function CancelsPane({ orderId }: { orderId: string }) {
               <NumericHead>{t("perps.amount")}</NumericHead>
               <NumericHead>{t("perps.lockedMargin")}</NumericHead>
               <TextHead>{t("perps.ledgerType")}</TextHead>
-              <TextHead className="text-right">{t("perps.status")}</TextHead>
+              <TextHead>{t("perps.status")}</TextHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-sm tabular-nums">
                   {formatUtcDateTime(row.createdAt)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatQuoteAmount(row.amount)}
                 </TableCell>
-                <TableCell className="px-3 py-2.5 text-right tabular-nums">
+                <TableCell className="px-3 py-2.5 tabular-nums">
                   {formatQuoteAmount(row.margin)}
                 </TableCell>
                 <TableCell className="px-3 py-2.5 text-sm">
                   {cancelReasonLabel(row.reasonCode, t)}
                 </TableCell>
-                <TableCell className="text-muted-foreground px-3 py-2.5 text-right text-xs">
+                <TableCell className="text-muted-foreground px-3 py-2.5 text-xs">
                   {cancelStatusLabel(row.status, t)}
                 </TableCell>
               </TableRow>
@@ -329,5 +329,5 @@ function TextHead({
 }
 
 function NumericHead({ children }: { children: ReactNode }) {
-  return <TextHead className="text-right">{children}</TextHead>;
+  return <TextHead>{children}</TextHead>;
 }

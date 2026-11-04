@@ -7,6 +7,7 @@ import type { PositionHistoryRsp, PositionsRsp } from "@/services/perps/orders/t
 const WAD = BigInt(10) ** BigInt(18);
 
 export type PositionFundingQuote = {
+  /** Latest `fundingIndex` push. A newer timestamp adds unsettled funding to margin, liq, PnL, and break-even. */
   fundingIndex?: MarketFundingIndex | null;
   minCollateralX18?: ApiBigInt | null;
   /** Quote/base × 1e18. Missing or ≤ 0 leaves PnL unset. */
@@ -26,6 +27,8 @@ export type PositionRow = {
   margin: number;
   /** `|balancePosition|` (base size, 18 decimals). */
   size: number;
+  /** Round break-even, including unsettled funding. `0` when missing. See `docs/perps-position.md`. */
+  breakEvenPrice: number;
   liqPrice: number;
   leverage: number | null;
   /** Quote PnL. Null when the mark price is not available. */
@@ -111,6 +114,30 @@ function leverageOf(notional: bigint, margin: bigint): number | null {
   return Number.isFinite(leverage) && leverage > 0 ? leverage : null;
 }
 
+/**
+ * Quote notional that zeros this round's PnL.
+ * `balanceMargin` already includes unsettled funding. Capital does not, so a newer funding index moves this price.
+ * See `docs/perps-position.md`.
+ */
+function breakEvenNotional(
+  position: bigint,
+  tradeMargin: bigint,
+  marginAdjust: bigint,
+  balanceMargin: bigint
+): bigint {
+  if (position === BigInt(0)) return BigInt(0);
+  const capital = tradeMargin + marginAdjust;
+  const notional = position > BigInt(0) ? capital - balanceMargin : balanceMargin - capital;
+  return notional > BigInt(0) ? notional : BigInt(0);
+}
+
+/** Break-even price: notional / `|balancePosition|`. `0` when either is missing. */
+export function positionBreakEvenPrice(position: bigint, notional: bigint): number {
+  const absPosition = position < BigInt(0) ? -position : position;
+  if (absPosition === BigInt(0) || notional <= BigInt(0)) return 0;
+  return priceX18ToNumber((notional * WAD) / absPosition);
+}
+
 /** Backend `PositionsService.calcLiqPrice`. Returns × 1e18, or null when collateral is missing. */
 function calcLiqPriceX18(margin: bigint, position: bigint, minCollateralX18: ApiBigInt | null | undefined): bigint | null {
   const minCollateral = parseApiBigInt(minCollateralX18);
@@ -131,12 +158,12 @@ export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuot
     position > BigInt(0) ? "buy" : position < BigInt(0) ? "sell" : null;
   const unsettled = unsettledFunding(pos, quote?.fundingIndex);
   const marginBi = positionDisplayMargin(pos) + unsettled;
-  const balanceMargin = apiInt(pos.balanceMargin) + unsettled;
+  const balanceWithUnsettled = apiInt(pos.balanceMargin) + unsettled;
   const chainLiq = priceX18ToNumber(pos.liqPrice);
   const recalc = fundingIndexIsNewer(pos, quote?.fundingIndex)
-    ? calcLiqPriceX18(balanceMargin, position, quote?.minCollateralX18)
+    ? calcLiqPriceX18(balanceWithUnsettled, position, quote?.minCollateralX18)
     : null;
-  const pnl = positionPnl(pos, balanceMargin, quote?.markX18);
+  const pnl = positionPnl(pos, balanceWithUnsettled, quote?.markX18);
   return {
     id: String(pos.id),
     account: pos.account,
@@ -147,8 +174,17 @@ export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuot
     balanceMargin: apiInt(pos.balanceMargin),
     margin: formatOrderFee(marginBi.toString()),
     size: formatOrderQuantity((position < BigInt(0) ? -position : position).toString()),
+    breakEvenPrice: positionBreakEvenPrice(
+      position,
+      breakEvenNotional(
+        position,
+        apiInt(pos.totalTradeMargin),
+        apiInt(pos.totalMarginAdjust),
+        balanceWithUnsettled
+      )
+    ),
     liqPrice: recalc == null ? chainLiq : priceX18ToNumber(recalc),
-    leverage: leverageOf(openNotional(position, marginBi, balanceMargin), marginBi),
+    leverage: leverageOf(openNotional(position, marginBi, balanceWithUnsettled), marginBi),
     pnl: pnl?.pnl ?? null,
     roiPct: pnl?.roiPct ?? null,
     openedAt: pos.openedAt,
