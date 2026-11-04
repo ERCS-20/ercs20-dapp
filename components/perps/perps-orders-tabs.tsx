@@ -424,13 +424,6 @@ function PositionsTable({
                   </button>
                   <button
                     type="button"
-                    onClick={() => toast.info(t("perps.positionActionComingSoon"))}
-                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
-                  >
-                    {t("perps.tpSl")}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() =>
                       onClose({
                         pairDisplay: `${row.pairLabel}${formatLeveragePairSuffix(row.leverage)}`,

@@ -493,7 +493,6 @@ export const en = {
     action: "Action",
     details: "Details",
     adjustMargin: "Margin",
-    tpSl: "TP/SL",
     closePosition: "Close",
     contract: "Contract",
     breakEvenPrice: "Breakeven price",
