@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useSignTypedData } from "wagmi";
+
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { PerpsPositionDetailDialog, type PositionDetailTarget } from "@/components/perps/perps-position-detail-dialog";
 import {
@@ -108,7 +116,7 @@ export function PerpsOrdersTabs({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4">
+      <div className="min-h-0 flex-1 overflow-auto">
         {tab === "positions" && (
           <PositionsTable
             baseSymbol={baseSymbol}
@@ -180,6 +188,40 @@ export function PerpsOrdersTabs({
   );
 }
 
+const textCell = "px-3 py-2.5 text-sm";
+const numericCell = "px-3 py-2.5 text-right tabular-nums";
+const timeCell = "text-muted-foreground px-3 py-2.5 text-right text-xs tabular-nums";
+const idCell = "text-muted-foreground px-3 py-2.5 text-xs tabular-nums";
+
+function OrdersTableFrame({ children }: { children: ReactNode }) {
+  return <table className="w-full min-w-max text-sm">{children}</table>;
+}
+
+function OrdersTableHead({ children }: { children: ReactNode }) {
+  return (
+    <TableHeader className="sticky top-0 z-10">
+      <TableRow className="hover:bg-transparent">{children}</TableRow>
+    </TableHeader>
+  );
+}
+
+function TextHead({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <TableHead
+      className={cn(
+        "text-muted-foreground sticky top-0 z-10 h-9 bg-[color-mix(in_oklab,var(--muted)_40%,var(--card))] px-3 text-left text-xs font-medium",
+        className
+      )}
+    >
+      {children}
+    </TableHead>
+  );
+}
+
+function NumericHead({ children }: { children: ReactNode }) {
+  return <TextHead className="text-right">{children}</TextHead>;
+}
+
 function OrdersTableMessageRow({
   colSpan,
   message,
@@ -188,11 +230,11 @@ function OrdersTableMessageRow({
   message: string;
 }) {
   return (
-    <tr>
-      <td colSpan={colSpan} className="text-muted-foreground py-8 text-center text-sm">
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={colSpan} className="text-muted-foreground px-3 py-8 text-center text-sm">
         {message}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -293,24 +335,20 @@ function PositionsTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">
-            {t("perps.sizeSymbol").replace("{symbol}", baseSymbol)}
-          </th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.liqPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.markPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
-        </tr>
-      </thead>
-      <tbody>
+    <OrdersTableFrame>
+      <OrdersTableHead>
+        <TextHead>{t("perps.pair")}</TextHead>
+        <TextHead>{t("perps.side")}</TextHead>
+        <NumericHead>{t("perps.marginRequired")}</NumericHead>
+        <NumericHead>{t("perps.sizeSymbol").replace("{symbol}", baseSymbol)}</NumericHead>
+        <NumericHead>{t("perps.liqPrice")}</NumericHead>
+        <NumericHead>{t("perps.markPrice")}</NumericHead>
+        <NumericHead>{t("perps.pnl")}</NumericHead>
+        <NumericHead>{t("perps.roi")}</NumericHead>
+        <NumericHead>{t("perps.openedAt")}</NumericHead>
+        <TextHead className="text-right">{t("perps.action")}</TextHead>
+      </OrdersTableHead>
+      <TableBody>
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
@@ -318,14 +356,15 @@ function PositionsTable({
             const mark = pairQuotes.marks.get(row.pairId);
             const markLabel = mark?.label ?? "—";
             return (
-            <tr key={row.id} className="border-border/40 border-b last:border-0">
-              <td className="py-2.5 pr-4 whitespace-nowrap">
+            <TableRow key={row.id}>
+              <TableCell className={textCell}>
                 {row.pairLabel}
-                {formatLeveragePairSuffix(row.leverage)}
-              </td>
-              <td
+                <span className="text-muted-foreground">{formatLeveragePairSuffix(row.leverage)}</span>
+              </TableCell>
+              <TableCell
                 className={cn(
-                  "py-2.5 pr-4 font-medium whitespace-nowrap",
+                  textCell,
+                  "font-medium",
                   row.side ? sideClass(row.side) : "text-muted-foreground"
                 )}
               >
@@ -334,45 +373,38 @@ function PositionsTable({
                   : row.side === "sell"
                     ? t("perps.short")
                     : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.margin)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>{formatQuoteAmount(row.margin)}</TableCell>
+              <TableCell className={numericCell}>
                 {row.size > 0 ? formatQuoteAmount(row.size) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.liqPrice > 0 ? formatSubscriptPrice(row.liqPrice, 8) : "—"}
-              </td>
-              <td
-                className={cn(
-                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
-                  markLabel === "—" && "text-muted-foreground"
-                )}
-              >
+              </TableCell>
+              <TableCell className={cn(numericCell, markLabel === "—" && "text-muted-foreground")}>
                 {markLabel}
-              </td>
-              <td
+              </TableCell>
+              <TableCell
                 className={cn(
-                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  numericCell,
+                  "font-medium",
                   row.pnl == null ? "text-muted-foreground" : signedAmountClass(row.pnl)
                 )}
               >
                 {row.pnl == null ? "—" : formatSignedQuote(row.pnl)}
-              </td>
-              <td
+              </TableCell>
+              <TableCell
                 className={cn(
-                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  numericCell,
+                  "font-medium",
                   row.roiPct == null ? "text-muted-foreground" : signedAmountClass(row.roiPct)
                 )}
               >
                 {row.roiPct == null ? "—" : formatPercentChange(row.roiPct)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.openedAt)}
-              </td>
-              <td className="py-2.5 whitespace-nowrap">
-                <div className="flex items-center gap-1.5">
+              </TableCell>
+              <TableCell className={timeCell}>{formatUtcDateTime(row.openedAt)}</TableCell>
+              <TableCell className="px-3 py-2.5 text-right">
+                <div className="flex items-center justify-end gap-1.5">
                   <button
                     type="button"
                     onClick={() =>
@@ -435,13 +467,13 @@ function PositionsTable({
                     {t("perps.flashClose")}
                   </button>
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
             );
           })
         )}
-      </tbody>
-    </table>
+      </TableBody>
+    </OrdersTableFrame>
   );
 }
 
@@ -502,67 +534,41 @@ function PositionHistoryTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.tradeAmount")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.addedMargin")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.funding")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.settledAmount")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pnl")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.roi")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.openedAt")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.closedAt")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
-        </tr>
-      </thead>
-      <tbody>
+    <OrdersTableFrame>
+      <OrdersTableHead>
+        <TextHead>{t("perps.pair")}</TextHead>
+        <NumericHead>{t("perps.tradeAmount")}</NumericHead>
+        <NumericHead>{t("perps.fee")}</NumericHead>
+        <NumericHead>{t("perps.addedMargin")}</NumericHead>
+        <NumericHead>{t("perps.funding")}</NumericHead>
+        <NumericHead>{t("perps.settledAmount")}</NumericHead>
+        <NumericHead>{t("perps.pnl")}</NumericHead>
+        <NumericHead>{t("perps.roi")}</NumericHead>
+        <NumericHead>{t("perps.openedAt")}</NumericHead>
+        <NumericHead>{t("perps.closedAt")}</NumericHead>
+        <TextHead className="text-right">{t("perps.action")}</TextHead>
+      </OrdersTableHead>
+      <TableBody>
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
           rows.map((row) => (
-            <tr key={row.key} className="border-border/40 border-b last:border-0">
-              <td className="py-2.5 pr-4 whitespace-nowrap">{row.pairLabel}</td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.totalTradeMargin)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.totalTradeFee)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.totalMarginAdjust)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatSignedQuote(row.totalFunding)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatQuoteAmount(row.totalMarginSettled)}
-              </td>
-              <td
-                className={cn(
-                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
-                  signedAmountClass(row.realizedPnl)
-                )}
-              >
+            <TableRow key={row.key}>
+              <TableCell className={textCell}>{row.pairLabel}</TableCell>
+              <TableCell className={numericCell}>{formatQuoteAmount(row.totalTradeMargin)}</TableCell>
+              <TableCell className={numericCell}>{formatQuoteAmount(row.totalTradeFee)}</TableCell>
+              <TableCell className={numericCell}>{formatQuoteAmount(row.totalMarginAdjust)}</TableCell>
+              <TableCell className={numericCell}>{formatSignedQuote(row.totalFunding)}</TableCell>
+              <TableCell className={numericCell}>{formatQuoteAmount(row.totalMarginSettled)}</TableCell>
+              <TableCell className={cn(numericCell, "font-medium", signedAmountClass(row.realizedPnl))}>
                 {formatSignedQuote(row.realizedPnl)}
-              </td>
-              <td
-                className={cn(
-                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
-                  signedAmountClass(row.roiPct)
-                )}
-              >
+              </TableCell>
+              <TableCell className={cn(numericCell, "font-medium", signedAmountClass(row.roiPct))}>
                 {formatPercentChange(row.roiPct)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.openedAt)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.closedAt)}
-              </td>
-              <td className="py-2.5 whitespace-nowrap">
+              </TableCell>
+              <TableCell className={timeCell}>{formatUtcDateTime(row.openedAt)}</TableCell>
+              <TableCell className={timeCell}>{formatUtcDateTime(row.closedAt)}</TableCell>
+              <TableCell className="px-3 py-2.5 text-right">
                 <button
                   type="button"
                   onClick={() => onDetails(row)}
@@ -570,12 +576,12 @@ function PositionHistoryTable({
                 >
                   {t("perps.details")}
                 </button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))
         )}
-      </tbody>
-    </table>
+      </TableBody>
+    </OrdersTableFrame>
   );
 }
 
@@ -655,21 +661,19 @@ function OpenOrdersTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.marginRequired")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.filledPct")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.time")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
-        </tr>
-      </thead>
-      <tbody>
+    <OrdersTableFrame>
+      <OrdersTableHead>
+        <TextHead>{t("perps.orderId")}</TextHead>
+        <TextHead>{t("perps.pair")}</TextHead>
+        <TextHead>{t("perps.side")}</TextHead>
+        <NumericHead>{t("perps.orderPrice")}</NumericHead>
+        <NumericHead>{t("perps.orderTotal")}</NumericHead>
+        <NumericHead>{t("perps.marginRequired")}</NumericHead>
+        <NumericHead>{t("perps.filledPct")}</NumericHead>
+        <NumericHead>{t("perps.time")}</NumericHead>
+        <TextHead className="text-right">{t("perps.action")}</TextHead>
+      </OrdersTableHead>
+      <TableBody>
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
@@ -685,17 +689,16 @@ function OpenOrdersTable({
               cancellingOrderId == null;
 
             return (
-              <tr key={row.orderId} className="border-border/40 border-b last:border-0">
-                <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
-                  {row.orderId}
-                </td>
-                <td className="py-2.5 pr-4 whitespace-nowrap">
+              <TableRow key={row.orderId}>
+                <TableCell className={idCell}>{row.orderId}</TableCell>
+                <TableCell className={textCell}>
                   {row.pairLabel}
-                  {formatLeveragePairSuffix(row.leverage)}
-                </td>
-                <td
+                  <span className="text-muted-foreground">{formatLeveragePairSuffix(row.leverage)}</span>
+                </TableCell>
+                <TableCell
                   className={cn(
-                    "py-2.5 pr-4 font-medium whitespace-nowrap",
+                    textCell,
+                    "font-medium",
                     row.side ? sideClass(row.side) : "text-muted-foreground"
                   )}
                 >
@@ -704,28 +707,24 @@ function OpenOrdersTable({
                     : row.side === "sell"
                       ? t("perps.sell")
                       : "—"}
-                </td>
-                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                </TableCell>
+                <TableCell className={numericCell}>
                   {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
-                </td>
-                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                  {formatQuoteAmount(row.total)}
-                </td>
-                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                </TableCell>
+                <TableCell className={numericCell}>{formatQuoteAmount(row.total)}</TableCell>
+                <TableCell className={numericCell}>
                   {row.margin != null ? formatQuoteAmount(row.margin) : "—"}
-                </td>
-                <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+                </TableCell>
+                <TableCell className={numericCell}>
                   {row.fillPercent.toLocaleString(undefined, {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 2,
                   })}
                   %
-                </td>
-                <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                  {formatUtcDateTime(row.placedAt)}
-                </td>
-                <td className="py-2.5 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
+                </TableCell>
+                <TableCell className={timeCell}>{formatUtcDateTime(row.placedAt)}</TableCell>
+                <TableCell className="px-3 py-2.5 text-right">
+                  <div className="flex items-center justify-end gap-1.5">
                     <button
                       type="button"
                       onClick={() => onOrderDetails(row)}
@@ -748,13 +747,13 @@ function OpenOrdersTable({
                       </button>
                     )}
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             );
           })
         )}
-      </tbody>
-    </table>
+      </TableBody>
+    </OrdersTableFrame>
   );
 }
 
@@ -794,40 +793,37 @@ function HistoryOrdersTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
-      <thead>
-        <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.side")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderPrice")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.average")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderTotal")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.lockedMargin")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.filledValue")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.fee")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.placedAt")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.completedAt")}</th>
-          <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.status")}</th>
-          <th className="pb-2 font-medium whitespace-nowrap">{t("perps.action")}</th>
-        </tr>
-      </thead>
-      <tbody>
+    <OrdersTableFrame>
+      <OrdersTableHead>
+        <TextHead>{t("perps.orderId")}</TextHead>
+        <TextHead>{t("perps.pair")}</TextHead>
+        <TextHead>{t("perps.side")}</TextHead>
+        <NumericHead>{t("perps.orderPrice")}</NumericHead>
+        <NumericHead>{t("perps.average")}</NumericHead>
+        <NumericHead>{t("perps.orderTotal")}</NumericHead>
+        <NumericHead>{t("perps.lockedMargin")}</NumericHead>
+        <NumericHead>{t("perps.filledValue")}</NumericHead>
+        <NumericHead>{t("perps.fee")}</NumericHead>
+        <NumericHead>{t("perps.placedAt")}</NumericHead>
+        <NumericHead>{t("perps.completedAt")}</NumericHead>
+        <TextHead>{t("perps.status")}</TextHead>
+        <TextHead className="text-right">{t("perps.action")}</TextHead>
+      </OrdersTableHead>
+      <TableBody>
         {emptyMessage ? (
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
           rows.map((row) => (
-            <tr key={row.orderId} className="border-border/40 border-b last:border-0">
-              <td className="text-muted-foreground py-2.5 pr-4 text-sm tabular-nums whitespace-nowrap">
-                {row.orderId}
-              </td>
-              <td className="py-2.5 pr-4 whitespace-nowrap">
+            <TableRow key={row.orderId}>
+              <TableCell className={idCell}>{row.orderId}</TableCell>
+              <TableCell className={textCell}>
                 {row.pairLabel}
-                {formatLeveragePairSuffix(row.leverage)}
-              </td>
-              <td
+                <span className="text-muted-foreground">{formatLeveragePairSuffix(row.leverage)}</span>
+              </TableCell>
+              <TableCell
                 className={cn(
-                  "py-2.5 pr-4 font-medium whitespace-nowrap",
+                  textCell,
+                  "font-medium",
                   row.side ? sideClass(row.side) : "text-muted-foreground"
                 )}
               >
@@ -836,37 +832,33 @@ function HistoryOrdersTable({
                   : row.side === "sell"
                     ? t("perps.sell")
                     : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.averagePrice != null
                   ? formatSubscriptPrice(row.averagePrice, row.enginePriceDecimal)
                   : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.total != null ? formatQuoteAmount(row.total) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.lockedMargin != null ? formatQuoteAmount(row.lockedMargin) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.filledValue != null ? formatQuoteAmount(row.filledValue) : "—"}
-              </td>
-              <td className="py-2.5 pr-4 tabular-nums whitespace-nowrap">
+              </TableCell>
+              <TableCell className={numericCell}>
                 {row.fee > 0 ? formatQuoteAmount(row.fee) : "—"}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.placedAt)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                {formatUtcDateTime(row.completedAt)}
-              </td>
-              <td className="text-muted-foreground py-2.5 pr-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell className={timeCell}>{formatUtcDateTime(row.placedAt)}</TableCell>
+              <TableCell className={timeCell}>{formatUtcDateTime(row.completedAt)}</TableCell>
+              <TableCell className="text-muted-foreground px-3 py-2.5 text-sm">
                 {formatOrderHistoryStatus(row.status, t)}
-              </td>
-              <td className="py-2.5 whitespace-nowrap">
+              </TableCell>
+              <TableCell className="px-3 py-2.5 text-right">
                 <button
                   type="button"
                   onClick={() => onOrderDetails(row)}
@@ -874,12 +866,12 @@ function HistoryOrdersTable({
                 >
                   {t("perps.details")}
                 </button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))
         )}
-      </tbody>
-    </table>
+      </TableBody>
+    </OrdersTableFrame>
   );
 }
 
