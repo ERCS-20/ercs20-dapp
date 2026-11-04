@@ -495,6 +495,7 @@ export const zhCN = {
     estPnl: "预计盈亏",
     confirmClosePosition: "确认平仓",
     exceedsPositionSize: "超过仓位数量",
+    priceDecimalLimit: "小数点后不能超过 {digits} 位",
     flashClose: "一键平仓",
     positionActionComingSoon: "功能即将上线",
     addMargin: "增加",

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 
 import { PerpsFavoriteButton } from "@/components/perps/perps-favorite-button";
@@ -18,11 +18,14 @@ import {
   formatSubscriptPrice,
 } from "@/lib/utils/price";
 import type { TickerStats } from "@/lib/market/market-ticker-stats";
+import { formatFundingQuote } from "@/lib/perps/funding-quote";
+import { formatMarkPrice } from "@/lib/perps/mark-price";
 import { pairLabelFromCode, pairPathFromCode } from "@/lib/perps/pair-api";
 import { getTokenIconSrc } from "@/lib/tokens/icon-path";
 import type { PerpsPair } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
-import { useMarketPairsPagination, usePerpsTickerStats } from "@/services/perps/market/hooks";
+import { useFundingRate, useMarketPairsPagination, useMarksByIds, usePerpsTickerStats } from "@/services/perps/market/hooks";
+import { usePerpsOracleWs } from "@/services/perps/market/oracle-ws";
 import { useI18n } from "@/providers/i18n-provider";
 
 function SpotBaseIcon({ symbol }: { symbol: string }) {
@@ -179,12 +182,44 @@ function PairHeading({
   );
 }
 
+function MarkStat({
+  pairId,
+  enginePriceDecimal,
+  label,
+}: {
+  pairId: number | undefined;
+  enginePriceDecimal: number | undefined;
+  label: string;
+}) {
+  const ids = pairId == null ? [] : [pairId];
+  const marks = useMarksByIds(ids, { enabled: pairId != null });
+  const mark = pairId == null ? undefined : marks.get(pairId);
+  const quote = mark ? formatMarkPrice(mark, enginePriceDecimal) : null;
+  return <TickerStat label={label} value={quote?.label ?? "—"} muted={quote == null} />;
+}
+
+function FundingStat({ pairId, label }: { pairId: number | undefined; label: string }) {
+  const { data } = useFundingRate(pairId);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (data == null) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [data]);
+
+  const value = data == null ? null : formatFundingQuote(data, nowMs);
+  return <TickerStat label={label} value={value ?? "—"} muted={value == null} />;
+}
+
 function ToolbarStats({
   pair,
+  pairId,
   stats,
   enginePriceDecimal,
 }: {
   pair: PerpsPair;
+  pairId: number | undefined;
   stats: TickerStats;
   enginePriceDecimal: number | undefined;
 }) {
@@ -192,8 +227,12 @@ function ToolbarStats({
   const volumeDigits = { maximumFractionDigits: 2 } as const;
   return (
     <dl className="border-border/60 grid grid-cols-3 gap-x-3 gap-y-2.5 border-t pt-2.5 sm:grid-cols-4 lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:justify-between lg:gap-x-3 lg:overflow-x-auto lg:border-t-0 lg:pt-0 scrollbar-none">
-      <TickerStat label={t("perps.mark")} value="—" muted />
-      <TickerStat label={t("perps.fundingRate")} value="—" muted />
+      <MarkStat
+        pairId={pairId}
+        enginePriceDecimal={enginePriceDecimal}
+        label={t("perps.mark")}
+      />
+      <FundingStat pairId={pairId} label={t("perps.fundingRate")} />
       <TickerStat
         label={t("perps.high24h")}
         value={formatSubscriptPrice(stats.high24h, enginePriceDecimal)}
@@ -251,6 +290,7 @@ export function PerpsToolbar({
     isLoading && stats.lastPrice === 0
       ? "…"
       : formatSubscriptPrice(stats.lastPrice, enginePriceDecimal);
+  usePerpsOracleWs(pairId == null ? [] : [pairId]);
 
   return (
     <div
@@ -275,7 +315,12 @@ export function PerpsToolbar({
         />
       </div>
 
-      <ToolbarStats pair={pair} stats={stats} enginePriceDecimal={enginePriceDecimal} />
+      <ToolbarStats
+        pair={pair}
+        pairId={pairId}
+        stats={stats}
+        enginePriceDecimal={enginePriceDecimal}
+      />
     </div>
   );
 }

@@ -227,6 +227,11 @@ export type OrdersTradeHistoryListReq = PerpsPositionEventsListReq;
 
 export type OrdersTradeHistoryListRsp = OrdersTradeHistoryRsp[];
 
+/** Mirrors `exchange.orbix.perps.orders.dto.OrdersTradeHistoryOrderListReq`. */
+export type OrdersTradeHistoryOrderListReq = {
+  orderId: ApiBigInt;
+};
+
 /** Mirrors `exchange.orbix.perps.orders.dto.OrdersCancelHistoryListReq`. */
 export type OrdersCancelHistoryListReq = {
   orderId: ApiBigInt;

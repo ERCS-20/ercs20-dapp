@@ -1,9 +1,10 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useApiQuery } from "@/lib/api/hooks";
+import { isNewerBlockCursor } from "@/lib/perps/block-cursor";
 import {
   applyTradesToDayStats,
   dayStatsFromKlineCurrentDay,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/market/pairs-price-merge";
 import { isMarketKlineBar, mergeWsKlineBar } from "@/lib/market/kline-merge";
 import {
+  getFundingRate,
   getKlineCurrentDay,
   getMarketOrderBook,
   listKlines,
@@ -24,6 +26,17 @@ import {
   listMarketUserPairs,
   paginationMarketPairs,
 } from "@/services/perps/market/api";
+import {
+  peekFundingIndexes,
+  subscribeFundingIndexes,
+} from "@/services/perps/market/funding-index-by-id";
+import {
+  getMarksByIds,
+  peekMarksByIds,
+  subscribeMarks,
+} from "@/services/perps/market/marks-by-ids";
+import { fundingRateQueryKey } from "@/services/perps/market/oracle-ws";
+import { normalizePairIds } from "@/services/perps/orders/pairs-by-ids";
 import type {
   KlineListReq,
   KlineListRsp,
@@ -32,6 +45,9 @@ import type {
   MarketPairsPaginationReq,
   MarketPairsPaginationRsp,
   MarketPairsRsp,
+  MarketFundingIndex,
+  MarketFundingRateRsp,
+  MarketMark,
   MarketTrade,
   MarketTradeListRsp,
   MarketWsOrderBookDiff,
@@ -485,4 +501,93 @@ export function useMarketOrderBookWs(
       perpsMarketWs.unsubscribe("orderbook", pairId);
     };
   }, [enabled, pairId, queryClient]);
+}
+
+/**
+ * Mark prices for this id list. Cached ids are not requested again.
+ * `rememberMarks` (including a later WebSocket push) refreshes subscribers.
+ */
+export function useMarksByIds(
+  pairIds: readonly number[],
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? true;
+  const idsKey = useMemo(() => normalizePairIds(pairIds).join(","), [pairIds]);
+  const ids = useMemo(() => (idsKey ? idsKey.split(",").map(Number) : []), [idsKey]);
+  const [marks, setMarks] = useState<MarketMark[]>([]);
+
+  useLayoutEffect(() => {
+    if (!enabled) {
+      setMarks([]);
+      return;
+    }
+    let cancelled = false;
+    const publish = () => {
+      if (!cancelled) setMarks(peekMarksByIds(ids));
+    };
+    publish();
+    const unsubscribe = subscribeMarks(publish);
+    void getMarksByIds(ids)
+      .then(publish)
+      .catch(() => {
+        // Keep marks already read from localStorage.
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [enabled, ids]);
+
+  return useMemo(() => {
+    const map = new Map<number, MarketMark>();
+    for (const mark of marks) map.set(mark.pairId, mark);
+    return map;
+  }, [marks]);
+}
+
+/** Latest `fundingIndex` push for these pairs. Empty until the socket delivers one. */
+export function useFundingIndexes(
+  pairIds: readonly number[],
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled ?? true;
+  const idsKey = useMemo(() => normalizePairIds(pairIds).join(","), [pairIds]);
+  const ids = useMemo(() => (idsKey ? idsKey.split(",").map(Number) : []), [idsKey]);
+  const [indexes, setIndexes] = useState<MarketFundingIndex[]>([]);
+
+  useLayoutEffect(() => {
+    if (!enabled) {
+      setIndexes([]);
+      return;
+    }
+    const publish = () => setIndexes(peekFundingIndexes(ids));
+    publish();
+    return subscribeFundingIndexes(publish);
+  }, [enabled, ids]);
+
+  return useMemo(() => {
+    const map = new Map<number, MarketFundingIndex>();
+    for (const index of indexes) map.set(index.pairId, index);
+    return map;
+  }, [indexes]);
+}
+
+/** GET /market/store/funding-rate/{pairId}. A newer WebSocket sample is kept over an older REST row. */
+export function useFundingRate(pairId: number | undefined) {
+  const queryClient = useQueryClient();
+  const enabled = pairId != null && Number.isInteger(pairId) && pairId >= 0;
+  const queryKey = fundingRateQueryKey(pairId ?? -1);
+  return useApiQuery<MarketFundingRateRsp | null>({
+    queryKey,
+    queryFn: async () => {
+      const next = await getFundingRate(pairId!);
+      const prev = queryClient.getQueryData<MarketFundingRateRsp | null>(queryKey);
+      if (prev && !isNewerBlockCursor(next, prev)) return prev;
+      return next;
+    },
+    enabled,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 }

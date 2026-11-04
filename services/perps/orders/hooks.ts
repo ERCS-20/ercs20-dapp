@@ -18,6 +18,7 @@ import {
   listOrders,
   listOrdersCancelHistory,
   listOrdersTradeHistory,
+  listOrdersTradeHistoryByOrder,
   listPositionCashLedger,
   listPositionMarginEvents,
   listFundingSettlements,
@@ -44,6 +45,7 @@ import type {
   OrdersListRsp,
   OrdersTradeHistoryListReq,
   OrdersTradeHistoryListRsp,
+  OrdersTradeHistoryOrderListReq,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
@@ -270,6 +272,22 @@ export function useOrdersTradeHistoryList(
     queryKey: ["perps", "orders", "trade-history", "list", req],
     queryFn: () => listOrdersTradeHistory(req),
     enabled: enabled && isTimeRangeListReady(req),
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function useOrdersTradeHistoryByOrder(
+  req: OrdersTradeHistoryOrderListReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+  const orderId = apiBigIntToString(req.orderId);
+
+  return useApiQuery<OrdersTradeHistoryListRsp>({
+    queryKey: ["perps", "orders", "trade-history", "list-by-order", orderId],
+    queryFn: () => listOrdersTradeHistoryByOrder({ orderId }),
+    enabled: enabled && Boolean(orderId),
     notifyError,
     staleTime: 30_000,
   });

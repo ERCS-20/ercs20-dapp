@@ -90,10 +90,10 @@ export function PerpsPositionDetailDialog({
         className={cn(
           "flex w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0",
           "rounded-2xl ring-1 ring-border/60 sm:max-w-4xl",
-          "max-h-[min(90vh,640px)]"
+          "h-[min(90vh,640px)]"
         )}
       >
-        <div className="border-border/60 bg-brand/5 border-b px-5 pt-5 pb-4 pr-12">
+        <div className="border-border/60 bg-brand/5 shrink-0 border-b px-5 pt-5 pb-4 pr-12">
           <div className="flex items-start gap-3">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand/15 text-brand ring-1 ring-brand/20">
               <CandlestickChartIcon aria-hidden className="size-5" />
@@ -109,9 +109,9 @@ export function PerpsPositionDetailDialog({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 px-5 py-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
           {target ? (
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div className="grid shrink-0 grid-cols-1 gap-2.5 sm:grid-cols-2">
               <MetaCard label={t("perps.openedAt")} value={formatUtcDateTime(target.openedAt)} />
               {target.closedAt ? (
                 <MetaCard label={t("perps.closedAt")} value={formatUtcDateTime(target.closedAt)} />
@@ -157,24 +157,24 @@ export function PerpsPositionDetailDialog({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ledger" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="ledger" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "ledger" ? (
                 <LedgerPane positionId={target?.positionId} />
               ) : null}
             </TabsContent>
-            <TabsContent value="fills" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="fills" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "fills" ? <FillsPane req={timeReq} /> : null}
             </TabsContent>
-            <TabsContent value="margin" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="margin" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "margin" ? <MarginPane req={timeReq} /> : null}
             </TabsContent>
-            <TabsContent value="funding" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="funding" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "funding" ? <FundingPane req={timeReq} /> : null}
             </TabsContent>
           </Tabs>
         </div>
 
-        <DialogFooter className="mx-0 mb-0 gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:justify-end">
+        <DialogFooter className="mx-0 mb-0 shrink-0 gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:justify-end">
           <Button
             type="button"
             variant="outline"
@@ -281,9 +281,16 @@ function MetaCard({
   );
 }
 
-function PanelShell({ children }: { children: ReactNode }) {
+function PanelShell({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   return (
-    <div className="border-border/60 bg-muted/30 h-full min-h-[14rem] overflow-auto rounded-2xl border">
+    <div
+      className={cn(
+        "border-border/60 w-full rounded-2xl border",
+        fill
+          ? "flex h-full flex-col"
+          : "max-h-full overflow-auto"
+      )}
+    >
       {children}
     </div>
   );
@@ -291,7 +298,7 @@ function PanelShell({ children }: { children: ReactNode }) {
 
 function PanelStatus({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[14rem] flex-col items-center justify-center gap-2 px-6">
+    <div className="flex h-full flex-1 flex-col items-center justify-center gap-2 px-6">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border/60">
         <CandlestickChartIcon aria-hidden className="size-5" />
       </div>
@@ -353,7 +360,7 @@ function LedgerTable({
   t: (key: string) => string;
 }) {
   return (
-    <PanelShell>
+    <PanelShell fill={!isLoading && rows.length === 0}>
       {isLoading ? (
         <PanelSkeleton label={loadingText} />
       ) : rows.length === 0 ? (
@@ -410,7 +417,7 @@ function FillsTable({
   t: (key: string) => string;
 }) {
   return (
-    <PanelShell>
+    <PanelShell fill={!isLoading && rows.length === 0}>
       {isLoading ? (
         <PanelSkeleton label={loadingText} />
       ) : rows.length === 0 ? (
@@ -495,7 +502,7 @@ function MarginTable({
   t: (key: string) => string;
 }) {
   return (
-    <PanelShell>
+    <PanelShell fill={!isLoading && rows.length === 0}>
       {isLoading ? (
         <PanelSkeleton label={loadingText} />
       ) : rows.length === 0 ? (
@@ -552,7 +559,7 @@ function FundingTable({
   t: (key: string) => string;
 }) {
   return (
-    <PanelShell>
+    <PanelShell fill={!isLoading && rows.length === 0}>
       {isLoading ? (
         <PanelSkeleton label={loadingText} />
       ) : rows.length === 0 ? (

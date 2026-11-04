@@ -1,7 +1,17 @@
 import { formatOrderFee, formatOrderQuantity } from "@/lib/market/open-orders-format";
 import { pairLabelFromCode, parsePairCode } from "@/lib/market/pair";
 import { parseApiBigInt, type ApiBigInt } from "@/lib/utils/coerce-bigint";
+import type { MarketFundingIndex } from "@/services/perps/market/types";
 import type { PositionHistoryRsp, PositionsRsp } from "@/services/perps/orders/types";
+
+const WAD = BigInt(10) ** BigInt(18);
+
+export type PositionFundingQuote = {
+  fundingIndex?: MarketFundingIndex | null;
+  minCollateralX18?: ApiBigInt | null;
+  /** Quote/base × 1e18. Missing or ≤ 0 leaves PnL unset. */
+  markX18?: ApiBigInt | null;
+};
 
 export type PositionRow = {
   id: string;
@@ -10,14 +20,18 @@ export type PositionRow = {
   pairLabel: string;
   quoteSymbol: string;
   side: "buy" | "sell" | null;
-  /** Isolated remaining margin (`balanceMargin`, 18 decimals). */
+  /** Chain `balanceMargin`, without unsettled funding. */
   balanceMargin: bigint;
-  /** `totalTradeMargin − totalTradeFee + totalMarginAdjust + totalFunding`. */
+  /** Display margin, including unsettled funding when the global index is newer. */
   margin: number;
   /** `|balancePosition|` (base size, 18 decimals). */
   size: number;
   liqPrice: number;
   leverage: number | null;
+  /** Quote PnL. Null when the mark price is not available. */
+  pnl: number | null;
+  /** Percent. Null when the mark price is not available. `0` when capital ≤ 0. */
+  roiPct: number | null;
   openedAt: number;
   closedAt?: number;
 };
@@ -33,9 +47,7 @@ function apiInt(raw: ApiBigInt | undefined): bigint {
   return parseApiBigInt(raw) ?? BigInt(0);
 }
 
-/**
- * Display margin: `totalTradeMargin − totalTradeFee + totalMarginAdjust + totalFunding`.
- */
+/** Settled display margin, before an unsettled funding index is applied. */
 export function positionDisplayMargin(pos: PositionsRsp): bigint {
   return (
     apiInt(pos.totalTradeMargin) -
@@ -45,35 +57,86 @@ export function positionDisplayMargin(pos: PositionsRsp): bigint {
   );
 }
 
-/**
- * Approximate open quote notional from cash ledger (margin already includes funding):
- * long:  margin − balanceMargin
- * short: balanceMargin − margin
- */
-export function positionOpenNotional(pos: PositionsRsp): bigint {
+function fundingIndexIsNewer(pos: PositionsRsp, index: MarketFundingIndex | null | undefined): boolean {
+  if (index == null) return false;
+  const globalTs = parseApiBigInt(index.timestamp);
+  if (globalTs == null) return false;
+  return BigInt(pos.fundingTimestamp ?? 0) < globalTs;
+}
+
+/** Pending funding when the global index timestamp is ahead of this position. */
+export function unsettledFunding(
+  pos: PositionsRsp,
+  index: MarketFundingIndex | null | undefined
+): bigint {
+  if (!fundingIndexIsNewer(pos, index) || index == null) return BigInt(0);
+  const globalValue = parseApiBigInt(index.value);
+  if (globalValue == null) return BigInt(0);
+  const indexDelta = globalValue - apiInt(pos.fundingValue);
   const position = apiInt(pos.balancePosition);
+  return -((indexDelta * position) / WAD);
+}
+
+function openNotional(position: bigint, margin: bigint, balanceMargin: bigint): bigint {
   if (position === BigInt(0)) return BigInt(0);
-  const margin = positionDisplayMargin(pos);
-  const balanceMargin = apiInt(pos.balanceMargin);
-  const notional =
-    position > BigInt(0) ? margin - balanceMargin : balanceMargin - margin;
+  const notional = position > BigInt(0) ? margin - balanceMargin : balanceMargin - margin;
   return notional > BigInt(0) ? notional : BigInt(0);
 }
 
-export function positionsRspToRow(pos: PositionsRsp): PositionRow {
+function positionPnl(
+  pos: PositionsRsp,
+  balanceMargin: bigint,
+  markX18: ApiBigInt | null | undefined
+): { pnl: number; roiPct: number } | null {
+  const mark = parseApiBigInt(markX18);
+  if (mark == null || mark <= BigInt(0)) return null;
+  const position = apiInt(pos.balancePosition);
+  const absPosition = position < BigInt(0) ? -position : position;
+  const markQuote = (absPosition * mark) / WAD;
+  const equity = position < BigInt(0) ? balanceMargin - markQuote : balanceMargin + markQuote;
+  const tradeMargin = apiInt(pos.totalTradeMargin);
+  const marginAdjust = apiInt(pos.totalMarginAdjust);
+  const pnl = equity - tradeMargin - marginAdjust;
+  const capital = tradeMargin + marginAdjust;
+  const roiBasisPoints = capital <= BigInt(0) ? BigInt(0) : (pnl * BigInt(10000)) / capital;
+  return {
+    pnl: formatOrderFee(pnl.toString()),
+    roiPct: Number(roiBasisPoints) / 100,
+  };
+}
+
+function leverageOf(notional: bigint, margin: bigint): number | null {
+  if (margin <= BigInt(0) || notional <= BigInt(0)) return null;
+  const leverage = Number(notional / margin);
+  return Number.isFinite(leverage) && leverage > 0 ? leverage : null;
+}
+
+/** Backend `PositionsService.calcLiqPrice`. Returns × 1e18, or null when collateral is missing. */
+function calcLiqPriceX18(margin: bigint, position: bigint, minCollateralX18: ApiBigInt | null | undefined): bigint | null {
+  const minCollateral = parseApiBigInt(minCollateralX18);
+  if (minCollateral == null || minCollateral <= BigInt(0)) return null;
+  if (position === BigInt(0)) return BigInt(0);
+  if (position > BigInt(0) && margin < BigInt(0)) {
+    return (-margin * minCollateral) / position;
+  }
+  if (position < BigInt(0) && margin > BigInt(0)) {
+    return (margin * WAD * WAD) / (-position * minCollateral);
+  }
+  return BigInt(0);
+}
+
+export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuote): PositionRow {
   const position = apiInt(pos.balancePosition);
   const side: PositionRow["side"] =
     position > BigInt(0) ? "buy" : position < BigInt(0) ? "sell" : null;
-  const sizeBi = position < BigInt(0) ? -position : position;
-  const marginBi = positionDisplayMargin(pos);
-  const notionalBi = positionOpenNotional(pos);
-  const margin = formatOrderFee(marginBi.toString());
-  const size = formatOrderQuantity(sizeBi.toString());
-  let leverage: number | null = null;
-  if (marginBi > BigInt(0) && notionalBi > BigInt(0)) {
-    const lev = Number(notionalBi / marginBi);
-    leverage = Number.isFinite(lev) && lev > 0 ? lev : null;
-  }
+  const unsettled = unsettledFunding(pos, quote?.fundingIndex);
+  const marginBi = positionDisplayMargin(pos) + unsettled;
+  const balanceMargin = apiInt(pos.balanceMargin) + unsettled;
+  const chainLiq = priceX18ToNumber(pos.liqPrice);
+  const recalc = fundingIndexIsNewer(pos, quote?.fundingIndex)
+    ? calcLiqPriceX18(balanceMargin, position, quote?.minCollateralX18)
+    : null;
+  const pnl = positionPnl(pos, balanceMargin, quote?.markX18);
   return {
     id: String(pos.id),
     account: pos.account,
@@ -82,10 +145,12 @@ export function positionsRspToRow(pos: PositionsRsp): PositionRow {
     quoteSymbol: parsePairCode(pos.pairCode)?.quote ?? "USDC",
     side,
     balanceMargin: apiInt(pos.balanceMargin),
-    margin,
-    size,
-    liqPrice: priceX18ToNumber(pos.liqPrice),
-    leverage,
+    margin: formatOrderFee(marginBi.toString()),
+    size: formatOrderQuantity((position < BigInt(0) ? -position : position).toString()),
+    liqPrice: recalc == null ? chainLiq : priceX18ToNumber(recalc),
+    leverage: leverageOf(openNotional(position, marginBi, balanceMargin), marginBi),
+    pnl: pnl?.pnl ?? null,
+    roiPct: pnl?.roiPct ?? null,
     openedAt: pos.openedAt,
     closedAt: pos.closedAt ?? undefined,
   };

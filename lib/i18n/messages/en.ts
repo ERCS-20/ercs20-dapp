@@ -502,6 +502,7 @@ export const en = {
     estPnl: "Est. PnL",
     confirmClosePosition: "Confirm close",
     exceedsPositionSize: "Amount exceeds position size",
+    priceDecimalLimit: "No more than {digits} digits after the decimal point",
     flashClose: "Flash close",
     positionActionComingSoon: "Coming soon",
     addMargin: "Add",

@@ -11,6 +11,8 @@ import type {
   MarketPairsRsp,
   MarketPairsUserReq,
   MarketTradeListRsp,
+  MarketFundingRateRsp,
+  MarketMarkListRsp,
 } from "@/services/perps/market/types";
 
 /** POST /market/store/pairs/pagination */
@@ -49,4 +51,14 @@ export function listMarketTrades(pairId: number) {
 /** GET /market/store/order-book/{pairId} */
 export function getMarketOrderBook(pairId: number) {
   return request.get<MarketBidsAndAsksRsp>(PerpsMarketApi.orderBook(pairId));
+}
+
+/** POST /market/store/mark/list */
+export function listMarks(pairIds: number[]) {
+  return request.post<MarketMarkListRsp>(PerpsMarketApi.marks, { pairIds });
+}
+
+/** GET /market/store/funding-rate/{pairId} */
+export function getFundingRate(pairId: number) {
+  return request.get<MarketFundingRateRsp | null>(PerpsMarketApi.fundingRate(pairId));
 }

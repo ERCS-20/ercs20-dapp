@@ -95,7 +95,14 @@ export type MarketTradeListRsp = {
   reverseFromIndex: number | null;
 };
 
-export type MarketWsChannel = "kline" | "orderbook" | "trade" | "pairs";
+export type MarketWsChannel =
+  | "kline"
+  | "orderbook"
+  | "trade"
+  | "pairs"
+  | "mark"
+  | "fundingRate"
+  | "fundingIndex";
 
 export type MarketWsClientMessage = {
   op: "ping" | "subscribe" | "unsubscribe";

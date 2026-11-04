@@ -12,6 +12,7 @@ const Keys = {
   ercs20TokenCache: "ercs20-token-cache-v1",
   perpsLeverage: "orbix.perps.leverage",
   perpsPairsById: "orbix.perps.pairs-by-id.v1",
+  perpsMarksById: "orbix.perps.marks-by-id.v1",
   spotChartView: "orbix.spot.chartView",
   perpsChartView: "orbix.perps.chartView",
 } as const;
@@ -43,6 +44,10 @@ export const LocalStorageCatalog: ReadonlyArray<{
   {
     key: Keys.perpsPairsById,
     description: "Perps pair metadata by pairId (enginePriceDecimal and PairRsp)",
+  },
+  {
+    key: Keys.perpsMarksById,
+    description: "Perps mark price by pairId (markX18). Hits are not refetched; WS updates this cache.",
   },
   { key: Keys.spotChartView, description: "Spot trading chart interval view" },
   { key: Keys.perpsChartView, description: "Perps trading chart interval view" },
@@ -181,6 +186,16 @@ export function loadPerpsPairsByIdStorage(): Record<string, unknown> {
 
 export function savePerpsPairsByIdStorage(map: Record<string, unknown>): void {
   setJson(Keys.perpsPairsById, map);
+}
+
+export function loadPerpsMarksByIdStorage(): Record<string, unknown> {
+  const parsed = getJson<unknown>(Keys.perpsMarksById);
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  return parsed as Record<string, unknown>;
+}
+
+export function savePerpsMarksByIdStorage(map: Record<string, unknown>): void {
+  setJson(Keys.perpsMarksById, map);
 }
 
 // —— Chart view ——

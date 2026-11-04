@@ -495,6 +495,7 @@ export const zhTW = {
     estPnl: "預計盈虧",
     confirmClosePosition: "確認平倉",
     exceedsPositionSize: "超過倉位數量",
+    priceDecimalLimit: "小數點後不能超過 {digits} 位",
     flashClose: "一鍵平倉",
     positionActionComingSoon: "功能即將上線",
     addMargin: "增加",

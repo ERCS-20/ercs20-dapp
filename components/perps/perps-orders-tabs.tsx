@@ -24,9 +24,9 @@ import {
   ordersRspToOpenOrderRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
+import { formatMarkPrice, type MarkPriceText } from "@/lib/perps/mark-price";
 import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import {
@@ -40,8 +40,8 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 import { getOrderSalt, getPerpsOrdersUserBalance } from "@/services/perps/orders/api";
-import { useMarketUserPairs } from "@/services/perps/market/hooks";
-import type { MarketPairRsp } from "@/services/perps/market/types";
+import { useFundingIndexes, useMarksByIds } from "@/services/perps/market/hooks";
+import { usePerpsOracleWs } from "@/services/perps/market/oracle-ws";
 import {
   useCancelOrder,
   useOrdersHistoryPagination,
@@ -71,7 +71,6 @@ export function PerpsOrdersTabs({
   className?: string;
 }) {
   const { t } = useI18n();
-  const { address } = useWallet();
   const [detailTarget, setDetailTarget] = useState<PositionDetailTarget | null>(null);
   const [orderDetailTarget, setOrderDetailTarget] = useState<OrderDetailTarget | null>(null);
   const [marginTarget, setMarginTarget] = useState<AdjustMarginTarget | null>(null);
@@ -124,9 +123,6 @@ export function PerpsOrdersTabs({
               setOrderDetailTarget({
                 orderId: row.orderId,
                 pairLabel: row.pairLabel,
-                pairId: row.pairId,
-                account: (address ?? "").toLowerCase(),
-                placedAt: row.placedAt,
               })
             }
           />
@@ -137,10 +133,6 @@ export function PerpsOrdersTabs({
               setOrderDetailTarget({
                 orderId: row.orderId,
                 pairLabel: row.pairLabel,
-                pairId: row.pairId,
-                account: (address ?? "").toLowerCase(),
-                placedAt: row.placedAt,
-                completedAt: row.completedAt,
               })
             }
           />
@@ -231,35 +223,6 @@ function resolveOrdersTableMessage({
   return null;
 }
 
-const NO_MARKET_PAIRS: MarketPairRsp[] = [];
-
-type PositionMark = {
-  /** Display label, including subscript formatting. */
-  label: string;
-  /** Plain decimal for the close-price input. */
-  input: string;
-};
-
-function formatMarkInput(value: number, priceDecimal: number): string {
-  const digits = Math.min(Math.max(priceDecimal, 0), 18);
-  const fixed = value.toFixed(digits);
-  if (!fixed.includes(".")) return fixed;
-  return fixed.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
-}
-
-function formatPairMark(
-  pair: MarketPairRsp,
-  enginePriceDecimal: number | undefined
-): PositionMark | null {
-  if (enginePriceDecimal == null) return null;
-  const price = enginePriceToNumber(pair.close, enginePriceDecimal);
-  if (!Number.isFinite(price) || price <= 0) return null;
-  return {
-    label: formatSubscriptPrice(price, enginePriceDecimal),
-    input: formatMarkInput(price, enginePriceDecimal),
-  };
-}
-
 function usePositionPairQuotes(positions: { pairId: number }[] | undefined, settled: boolean) {
   const pairIds = useMemo(() => {
     const ids = new Set<number>();
@@ -270,21 +233,19 @@ function usePositionPairQuotes(positions: { pairId: number }[] | undefined, sett
   }, [positions]);
 
   const quotesEnabled = settled && pairIds.length > 0;
-  const { data } = useMarketUserPairs(pairIds, {
-    enabled: quotesEnabled,
-    notifyError: false,
-  });
-  const pairs = data?.pairs ?? NO_MARKET_PAIRS;
+  usePerpsOracleWs(pairIds, quotesEnabled);
+  const marksById = useMarksByIds(pairIds, { enabled: quotesEnabled });
+  const fundingById = useFundingIndexes(pairIds, { enabled: quotesEnabled });
   const pairInfo = usePairsByIds(pairIds, { enabled: quotesEnabled });
 
   return useMemo(() => {
-    const marks = new Map<number, PositionMark>();
-    for (const pair of pairs) {
-      const mark = formatPairMark(pair, pairInfo.get(pair.pairId)?.enginePriceDecimal);
-      if (mark != null) marks.set(pair.pairId, mark);
+    const marks = new Map<number, MarkPriceText>();
+    for (const [pairId, mark] of marksById) {
+      const formatted = formatMarkPrice(mark, pairInfo.get(pairId)?.enginePriceDecimal);
+      if (formatted != null) marks.set(pairId, formatted);
     }
-    return marks;
-  }, [pairs, pairInfo]);
+    return { marks, marksById, fundingById, pairInfo };
+  }, [fundingById, marksById, pairInfo]);
 }
 
 function PositionsTable({
@@ -305,9 +266,19 @@ function PositionsTable({
     enabled: isAuthenticated,
     notifyError: false,
   });
-  const markByPair = usePositionPairQuotes(data, isSuccess);
+  const pairQuotes = usePositionPairQuotes(data, isSuccess);
 
-  const rows = useMemo(() => (data ?? []).map(positionsRspToRow), [data]);
+  const rows = useMemo(
+    () =>
+      (data ?? []).map((pos) =>
+        positionsRspToRow(pos, {
+          fundingIndex: pairQuotes.fundingById.get(pos.pairId),
+          minCollateralX18: pairQuotes.pairInfo.get(pos.pairId)?.minCollateralX18,
+          markX18: pairQuotes.marksById.get(pos.pairId)?.markX18,
+        })
+      ),
+    [data, pairQuotes]
+  );
 
   const colSpan = 10;
   const emptyMessage = resolveOrdersTableMessage({
@@ -322,7 +293,7 @@ function PositionsTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+    <table className="w-max border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
@@ -344,7 +315,7 @@ function PositionsTable({
           <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
         ) : (
           rows.map((row) => {
-            const mark = markByPair.get(row.pairId);
+            const mark = pairQuotes.marks.get(row.pairId);
             const markLabel = mark?.label ?? "—";
             return (
             <tr key={row.id} className="border-border/40 border-b last:border-0">
@@ -381,11 +352,21 @@ function PositionsTable({
               >
                 {markLabel}
               </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                —
+              <td
+                className={cn(
+                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  row.pnl == null ? "text-muted-foreground" : signedAmountClass(row.pnl)
+                )}
+              >
+                {row.pnl == null ? "—" : formatSignedQuote(row.pnl)}
               </td>
-              <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
-                —
+              <td
+                className={cn(
+                  "py-2.5 pr-4 tabular-nums whitespace-nowrap",
+                  row.roiPct == null ? "text-muted-foreground" : signedAmountClass(row.roiPct)
+                )}
+              >
+                {row.roiPct == null ? "—" : formatPercentChange(row.roiPct)}
               </td>
               <td className="text-muted-foreground py-2.5 pr-4 tabular-nums whitespace-nowrap">
                 {formatUtcDateTime(row.openedAt)}
@@ -521,7 +502,7 @@ function PositionHistoryTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+    <table className="w-max border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
@@ -674,7 +655,7 @@ function OpenOrdersTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+    <table className="w-max border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
@@ -813,7 +794,7 @@ function HistoryOrdersTable({
   });
 
   return (
-    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+    <table className="w-max border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>

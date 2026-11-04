@@ -55,6 +55,13 @@ function sanitizeDecimal(raw: string): string {
   return x;
 }
 
+/** Fraction digits after dropping trailing zeros, matching `parseUnits`. */
+function priceFractionDigits(raw: string): number {
+  const dot = raw.indexOf(".");
+  if (dot < 0) return 0;
+  return raw.slice(dot + 1).replace(/0+$/, "").length;
+}
+
 function parseAvailableBalance(raw: string): number {
   const n = Number(raw.replace(/,/g, "").trim());
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -326,6 +333,17 @@ export function PerpsOrderForm({
     }
 
     const enginePriceDecimal = pair.enginePriceDecimal;
+    if (priceFractionDigits(submitPrice) > enginePriceDecimal) {
+      debugPlaceOrder("submit:reject", {
+        reason: "priceDecimalLimit",
+        submitPrice,
+        enginePriceDecimal,
+      });
+      toast.error(
+        t("perps.priceDecimalLimit").replace("{digits}", String(enginePriceDecimal))
+      );
+      return;
+    }
     debugPlaceOrder("submit:parseEnginePrice", {
       submitPrice,
       priceInput: price,
@@ -442,6 +460,15 @@ export function PerpsOrderForm({
     side === "buy"
       ? t("perps.placeBuy").replace("{symbol}", pair.baseSymbol)
       : t("perps.placeSell").replace("{symbol}", pair.baseSymbol);
+  const enginePriceDecimal = pair.enginePriceDecimal;
+  const typedPrice = price.trim();
+  const priceDecimalError =
+    enginePriceDecimal != null &&
+    typedPrice !== "" &&
+    typedPrice !== "." &&
+    priceFractionDigits(typedPrice) > enginePriceDecimal
+      ? t("perps.priceDecimalLimit").replace("{digits}", String(enginePriceDecimal))
+      : null;
 
   return (
     <section
@@ -601,6 +628,8 @@ export function PerpsOrderForm({
             id="perps-price"
             inputMode="decimal"
             value={price}
+            aria-invalid={priceDecimalError != null || undefined}
+            aria-describedby={priceDecimalError ? "perps-price-decimal-error" : undefined}
             onChange={(e) => {
               onPriceChange(sanitizeDecimal(e.target.value));
             }}
@@ -614,6 +643,11 @@ export function PerpsOrderForm({
             placeholder={formatSubscriptPrice(lastPrice)}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
+          {priceDecimalError ? (
+            <p id="perps-price-decimal-error" className="text-destructive mt-1.5 text-xs" role="alert">
+              {priceDecimalError}
+            </p>
+          ) : null}
         </div>
 
         <div>

@@ -20,6 +20,7 @@ import type {
   OrdersCancelHistoryListRsp,
   OrdersTradeHistoryListReq,
   OrdersTradeHistoryListRsp,
+  OrdersTradeHistoryOrderListReq,
   OrdersTradeHistoryPaginationReq,
   OrdersTradeHistoryPaginationRsp,
   PairRsp,
@@ -174,6 +175,14 @@ export function listOrdersTradeHistory(req: OrdersTradeHistoryListReq) {
   return request.post<OrdersTradeHistoryListRsp>(
     PerpsOrdersApi.ordersTradeHistoryList,
     timeRangeListBody(req)
+  );
+}
+
+/** POST /perps/orders/orders-trade-history/list-by-order — `userId` from gateway JWT headers. */
+export function listOrdersTradeHistoryByOrder(req: OrdersTradeHistoryOrderListReq) {
+  return request.post<OrdersTradeHistoryListRsp>(
+    PerpsOrdersApi.ordersTradeHistoryListByOrder,
+    { orderId: apiBigIntToString(req.orderId) }
   );
 }
 

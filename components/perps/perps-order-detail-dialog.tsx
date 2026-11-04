@@ -1,6 +1,6 @@
 "use client";
 
-import { ScrollTextIcon } from "lucide-react";
+import { CandlestickChartIcon, ScrollTextIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -36,17 +36,12 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 import {
   useOrdersCancelHistoryList,
-  useOrdersTradeHistoryList,
+  useOrdersTradeHistoryByOrder,
 } from "@/services/perps/orders/hooks";
-import type { PerpsPositionEventsListReq } from "@/services/perps/orders/types";
 
 export type OrderDetailTarget = {
   orderId: string;
   pairLabel: string;
-  pairId?: number;
-  account?: string;
-  placedAt: number;
-  completedAt?: number;
 };
 
 type DetailTab = "fills" | "cancels";
@@ -62,16 +57,6 @@ export function PerpsOrderDetailDialog({
   const [tab, setTab] = useState<DetailTab>("fills");
   const open = target != null;
 
-  const tradeReq = useMemo(
-    (): PerpsPositionEventsListReq => ({
-      pairId: target?.pairId ?? Number.NaN,
-      account: (target?.account ?? "").toLowerCase(),
-      fromBlockTimestamp: target?.placedAt ?? 0,
-      toBlockTimestamp: target?.completedAt ?? Date.now(),
-    }),
-    [target?.pairId, target?.account, target?.placedAt, target?.completedAt]
-  );
-
   return (
     <Dialog
       open={open}
@@ -84,10 +69,10 @@ export function PerpsOrderDetailDialog({
         className={cn(
           "flex w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0",
           "rounded-2xl ring-1 ring-border/60 sm:max-w-4xl",
-          "max-h-[min(90vh,640px)]"
+          "h-[min(90vh,640px)]"
         )}
       >
-        <div className="border-border/60 bg-brand/5 border-b px-5 pt-5 pb-4 pr-12">
+        <div className="border-border/60 bg-brand/5 shrink-0 border-b px-5 pt-5 pb-4 pr-12">
           <div className="flex items-start gap-3">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand/15 text-brand ring-1 ring-brand/20">
               <ScrollTextIcon aria-hidden className="size-5" />
@@ -105,7 +90,7 @@ export function PerpsOrderDetailDialog({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 px-5 py-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
           <Tabs
             value={tab}
             onValueChange={(value) => setTab(value as DetailTab)}
@@ -128,12 +113,12 @@ export function PerpsOrderDetailDialog({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="fills" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="fills" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "fills" && target ? (
-                <FillsPane req={tradeReq} orderId={target.orderId} />
+                <FillsPane orderId={target.orderId} />
               ) : null}
             </TabsContent>
-            <TabsContent value="cancels" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <TabsContent value="cancels" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               {tab === "cancels" && target ? (
                 <CancelsPane orderId={target.orderId} />
               ) : null}
@@ -141,7 +126,7 @@ export function PerpsOrderDetailDialog({
           </Tabs>
         </div>
 
-        <DialogFooter className="mx-0 mb-0 gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:justify-end">
+        <DialogFooter className="mx-0 mb-0 shrink-0 gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:justify-end">
           <Button
             type="button"
             variant="outline"
@@ -156,19 +141,16 @@ export function PerpsOrderDetailDialog({
   );
 }
 
-function FillsPane({ req, orderId }: { req: PerpsPositionEventsListReq; orderId: string }) {
+function FillsPane({ orderId }: { orderId: string }) {
   const { t } = useI18n();
-  const query = useOrdersTradeHistoryList(req);
+  const query = useOrdersTradeHistoryByOrder({ orderId });
   const rows = useMemo(
-    () =>
-      (query.data ?? [])
-        .map(ordersTradeHistoryRspToRow)
-        .filter((row) => row.orderId === orderId),
-    [query.data, orderId]
+    () => (query.data ?? []).map(ordersTradeHistoryRspToRow),
+    [query.data]
   );
 
   return (
-    <PanelShell>
+    <PanelShell fill={!query.isLoading && rows.length === 0}>
       {query.isLoading ? (
         <PanelSkeleton label={t("swap.loading")} />
       ) : rows.length === 0 ? (
@@ -248,7 +230,7 @@ function CancelsPane({ orderId }: { orderId: string }) {
   );
 
   return (
-    <PanelShell>
+    <PanelShell fill={!query.isLoading && rows.length === 0}>
       {query.isLoading ? (
         <PanelSkeleton label={t("swap.loading")} />
       ) : rows.length === 0 ? (
@@ -291,9 +273,16 @@ function CancelsPane({ orderId }: { orderId: string }) {
   );
 }
 
-function PanelShell({ children }: { children: ReactNode }) {
+function PanelShell({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   return (
-    <div className="border-border/60 min-h-0 max-h-[min(52vh,360px)] overflow-auto rounded-xl border">
+    <div
+      className={cn(
+        "border-border/60 w-full rounded-xl border",
+        fill
+          ? "flex h-full flex-col"
+          : "max-h-full overflow-auto"
+      )}
+    >
       {children}
     </div>
   );
@@ -308,7 +297,16 @@ function PanelSkeleton({ label }: { label: string }) {
 }
 
 function PanelStatus({ message }: { message: string }) {
-  return <p className="text-muted-foreground px-4 py-8 text-center text-sm">{message}</p>;
+  return (
+    <div className="flex h-full flex-1 flex-col items-center justify-center gap-2 px-6">
+      <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border/60">
+        <CandlestickChartIcon aria-hidden className="size-5" />
+      </div>
+      <p className="text-muted-foreground text-center text-xs leading-relaxed sm:text-sm">
+        {message}
+      </p>
+    </div>
+  );
 }
 
 function TextHead({
@@ -321,7 +319,7 @@ function TextHead({
   return (
     <TableHead
       className={cn(
-        "bg-muted/80 text-muted-foreground sticky top-0 px-3 py-2 text-xs font-medium",
+        "bg-muted/40 text-muted-foreground sticky top-0 px-3 py-2 text-xs font-medium",
         className
       )}
     >
