@@ -293,7 +293,7 @@ function PositionsTable({
   });
 
   return (
-    <table className="w-max border-separate border-spacing-0 text-sm">
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
@@ -502,7 +502,7 @@ function PositionHistoryTable({
   });
 
   return (
-    <table className="w-max border-separate border-spacing-0 text-sm">
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.pair")}</th>
@@ -655,7 +655,7 @@ function OpenOrdersTable({
   });
 
   return (
-    <table className="w-max border-separate border-spacing-0 text-sm">
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
@@ -794,7 +794,7 @@ function HistoryOrdersTable({
   });
 
   return (
-    <table className="w-max border-separate border-spacing-0 text-sm">
+    <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr className="text-muted-foreground border-border/60 border-b text-left text-xs">
           <th className="pb-2 pr-4 font-medium whitespace-nowrap">{t("perps.orderId")}</th>
