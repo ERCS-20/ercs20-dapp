@@ -70,6 +70,10 @@ export function marketPairsUserPairsQueryKeyPrefix() {
   return ["perps", "market", "pairs", "user-pairs"] as const;
 }
 
+export function marketPairsPositionsQueryKeyPrefix() {
+  return ["perps", "market", "pairs", "positions"] as const;
+}
+
 export function useMarketPairsPagination(
   req: MarketPairsPaginationReq,
   options?: { enabled?: boolean; notifyError?: boolean }
@@ -103,8 +107,29 @@ export function useMarketUserPairs(
 }
 
 /**
+ * POST /market/store/pairs/user-pairs — `close` for open position pair ids.
+ * One fetch per id set; later `pairs` pushes patch this cache.
+ */
+export function useMarketPositionPairs(
+  pairIds: readonly number[] | undefined,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+  const ids = useMemo(() => normalizePairIds(pairIds ?? []), [pairIds]);
+
+  return useApiQuery<MarketPairsRsp>({
+    queryKey: [...marketPairsPositionsQueryKeyPrefix(), ids],
+    queryFn: () => listMarketUserPairs({ pairIds: ids }),
+    enabled: enabled && ids.length > 0,
+    notifyError,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
  * After REST pairs pagination: subscribe global `pairs` WS and patch
- * open/close into pagination + user-pairs React Query caches.
+ * open/close into pagination, favorites, and position-pair caches.
  */
 export function useMarketPairsWs(options?: { enabled?: boolean }) {
   const { enabled = true } = options ?? {};
@@ -124,6 +149,10 @@ export function useMarketPairsWs(options?: { enabled?: boolean }) {
       );
       queryClient.setQueriesData<MarketPairsRsp>(
         { queryKey: marketPairsUserPairsQueryKeyPrefix() },
+        (old) => applyPairPricesToUserPairs(old, updates)
+      );
+      queryClient.setQueriesData<MarketPairsRsp>(
+        { queryKey: marketPairsPositionsQueryKeyPrefix() },
         (old) => applyPairPricesToUserPairs(old, updates)
       );
     };
@@ -504,8 +533,8 @@ export function useMarketOrderBookWs(
 }
 
 /**
- * Mark prices for this id list. Cached ids are not requested again.
- * `rememberMarks` (including a later WebSocket push) refreshes subscribers.
+ * Mark prices for this id list. Ids missing from this page's memory are one POST.
+ * A later `mark` push refreshes subscribers. Nothing is written to localStorage.
  */
 export function useMarksByIds(
   pairIds: readonly number[],
@@ -530,7 +559,7 @@ export function useMarksByIds(
     void getMarksByIds(ids)
       .then(publish)
       .catch(() => {
-        // Keep marks already read from localStorage.
+        // Leave marks already held in memory for this page.
       });
     return () => {
       cancelled = true;

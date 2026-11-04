@@ -16,16 +16,22 @@ function formatMarkInput(value: number, priceDecimal: number): string {
   return fixed.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
 }
 
+/** Human price at the pair's engine scale. `null` when the scale or price is missing. */
+export function formatEnginePrice(
+  price: number,
+  enginePriceDecimal: number | undefined
+): MarkPriceText | null {
+  if (enginePriceDecimal == null || !Number.isFinite(price) || price <= 0) return null;
+  return {
+    label: formatSubscriptPrice(price, enginePriceDecimal),
+    input: formatMarkInput(price, enginePriceDecimal),
+  };
+}
+
 /** `markX18 / 1e18`, formatted with the pair's engine price scale. */
 export function formatMarkPrice(
   mark: Pick<MarketMark, "markX18">,
   enginePriceDecimal: number | undefined
 ): MarkPriceText | null {
-  if (enginePriceDecimal == null) return null;
-  const price = priceX18ToNumber(mark.markX18);
-  if (!Number.isFinite(price) || price <= 0) return null;
-  return {
-    label: formatSubscriptPrice(price, enginePriceDecimal),
-    input: formatMarkInput(price, enginePriceDecimal),
-  };
+  return formatEnginePrice(priceX18ToNumber(mark.markX18), enginePriceDecimal);
 }

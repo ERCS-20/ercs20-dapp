@@ -33,7 +33,8 @@ import {
   ordersRspToOpenOrderRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
-import { formatMarkPrice, type MarkPriceText } from "@/lib/perps/mark-price";
+import { formatEnginePrice, formatMarkPrice, type MarkPriceText } from "@/lib/perps/mark-price";
+import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
 import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
@@ -49,7 +50,12 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
 import { getOrderSalt, getPerpsOrdersUserBalance } from "@/services/perps/orders/api";
-import { useFundingIndexes, useMarksByIds } from "@/services/perps/market/hooks";
+import {
+  useFundingIndexes,
+  useMarketPositionPairs,
+  useMarksByIds,
+} from "@/services/perps/market/hooks";
+import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { usePerpsOracleWs } from "@/services/perps/market/oracle-ws";
 import {
   useCancelOrder,
@@ -277,6 +283,10 @@ function usePositionPairQuotes(positions: { pairId: number }[] | undefined, sett
   const marksById = useMarksByIds(pairIds, { enabled: quotesEnabled });
   const fundingById = useFundingIndexes(pairIds, { enabled: quotesEnabled });
   const pairInfo = usePairsByIds(pairIds, { enabled: quotesEnabled });
+  const { data: positionPairs } = useMarketPositionPairs(pairIds, {
+    enabled: quotesEnabled,
+    notifyError: false,
+  });
 
   return useMemo(() => {
     const marks = new Map<number, MarkPriceText>();
@@ -284,8 +294,10 @@ function usePositionPairQuotes(positions: { pairId: number }[] | undefined, sett
       const formatted = formatMarkPrice(mark, pairInfo.get(pairId)?.enginePriceDecimal);
       if (formatted != null) marks.set(pairId, formatted);
     }
-    return { marks, marksById, fundingById, pairInfo };
-  }, [fundingById, marksById, pairInfo]);
+    const closeById = new Map<number, ApiBigInt>();
+    for (const row of positionPairs?.pairs ?? []) closeById.set(row.pairId, row.close);
+    return { marks, marksById, fundingById, pairInfo, closeById };
+  }, [fundingById, marksById, pairInfo, positionPairs]);
 }
 
 function PositionsTable({
@@ -433,8 +445,10 @@ function PositionsTable({
                         side: row.side,
                         size: row.size,
                         breakEvenPrice: row.breakEvenPrice,
-                        markPrice: markLabel,
-                        markInput: mark?.input ?? "",
+                        ...currentPriceFromClose(
+                          pairQuotes.closeById.get(row.pairId),
+                          pairQuotes.pairInfo.get(row.pairId)?.enginePriceDecimal
+                        ),
                       })
                     }
                     className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
@@ -874,4 +888,19 @@ function HistoryOrdersTable({
 
 function sideClass(side: "buy" | "sell") {
   return side === "buy" ? "text-brand" : "text-brand-alt";
+}
+
+const EMPTY_CURRENT_PRICE = { currentPrice: "—", currentInput: "" };
+
+/** Snapshot of the position-pair cache `close` for the close dialog. */
+function currentPriceFromClose(
+  close: ApiBigInt | undefined,
+  enginePriceDecimal: number | undefined
+): { currentPrice: string; currentInput: string } {
+  if (close == null || enginePriceDecimal == null) return EMPTY_CURRENT_PRICE;
+  const text = formatEnginePrice(
+    enginePriceToNumber(close, enginePriceDecimal),
+    enginePriceDecimal
+  );
+  return text ? { currentPrice: text.label, currentInput: text.input } : EMPTY_CURRENT_PRICE;
 }

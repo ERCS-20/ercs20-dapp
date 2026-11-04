@@ -31,10 +31,10 @@ export type ClosePositionTarget = {
   size: number;
   /** List break-even at the moment the dialog opened. Later funding-index pushes do not replace it. */
   breakEvenPrice: number;
-  /** Formatted mark, or an em dash when the quote is not ready. */
-  markPrice: string;
-  /** Plain mark decimal captured when the dialog opens. Empty when the quote is missing. */
-  markInput: string;
+  /** Formatted last trade, or an em dash when the quote is not ready. */
+  currentPrice: string;
+  /** Plain last-trade decimal captured when the dialog opens. Empty when the quote is missing. */
+  currentInput: string;
 };
 
 function sanitizeDecimal(raw: string): string {
@@ -101,6 +101,29 @@ function confirmTone(side: ClosePositionTarget["side"]): string {
   return "";
 }
 
+type CloseOrderMode = "limit" | "trigger";
+type TriggerMove = "rise" | "fall" | "reach";
+
+function triggerMove(triggerRaw: string, currentRaw: string): TriggerMove | null {
+  const trigger = parsePositiveDecimal(triggerRaw);
+  if (trigger == null) return null;
+  const current = parsePositiveDecimal(currentRaw);
+  if (current == null || trigger === current) return "reach";
+  return trigger > current ? "rise" : "fall";
+}
+
+function triggerDirectionNote(
+  t: (path: string) => string,
+  triggerRaw: string,
+  currentRaw: string
+): string | undefined {
+  const move = triggerMove(triggerRaw, currentRaw);
+  if (move === "rise") return t("perps.triggerAbove");
+  if (move === "fall") return t("perps.triggerBelow");
+  if (move === "reach") return t("perps.triggerReach");
+  return undefined;
+}
+
 export function PerpsClosePositionDialog({
   target,
   onOpenChange,
@@ -134,22 +157,28 @@ function ClosePositionForm({
     draft.parsedSize != null && exceedsSize(draft.parsedSize, target.size)
       ? t("perps.exceedsPositionSize")
       : null;
+  const triggerMissing =
+    draft.mode === "trigger" && parsePositiveDecimal(draft.triggerPrice) == null;
 
   return (
     <DialogContent
       className={cn(
-        "flex max-h-[min(90vh,760px)] w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0",
+        "flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0",
         "rounded-2xl ring-1 ring-border/60 sm:max-w-md"
       )}
     >
       <CloseHeader pairDisplay={target.pairDisplay} side={target.side} />
       <ClosePositionFields
         target={target}
+        mode={draft.mode}
         closePrice={draft.closePrice}
+        triggerPrice={draft.triggerPrice}
         sizeInput={draft.sizeInput}
         sizePct={draft.sizePct}
         sizeError={sizeError}
         positionSizeText={draft.positionSizeText}
+        onModeChange={draft.setMode}
+        onTriggerChange={(value) => draft.setTriggerPrice(sanitizeDecimal(value))}
         onPriceChange={(value) => draft.setClosePrice(sanitizeDecimal(value))}
         onSizeChange={(value) => {
           draft.setSizePct(0);
@@ -158,8 +187,11 @@ function ClosePositionForm({
         onPctChange={draft.applyPercent}
       />
       <CloseFooter
-        disabled={draft.parsedSize == null || sizeError != null}
+        disabled={draft.parsedSize == null || sizeError != null || triggerMissing}
         side={target.side}
+        confirmLabel={
+          draft.mode === "trigger" ? t("perps.closeWhenTriggered") : t("perps.closeNow")
+        }
         onCancel={() => onOpenChange(false)}
         onConfirm={() => toast.info(t("perps.positionActionComingSoon"))}
       />
@@ -168,7 +200,9 @@ function ClosePositionForm({
 }
 
 function useCloseDraft(target: ClosePositionTarget) {
-  const [closePrice, setClosePrice] = useState(target.markInput);
+  const [mode, setMode] = useState<CloseOrderMode>("limit");
+  const [triggerPrice, setTriggerPrice] = useState("");
+  const [closePrice, setClosePrice] = useState(target.currentInput);
   const [sizeInput, setSizeInput] = useState(() =>
     target.size > 0 ? formatSizeInput(target.size) : ""
   );
@@ -189,6 +223,10 @@ function useCloseDraft(target: ClosePositionTarget) {
     target.size > 0 ? `${formatSizeInput(target.size)} ${target.baseSymbol}` : "—";
 
   return {
+    mode,
+    setMode,
+    triggerPrice,
+    setTriggerPrice,
     closePrice,
     setClosePrice,
     sizeInput,
@@ -210,7 +248,7 @@ function CloseHeader({
 }) {
   const { t } = useI18n();
   return (
-    <div className="border-border/60 border-b px-5 pt-5 pb-4 pr-12">
+    <div className="border-border/60 shrink-0 border-b px-5 pt-5 pb-4 pr-12">
       <DialogHeader className="gap-2 text-left">
         <DialogTitle className="text-base font-semibold tracking-tight">
           {t("perps.closePosition")}
@@ -245,11 +283,15 @@ function SideBadge({ side }: { side: ClosePositionTarget["side"] }) {
 
 type ClosePositionFieldsProps = {
   target: ClosePositionTarget;
+  mode: CloseOrderMode;
   closePrice: string;
+  triggerPrice: string;
   sizeInput: string;
   sizePct: number;
   sizeError: string | null;
   positionSizeText: string;
+  onModeChange: (mode: CloseOrderMode) => void;
+  onTriggerChange: (value: string) => void;
   onPriceChange: (value: string) => void;
   onSizeChange: (value: string) => void;
   onPctChange: (pct: number) => void;
@@ -257,31 +299,48 @@ type ClosePositionFieldsProps = {
 
 function ClosePositionFields({
   target,
+  mode,
   closePrice,
+  triggerPrice,
   sizeInput,
   sizePct,
   sizeError,
   positionSizeText,
+  onModeChange,
+  onTriggerChange,
   onPriceChange,
   onSizeChange,
   onPctChange,
 }: ClosePositionFieldsProps) {
   const { t } = useI18n();
+  const triggerMode = mode === "trigger";
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
+      <CloseModeSwitch mode={mode} onModeChange={onModeChange} />
       <PositionContext
         entryLabel={t("perps.breakEvenPrice")}
         entry={target.breakEvenPrice > 0 ? formatSubscriptPrice(target.breakEvenPrice, 8) : "—"}
-        markLabel={t("perps.markPrice")}
-        mark={target.markPrice}
+        markLabel={t("perps.currentPrice")}
+        mark={target.currentPrice}
         qtyLabel={t("perps.positionQty")}
         qty={positionSizeText}
       />
+      {triggerMode ? (
+        <PriceStepField
+          id="close-position-trigger"
+          label={t("perps.triggerPrice")}
+          suffix={target.quoteSymbol}
+          value={triggerPrice}
+          note={triggerDirectionNote(t, triggerPrice, target.currentInput)}
+          onChange={onTriggerChange}
+        />
+      ) : null}
       <PriceStepField
         id="close-position-price"
         label={t("perps.closePrice")}
         suffix={target.quoteSymbol}
         value={closePrice}
+        hint={triggerMode ? undefined : t("perps.limitCloseHint")}
         onChange={onPriceChange}
       />
       <AmountField
@@ -374,24 +433,81 @@ function QuoteStat({
   );
 }
 
+function CloseModeSwitch({
+  mode,
+  onModeChange,
+}: {
+  mode: CloseOrderMode;
+  onModeChange: (mode: CloseOrderMode) => void;
+}) {
+  const { t } = useI18n();
+  const options = [
+    { id: "limit" as const, label: t("perps.closeModeLimit") },
+    { id: "trigger" as const, label: t("perps.closeModeTrigger") },
+  ];
+  return (
+    <div
+      className="bg-muted grid h-9 grid-cols-2 rounded-lg p-0.5"
+      role="radiogroup"
+      aria-label={t("perps.closePosition")}
+    >
+      {options.map((option) => {
+        const selected = mode === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onModeChange(option.id)}
+            className={cn(
+              "rounded-md text-sm font-medium transition-colors duration-200",
+              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+              selected
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function PriceStepField({
   id,
   label,
   suffix,
   value,
+  hint,
+  note,
   onChange,
 }: {
   id: string;
   label: string;
   suffix: string;
   value: string;
+  hint?: string;
+  note?: string;
   onChange: (value: string) => void;
 }) {
+  const hintId = hint ? `${id}-hint` : undefined;
+  const noteId = note ? `${id}-note` : undefined;
+  const describedBy = [noteId, hintId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="space-y-2">
-      <Label htmlFor={id} className="text-muted-foreground text-xs font-medium">
-        {label}
-      </Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor={id} className="text-muted-foreground text-xs font-medium">
+          {label}
+        </Label>
+        {note ? (
+          <span id={noteId} className="text-foreground shrink-0 text-xs font-medium">
+            {note}
+          </span>
+        ) : null}
+      </div>
       <div className="border-input bg-background flex h-11 items-center overflow-hidden rounded-xl border">
         <Button
           type="button"
@@ -410,6 +526,7 @@ function PriceStepField({
             inputMode="decimal"
             autoComplete="off"
             value={value}
+            aria-describedby={describedBy}
             onChange={(event) => onChange(event.target.value)}
             className="h-11 border-0 bg-transparent pr-16 shadow-none tabular-nums focus-visible:ring-0"
           />
@@ -428,6 +545,11 @@ function PriceStepField({
           <PlusIcon className="size-4" />
         </Button>
       </div>
+      {hint ? (
+        <p id={hintId} className="text-muted-foreground text-xs leading-snug">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -543,17 +665,19 @@ function EstimateRow({
 function CloseFooter({
   disabled,
   side,
+  confirmLabel,
   onCancel,
   onConfirm,
 }: {
   disabled: boolean;
   side: ClosePositionTarget["side"];
+  confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <DialogFooter className="mx-0 mb-0 flex-col gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:flex-row sm:justify-end">
+    <DialogFooter className="mx-0 mb-0 shrink-0 flex-col gap-2.5 rounded-b-2xl border-t border-border/60 bg-muted/30 px-5 py-4 sm:flex-row sm:justify-end">
       <Button
         type="button"
         variant="outline"
@@ -571,7 +695,7 @@ function CloseFooter({
         disabled={disabled}
         onClick={onConfirm}
       >
-        {t("perps.confirmClosePosition")}
+        {confirmLabel}
       </Button>
     </DialogFooter>
   );

@@ -1,16 +1,14 @@
-import {
-  loadPerpsMarksByIdStorage,
-  savePerpsMarksByIdStorage,
-} from "@/lib/storage/local-storage";
 import { isNewerBlockCursor } from "@/lib/perps/block-cursor";
 import { apiBigIntToString, type ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { listMarks } from "@/services/perps/market/api";
 import type { MarketMark } from "@/services/perps/market/types";
 import { normalizePairIds } from "@/services/perps/orders/pairs-by-ids";
 
+const LEGACY_STORAGE_KEY = "orbix.perps.marks-by-id.v1";
+
 const byId = new Map<number, MarketMark>();
 const listeners = new Set<() => void>();
-let loaded = false;
+let droppedLegacy = false;
 
 function isApiBigInt(value: unknown): value is ApiBigInt {
   return typeof value === "string" || typeof value === "number" || typeof value === "bigint";
@@ -29,16 +27,18 @@ function isMarketMark(value: unknown): value is MarketMark {
   );
 }
 
-function ensureLoaded(): void {
-  if (loaded) return;
-  loaded = true;
-  for (const value of Object.values(loadPerpsMarksByIdStorage())) {
-    if (!isMarketMark(value)) continue;
-    byId.set(value.pairId, value);
+/** Drop the retired localStorage map. Marks live in memory for this page only. */
+function dropLegacyStorage(): void {
+  if (droppedLegacy || typeof window === "undefined") return;
+  droppedLegacy = true;
+  try {
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // Private mode can reject storage. The in-memory map still works.
   }
 }
 
-function storableMark(mark: MarketMark): MarketMark {
+function normalize(mark: MarketMark): MarketMark {
   return {
     pairId: mark.pairId,
     markX18: apiBigIntToString(mark.markX18),
@@ -46,23 +46,6 @@ function storableMark(mark: MarketMark): MarketMark {
     blockNumber: apiBigIntToString(mark.blockNumber),
     blockLogIndex: mark.blockLogIndex,
   };
-}
-
-function absorbStored(): void {
-  for (const value of Object.values(loadPerpsMarksByIdStorage())) {
-    if (!isMarketMark(value) || byId.has(value.pairId)) continue;
-    byId.set(value.pairId, value);
-  }
-}
-
-function persist(): void {
-  const payload: Record<string, MarketMark> = {};
-  for (const [id, mark] of byId) payload[String(id)] = mark;
-  try {
-    savePerpsMarksByIdStorage(payload);
-  } catch {
-    // In-memory map still serves this session if storage rejects the payload.
-  }
 }
 
 function emit(): void {
@@ -78,30 +61,24 @@ function collect(ids: readonly number[]): MarketMark[] {
   return rows;
 }
 
-/** Marks already in the localStorage-backed map. Does not call the API. */
+/** Marks already received this page load. Does not call the API. */
 export function peekMarksByIds(pairIds: readonly number[]): MarketMark[] {
-  ensureLoaded();
+  dropLegacyStorage();
   return collect(normalizePairIds(pairIds));
 }
 
-/**
- * Replace cached marks when the incoming sample is newer.
- * WebSocket mark pushes should call this so open position views pick up the latest price.
- */
+/** Keep a mark when its block cursor is newer. Does not write localStorage. */
 export function rememberMarks(marks: readonly MarketMark[]): void {
-  ensureLoaded();
-  absorbStored();
+  dropLegacyStorage();
   let changed = false;
   for (const mark of marks) {
     if (!isMarketMark(mark)) continue;
-    const stored = storableMark(mark);
-    if (!isNewerBlockCursor(stored, byId.get(stored.pairId))) continue;
-    byId.set(stored.pairId, stored);
+    const next = normalize(mark);
+    if (!isNewerBlockCursor(next, byId.get(next.pairId))) continue;
+    byId.set(next.pairId, next);
     changed = true;
   }
-  if (!changed) return;
-  persist();
-  emit();
+  if (changed) emit();
 }
 
 export function subscribeMarks(listener: () => void): () => void {
@@ -112,12 +89,12 @@ export function subscribeMarks(listener: () => void): () => void {
 }
 
 /**
- * Mark prices by id. Hits come from localStorage and are not requested again.
- * Misses are one `POST /mark/list`, then merged into that cache.
+ * Mark prices by id for this page load.
+ * Ids not yet in memory are one `POST /mark/list`. Later `mark` pushes update memory only.
  */
 export async function getMarksByIds(pairIds: readonly number[]): Promise<MarketMark[]> {
+  dropLegacyStorage();
   const ids = normalizePairIds(pairIds);
-  ensureLoaded();
   const missing = ids.filter((id) => !byId.has(id));
   if (missing.length > 0) {
     const rsp = await listMarks(missing);
