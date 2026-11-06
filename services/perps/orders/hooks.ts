@@ -9,12 +9,15 @@ import { apiBigIntToString } from "@/lib/utils/coerce-bigint";
 import {
   addUserPair,
   applyPerpsWithdraw,
+  cancelConditionalOrder,
   cancelOrder,
   deleteUserPair,
   getOrderSalt,
   getPairByCode,
   getPerpsOrderSalt,
   getPerpsOrdersUserBalance,
+  listConditionalOrders,
+  paginationConditionalOrdersHistory,
   listOrders,
   listOrdersCancelHistory,
   listOrdersTradeHistory,
@@ -27,6 +30,7 @@ import {
   paginationOrdersHistory,
   paginationOrdersTradeHistory,
   paginationPositionHistory,
+  placeConditionalOrder,
   placeOrder,
   reorderUserPairs,
 } from "@/services/perps/orders/api";
@@ -36,7 +40,11 @@ import {
   peekPairsByIds,
 } from "@/services/perps/orders/pairs-by-ids";
 import type {
+  CancelConditionalOrderReq,
   CancelOrderReq,
+  ConditionalOrdersHistoryPaginationReq,
+  ConditionalOrdersHistoryPaginationRsp,
+  ConditionalOrdersRsp,
   OrderSaltRsp,
   OrdersCancelHistoryListReq,
   OrdersCancelHistoryListRsp,
@@ -53,6 +61,7 @@ import type {
   PerpsOrderSaltRsp,
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
+  PlaceConditionalOrderReq,
   PlaceOrderReq,
   PositionCashLedgerListReq,
   PositionCashLedgerListRsp,
@@ -351,6 +360,71 @@ export function useFundingSettlementsList(
     enabled: enabled && isTimeRangeListReady(req),
     notifyError,
     staleTime: 30_000,
+  });
+}
+
+export function conditionalOrdersQueryKey() {
+  return ["perps", "orders", "conditional"] as const;
+}
+
+/** POST /perps/orders/conditional-orders/list. */
+export function useConditionalOrders(options?: {
+  enabled?: boolean;
+  notifyError?: boolean;
+}) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<ConditionalOrdersRsp[]>({
+    queryKey: conditionalOrdersQueryKey(),
+    queryFn: () => listConditionalOrders(),
+    enabled,
+    notifyError,
+    staleTime: 5_000,
+  });
+}
+
+export function conditionalOrdersHistoryQueryKey() {
+  return ["perps", "orders", "conditional-history"] as const;
+}
+
+export function useConditionalOrdersHistoryPagination(
+  req: ConditionalOrdersHistoryPaginationReq,
+  options?: { enabled?: boolean; notifyError?: boolean }
+) {
+  const { enabled = true, notifyError = false } = options ?? {};
+
+  return useApiQuery<ConditionalOrdersHistoryPaginationRsp>({
+    queryKey: [...conditionalOrdersHistoryQueryKey(), req],
+    queryFn: () => paginationConditionalOrdersHistory(req),
+    enabled,
+    notifyError,
+    staleTime: 30_000,
+  });
+}
+
+export function usePlaceConditionalOrder() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, PlaceConditionalOrderReq>({
+    mutationFn: (req) => placeConditionalOrder(req),
+    notifyError: false,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: conditionalOrdersQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: ["perps", "orders", "user-balance"] });
+    },
+  });
+}
+
+export function useCancelConditionalOrder() {
+  const queryClient = useQueryClient();
+
+  return useApiMutation<void, Error, CancelConditionalOrderReq>({
+    mutationFn: (req) => cancelConditionalOrder(req),
+    notifyError: false,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: conditionalOrdersQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: conditionalOrdersHistoryQueryKey() });
+    },
   });
 }
 

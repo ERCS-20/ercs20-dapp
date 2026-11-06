@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { CandlestickChartIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useSignTypedData } from "wagmi";
 
@@ -27,15 +28,32 @@ import {
   type ClosePositionTarget,
 } from "@/components/perps/perps-close-position-dialog";
 import {
+  ConditionalOrdersHistoryTable,
+  ConditionalOrdersTable,
+} from "@/components/perps/perps-conditional-orders-tables";
+import {
+  FlashCloseButton,
+  FlashCloseTooltipProvider,
+} from "@/components/perps/perps-flash-close-button";
+import {
   formatLeveragePairSuffix,
   formatOrderHistoryStatus,
   ordersHistoryRspToRow,
   ordersRspToOpenOrderRow,
   type OpenOrderRow,
 } from "@/lib/perps/open-orders-format";
-import { formatEnginePrice, formatMarkPrice, type MarkPriceText } from "@/lib/perps/mark-price";
+import {
+  flashCloseLimitPrice,
+  formatEnginePrice,
+  formatMarkPrice,
+  type MarkPriceText,
+} from "@/lib/perps/mark-price";
 import { enginePriceToNumber } from "@/lib/market/engine-price-decimal";
-import { positionsRspToRow, positionHistoryRspToRow } from "@/lib/perps/positions-format";
+import {
+  formatBaseQuantity,
+  positionsRspToRow,
+  positionHistoryRspToRow,
+} from "@/lib/perps/positions-format";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
@@ -46,6 +64,7 @@ import {
 } from "@/lib/utils/price";
 import { formatUtcDateTime } from "@/lib/utils/format/datetime";
 import { cn } from "@/lib/utils";
+import { usePlacePerpsOrder } from "@/hooks/use-place-perps-order";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
@@ -55,7 +74,7 @@ import {
   useMarketPositionPairs,
   useMarksByIds,
 } from "@/services/perps/market/hooks";
-import type { ApiBigInt } from "@/lib/utils/coerce-bigint";
+import { parseApiBigInt, type ApiBigInt } from "@/lib/utils/coerce-bigint";
 import { usePerpsOracleWs } from "@/services/perps/market/oracle-ws";
 import {
   useCancelOrder,
@@ -68,6 +87,8 @@ import {
 
 export type PerpsOrdersTab =
   | "positions"
+  | "conditional"
+  | "conditional-history"
   | "open"
   | "history"
   | "position-history";
@@ -93,7 +114,9 @@ export function PerpsOrdersTabs({
   const tabs: { id: PerpsOrdersTab; label: string }[] = [
     { id: "positions", label: t("perps.positions") },
     { id: "open", label: t("perps.openOrders") },
+    { id: "conditional", label: t("perps.conditionalOrders") },
     { id: "history", label: t("perps.orderHistory") },
+    { id: "conditional-history", label: t("perps.conditionalHistory") },
     { id: "position-history", label: t("perps.positionHistory") },
   ];
 
@@ -138,6 +161,7 @@ export function PerpsOrdersTabs({
             }
           />
         )}
+        {tab === "conditional" && <ConditionalOrdersTable />}
         {tab === "history" && (
           <HistoryOrdersTable
             onOrderDetails={(row) =>
@@ -148,6 +172,7 @@ export function PerpsOrdersTabs({
             }
           />
         )}
+        {tab === "conditional-history" && <ConditionalOrdersHistoryTable />}
         {tab === "position-history" && (
           <PositionHistoryTable
             onDetails={(row) =>
@@ -229,16 +254,31 @@ function NumericHead({ children }: { children: ReactNode }) {
 function OrdersTableMessageRow({
   colSpan,
   message,
+  showIcon = false,
 }: {
   colSpan: number;
   message: string;
+  showIcon?: boolean;
 }) {
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className="text-muted-foreground px-3 py-8 text-center text-sm">
-        {message}
+      <TableCell colSpan={colSpan} className="px-3 py-10 text-center">
+        {showIcon ? <EmptyListStatus message={message} /> : (
+          <p className="text-muted-foreground text-sm">{message}</p>
+        )}
       </TableCell>
     </TableRow>
+  );
+}
+
+function EmptyListStatus({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2">
+      <div className="bg-muted text-muted-foreground ring-border/60 flex size-10 items-center justify-center rounded-full ring-1">
+        <CandlestickChartIcon aria-hidden className="size-5" />
+      </div>
+      <p className="text-muted-foreground text-center text-xs leading-relaxed sm:text-sm">{message}</p>
+    </div>
   );
 }
 
@@ -260,12 +300,12 @@ function resolveOrdersTableMessage({
   loadingMessage: string;
   loginMessage: string;
   emptyMessage: string;
-}): string | null {
+}): { message: string; showIcon: boolean } | null {
   if (!authReady || (isAuthenticated && (isLoading || (isFetching && !hasRows)))) {
-    return loadingMessage;
+    return { message: loadingMessage, showIcon: false };
   }
-  if (!isAuthenticated) return loginMessage;
-  if (!hasRows) return emptyMessage;
+  if (!isAuthenticated) return { message: loginMessage, showIcon: false };
+  if (!hasRows) return { message: emptyMessage, showIcon: true };
   return null;
 }
 
@@ -313,6 +353,7 @@ function PositionsTable({
 }) {
   const { t } = useI18n();
   const { isAuthenticated, authReady } = useAuth();
+  const { place, pending } = usePlacePerpsOrder();
 
   const { data, isLoading, isFetching, isSuccess } = usePositionsList({
     enabled: isAuthenticated,
@@ -346,6 +387,7 @@ function PositionsTable({
   });
 
   return (
+    <FlashCloseTooltipProvider>
     <OrdersTableFrame>
       <OrdersTableHead>
         <TextHead>{t("perps.pair")}</TextHead>
@@ -362,7 +404,11 @@ function PositionsTable({
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
-          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+          <OrdersTableMessageRow
+            colSpan={colSpan}
+            message={emptyMessage.message}
+            showIcon={emptyMessage.showIcon}
+          />
         ) : (
           rows.map((row) => {
             const mark = pairQuotes.marks.get(row.pairId);
@@ -444,6 +490,13 @@ function PositionsTable({
                         baseSymbol: row.pairLabel.split("/")[0] ?? row.pairLabel,
                         side: row.side,
                         size: row.size,
+                        sizeRaw: row.sizeRaw,
+                        enginePriceDecimal:
+                          pairQuotes.pairInfo.get(row.pairId)?.enginePriceDecimal ?? null,
+                        leverage: row.leverage,
+                        minTradeAmount: parseApiBigInt(
+                          pairQuotes.pairInfo.get(row.pairId)?.minTradeAmount
+                        ),
                         breakEvenPrice: row.breakEvenPrice,
                         ...currentPriceFromClose(
                           pairQuotes.closeById.get(row.pairId),
@@ -470,13 +523,40 @@ function PositionsTable({
                   >
                     {t("perps.details")}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => toast.info(t("perps.positionActionComingSoon"))}
-                    className="border-border text-brand hover:bg-muted/50 hover:text-brand/80 inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
-                  >
-                    {t("perps.flashClose")}
-                  </button>
+                  <FlashCloseButton
+                    label={t("perps.flashClose")}
+                    disabled={pending || row.side == null || row.sizeRaw <= BigInt(0)}
+                    hint={flashCloseHint(
+                      t,
+                      row.side,
+                      pairQuotes.marks.get(row.pairId),
+                      pairQuotes.pairInfo.get(row.pairId)?.enginePriceDecimal
+                    )}
+                    onClick={() => {
+                      const pair = pairQuotes.pairInfo.get(row.pairId);
+                      const mark = pairQuotes.marks.get(row.pairId);
+                      const limit =
+                        row.side == null
+                          ? null
+                          : flashCloseLimitPrice(row.side, mark?.input ?? "", pair?.enginePriceDecimal);
+                      if (row.side == null) return;
+                      if (limit == null) {
+                        toast.info(t("perps.flashCloseNoMark"));
+                        return;
+                      }
+                      void place({
+                        side: row.side === "buy" ? "sell" : "buy",
+                        price: limit.input,
+                        quantity: formatBaseQuantity(row.sizeRaw),
+                        pairId: row.pairId,
+                        enginePriceDecimal: pair?.enginePriceDecimal,
+                        leverage: row.leverage,
+                        reduceOnly: 1,
+                        minTrade: parseApiBigInt(pair?.minTradeAmount),
+                        quoteSymbol: row.quoteSymbol,
+                      });
+                    }}
+                  />
                 </div>
               </TableCell>
             </TableRow>
@@ -485,7 +565,23 @@ function PositionsTable({
         )}
       </TableBody>
     </OrdersTableFrame>
+    </FlashCloseTooltipProvider>
   );
+}
+
+function flashCloseHint(
+  t: (path: string) => string,
+  side: "buy" | "sell" | null,
+  mark: MarkPriceText | undefined,
+  enginePriceDecimal: number | undefined
+): string {
+  const rule = t("perps.flashCloseHint");
+  if (side == null || mark == null) return `${rule} ${t("perps.flashCloseNoMark")}`;
+  const limit = flashCloseLimitPrice(side, mark.input, enginePriceDecimal);
+  if (limit == null) return `${rule} ${t("perps.flashCloseNoMark")}`;
+  return `${rule} ${t("perps.flashCloseMark")
+    .replace("{mark}", mark.label)
+    .replace("{price}", limit.label)}`;
 }
 
 function signedAmountClass(value: number) {
@@ -561,7 +657,11 @@ function PositionHistoryTable({
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
-          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+          <OrdersTableMessageRow
+            colSpan={colSpan}
+            message={emptyMessage.message}
+            showIcon={emptyMessage.showIcon}
+          />
         ) : (
           rows.map((row) => (
             <TableRow key={row.key}>
@@ -686,7 +786,11 @@ function OpenOrdersTable({
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
-          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+          <OrdersTableMessageRow
+            colSpan={colSpan}
+            message={emptyMessage.message}
+            showIcon={emptyMessage.showIcon}
+          />
         ) : (
           rows.map((row) => {
             const rowBusy = cancellingOrderId === row.orderId;
@@ -822,7 +926,11 @@ function HistoryOrdersTable({
       </OrdersTableHead>
       <TableBody>
         {emptyMessage ? (
-          <OrdersTableMessageRow colSpan={colSpan} message={emptyMessage} />
+          <OrdersTableMessageRow
+            colSpan={colSpan}
+            message={emptyMessage.message}
+            showIcon={emptyMessage.showIcon}
+          />
         ) : (
           rows.map((row) => (
             <TableRow key={row.orderId}>

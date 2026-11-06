@@ -1,3 +1,6 @@
+import { formatUnits } from "viem";
+
+import { getDefaultDecimals } from "@/lib/config/public-env";
 import { formatOrderFee, formatOrderQuantity } from "@/lib/market/open-orders-format";
 import { pairLabelFromCode, parsePairCode } from "@/lib/market/pair";
 import { parseApiBigInt, type ApiBigInt } from "@/lib/utils/coerce-bigint";
@@ -27,6 +30,8 @@ export type PositionRow = {
   margin: number;
   /** `|balancePosition|` (base size, 18 decimals). */
   size: number;
+  /** Exact `|balancePosition|` in base units. */
+  sizeRaw: bigint;
   /** Round break-even, including unsettled funding. `0` when missing. See `docs/perps-position.md`. */
   breakEvenPrice: number;
   liqPrice: number;
@@ -152,6 +157,21 @@ function calcLiqPriceX18(margin: bigint, position: bigint, minCollateralX18: Api
   return BigInt(0);
 }
 
+/** Decimal quantity string that `parseUnits` round-trips to `raw`. */
+export function formatBaseQuantity(raw: bigint): string {
+  if (raw <= BigInt(0)) return "";
+  const text = formatUnits(raw, getDefaultDecimals());
+  if (!text.includes(".")) return text;
+  return text.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+}
+
+/** Share of `sizeRaw`. 100% is the exact position so a reduce-only close cannot overshoot. */
+export function positionSizeAtPercent(sizeRaw: bigint, pct: number): string {
+  if (sizeRaw <= BigInt(0) || pct < 1) return "";
+  const raw = pct >= 100 ? sizeRaw : (sizeRaw * BigInt(Math.trunc(pct))) / BigInt(100);
+  return formatBaseQuantity(raw);
+}
+
 export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuote): PositionRow {
   const position = apiInt(pos.balancePosition);
   const side: PositionRow["side"] =
@@ -174,6 +194,7 @@ export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuot
     balanceMargin: apiInt(pos.balanceMargin),
     margin: formatOrderFee(marginBi.toString()),
     size: formatOrderQuantity((position < BigInt(0) ? -position : position).toString()),
+    sizeRaw: position < BigInt(0) ? -position : position,
     breakEvenPrice: positionBreakEvenPrice(
       position,
       breakEvenNotional(

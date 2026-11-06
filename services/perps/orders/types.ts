@@ -67,7 +67,91 @@ export type PlaceOrderReq = {
   priceX18: ApiBigInt;
   /** 1 = buy, 2 = sell. */
   side: number;
+  /** 0 = no, 1 = yes. Not part of the EIP-712 order. */
+  reduceOnly: number;
 };
+
+/** Mirrors `exchange.orbix.perps.orders.dto.PlaceConditionalOrderReq`. */
+export type PlaceConditionalOrderReq = {
+  userBalanceId: number;
+  pairId: number;
+  maker: string;
+  amount: ApiBigInt;
+  margin: ApiBigInt;
+  timeInForce: number;
+  expiry: ApiBigInt;
+  salt: ApiBigInt;
+  signature: string;
+  priceX18: ApiBigInt;
+  /** 1 = buy, 2 = sell. */
+  side: number;
+  /** TpSl must be 1. Not part of the EIP-712 order. */
+  reduceOnly: number;
+  /** `TriggerLimit` or `TpSl`. */
+  orderType: string;
+  triggerPriceX18: ApiBigInt;
+  /** 1 = rise to, 2 = fall to. */
+  triggerDirection: number;
+  /** `Mark` or `Last`. */
+  triggerPriceType: string;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.CancelConditionalOrderReq`. */
+export type CancelConditionalOrderReq = {
+  id: ApiBigInt;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.ConditionalOrdersRsp`. */
+export type ConditionalOrdersRsp = {
+  id: ApiBigInt;
+  pairId: number;
+  pairCode: string;
+  amount: ApiBigInt;
+  margin: ApiBigInt;
+  timeInForce: number;
+  /** OffsetDateTime from the API. */
+  expiry: number | string;
+  salt: ApiBigInt;
+  priceX18: ApiBigInt;
+  enginePrice: ApiBigInt;
+  enginePriceDecimal: number | null;
+  side: number;
+  reduceOnly: number;
+  orderType: string;
+  triggerPriceX18: ApiBigInt;
+  triggerDirection: number;
+  triggerPriceType: string;
+  /** OffsetDateTime from the API. */
+  createdAt: number | string;
+};
+
+/** Mirrors `exchange.orbix.perps.orders.dto.ConditionalOrdersHistoryRsp`. */
+export type ConditionalOrdersHistoryRsp = {
+  id: ApiBigInt;
+  pairId: number;
+  pairCode: string;
+  amount: ApiBigInt;
+  margin: ApiBigInt;
+  timeInForce: number;
+  expiry: number | string;
+  salt: ApiBigInt;
+  priceX18: ApiBigInt;
+  enginePrice: ApiBigInt;
+  enginePriceDecimal: number | null;
+  side: number;
+  reduceOnly: number;
+  status: string;
+  completedAt: number | string;
+  orderType: string;
+  triggerPriceX18: ApiBigInt;
+  triggerDirection: number;
+  triggerPriceType: string;
+  createdAt: number | string;
+};
+
+export type ConditionalOrdersHistoryPaginationReq = PaginationCondition<Record<string, never>>;
+export type ConditionalOrdersHistoryPaginationRsp =
+  PaginationRepertory<ConditionalOrdersHistoryRsp>;
 
 /** Mirrors `exchange.orbix.perps.orders.dto.CancelOrderReq`. */
 export type CancelOrderReq = {

@@ -16,6 +16,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePlacePerpsOrder } from "@/hooks/use-place-perps-order";
+import {
+  priceInputToX18,
+  triggerDirectionAgainstPrice,
+} from "@/lib/perps/conditional-order";
+import { formatBaseQuantity, positionSizeAtPercent } from "@/lib/perps/positions-format";
 import { cn } from "@/lib/utils";
 import { formatQuoteAmount, formatSubscriptPrice } from "@/lib/utils/price";
 import { useI18n } from "@/providers/i18n-provider";
@@ -29,6 +35,11 @@ export type ClosePositionTarget = {
   side: "buy" | "sell" | null;
   /** Size (base token) from the selected row. */
   size: number;
+  /** Exact `|balancePosition|` used as the order amount. */
+  sizeRaw: bigint;
+  enginePriceDecimal: number | null;
+  leverage: number | null;
+  minTradeAmount: bigint | null;
   /** List break-even at the moment the dialog opened. Later funding-index pushes do not replace it. */
   breakEvenPrice: number;
   /** Formatted last trade, or an em dash when the quote is not ready. */
@@ -42,16 +53,6 @@ function sanitizeDecimal(raw: string): string {
   const dot = next.indexOf(".");
   if (dot < 0) return next;
   return `${next.slice(0, dot + 1)}${next.slice(dot + 1).replace(/\./g, "").slice(0, 18)}`;
-}
-
-function trimTrailingZeros(value: string): string {
-  if (!value.includes(".")) return value;
-  return value.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
-}
-
-function formatSizeInput(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "";
-  return trimTrailingZeros(value.toFixed(8));
 }
 
 function parsePositiveDecimal(raw: string): number | undefined {
@@ -102,26 +103,21 @@ function confirmTone(side: ClosePositionTarget["side"]): string {
 }
 
 type CloseOrderMode = "limit" | "trigger";
-type TriggerMove = "rise" | "fall" | "reach";
 
-function triggerMove(triggerRaw: string, currentRaw: string): TriggerMove | null {
-  const trigger = parsePositiveDecimal(triggerRaw);
-  if (trigger == null) return null;
-  const current = parsePositiveDecimal(currentRaw);
-  if (current == null || trigger === current) return "reach";
-  return trigger > current ? "rise" : "fall";
-}
-
-function triggerDirectionNote(
+function triggerPriceGuide(
   t: (path: string) => string,
   triggerRaw: string,
-  currentRaw: string
-): string | undefined {
-  const move = triggerMove(triggerRaw, currentRaw);
-  if (move === "rise") return t("perps.triggerAbove");
-  if (move === "fall") return t("perps.triggerBelow");
-  if (move === "reach") return t("perps.triggerReach");
-  return undefined;
+  currentRaw: string,
+  enginePriceDecimal: number | null
+): { note?: string; error?: string } {
+  if (parsePositiveDecimal(triggerRaw) == null || enginePriceDecimal == null) return {};
+  if (priceInputToX18(currentRaw, enginePriceDecimal) == null) {
+    return { error: t("perps.closeNoCurrent") };
+  }
+  const direction = triggerDirectionAgainstPrice(triggerRaw, currentRaw, enginePriceDecimal);
+  if (direction === 1) return { note: t("perps.triggerAbove") };
+  if (direction === 2) return { note: t("perps.triggerBelow") };
+  return { error: t("perps.triggerMustDiffer") };
 }
 
 export function PerpsClosePositionDialog({
@@ -153,12 +149,19 @@ function ClosePositionForm({
 }) {
   const { t } = useI18n();
   const draft = useCloseDraft(target);
+  const { place, placeTpSl, pending } = usePlacePerpsOrder();
   const sizeError =
     draft.parsedSize != null && exceedsSize(draft.parsedSize, target.size)
       ? t("perps.exceedsPositionSize")
       : null;
-  const triggerMissing =
-    draft.mode === "trigger" && parsePositiveDecimal(draft.triggerPrice) == null;
+  const triggerReady =
+    draft.mode !== "trigger" ||
+    (target.enginePriceDecimal != null &&
+      triggerDirectionAgainstPrice(
+        draft.triggerPrice,
+        target.currentInput,
+        target.enginePriceDecimal
+      ) != null);
 
   return (
     <DialogContent
@@ -187,13 +190,44 @@ function ClosePositionForm({
         onPctChange={draft.applyPercent}
       />
       <CloseFooter
-        disabled={draft.parsedSize == null || sizeError != null || triggerMissing}
+        disabled={pending || draft.parsedSize == null || sizeError != null || !triggerReady}
         side={target.side}
         confirmLabel={
-          draft.mode === "trigger" ? t("perps.closeWhenTriggered") : t("perps.closeNow")
+          pending
+            ? t("perps.placingOrder")
+            : draft.mode === "trigger"
+              ? t("perps.closeWhenTriggered")
+              : t("perps.closeNow")
         }
         onCancel={() => onOpenChange(false)}
-        onConfirm={() => toast.info(t("perps.positionActionComingSoon"))}
+        onConfirm={() => {
+          if (target.side == null) {
+            toast.error(t("perps.orderFailed"));
+            return;
+          }
+          const order = {
+            side: target.side === "buy" ? ("sell" as const) : ("buy" as const),
+            price: draft.closePrice,
+            quantity: draft.sizeInput,
+            pairId: target.pairId,
+            enginePriceDecimal: target.enginePriceDecimal,
+            leverage: target.leverage,
+            reduceOnly: 1 as const,
+            minTrade: target.minTradeAmount,
+            quoteSymbol: target.quoteSymbol,
+          };
+          const submit =
+            draft.mode === "trigger"
+              ? placeTpSl({
+                  ...order,
+                  triggerPrice: draft.triggerPrice,
+                  currentPrice: target.currentInput,
+                })
+              : place(order);
+          void submit.then((ok) => {
+            if (ok) onOpenChange(false);
+          });
+        }}
       />
     </DialogContent>
   );
@@ -203,24 +237,18 @@ function useCloseDraft(target: ClosePositionTarget) {
   const [mode, setMode] = useState<CloseOrderMode>("limit");
   const [triggerPrice, setTriggerPrice] = useState("");
   const [closePrice, setClosePrice] = useState(target.currentInput);
-  const [sizeInput, setSizeInput] = useState(() =>
-    target.size > 0 ? formatSizeInput(target.size) : ""
-  );
-  const [sizePct, setSizePct] = useState(() => (target.size > 0 ? 100 : 0));
+  const [sizeInput, setSizeInput] = useState(() => formatBaseQuantity(target.sizeRaw));
+  const [sizePct, setSizePct] = useState(() => (target.sizeRaw > BigInt(0) ? 100 : 0));
   const parsedSize = useMemo(() => parsePositiveDecimal(sizeInput), [sizeInput]);
   const applyPercent = useCallback(
     (pct: number) => {
       setSizePct(pct);
-      if (pct < 1 || !(target.size > 0)) {
-        setSizeInput("");
-        return;
-      }
-      setSizeInput(formatSizeInput((target.size * pct) / 100));
+      setSizeInput(positionSizeAtPercent(target.sizeRaw, pct));
     },
     [target]
   );
-  const positionSizeText =
-    target.size > 0 ? `${formatSizeInput(target.size)} ${target.baseSymbol}` : "—";
+  const sizeText = formatBaseQuantity(target.sizeRaw);
+  const positionSizeText = sizeText ? `${sizeText} ${target.baseSymbol}` : "—";
 
   return {
     mode,
@@ -314,6 +342,9 @@ function ClosePositionFields({
 }: ClosePositionFieldsProps) {
   const { t } = useI18n();
   const triggerMode = mode === "trigger";
+  const triggerGuide = triggerMode
+    ? triggerPriceGuide(t, triggerPrice, target.currentInput, target.enginePriceDecimal)
+    : {};
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
       <CloseModeSwitch mode={mode} onModeChange={onModeChange} />
@@ -331,7 +362,8 @@ function ClosePositionFields({
           label={t("perps.triggerPrice")}
           suffix={target.quoteSymbol}
           value={triggerPrice}
-          note={triggerDirectionNote(t, triggerPrice, target.currentInput)}
+          note={triggerGuide.note}
+          error={triggerGuide.error}
           onChange={onTriggerChange}
         />
       ) : null}
@@ -359,14 +391,12 @@ function ClosePositionFields({
           side={target.side === "sell" ? "buy" : "sell"}
         />
       </AmountField>
-      <EstimateRow
-        label={`${t("perps.closeNotional")} (${target.quoteSymbol})`}
-        value={formatCloseNotional(closePrice, sizeInput)}
-      />
-      <EstimateRow
-        label={`${t("perps.estPnl")} (${target.quoteSymbol})`}
-        value={formatClosePnl(target.side, target.breakEvenPrice, closePrice, sizeInput)}
-        signed
+      <CloseEstimate
+        notionalLabel={t("perps.closeNotional")}
+        notional={formatCloseNotional(closePrice, sizeInput)}
+        pnlLabel={t("perps.estPnl")}
+        pnl={formatClosePnl(target.side, target.breakEvenPrice, closePrice, sizeInput)}
+        unit={target.quoteSymbol}
       />
     </div>
   );
@@ -413,10 +443,12 @@ function QuoteStat({
   label,
   value,
   muted = false,
+  valueClassName,
 }: {
   label: string;
   value: string;
   muted?: boolean;
+  valueClassName?: string;
 }) {
   return (
     <div className="min-w-0 px-4 py-3">
@@ -424,7 +456,7 @@ function QuoteStat({
       <p
         className={cn(
           "mt-1.5 truncate text-sm font-medium tabular-nums",
-          muted ? "text-muted-foreground" : "text-foreground"
+          valueClassName ?? (muted ? "text-muted-foreground" : "text-foreground")
         )}
       >
         {value}
@@ -483,6 +515,7 @@ function PriceStepField({
   value,
   hint,
   note,
+  error,
   onChange,
 }: {
   id: string;
@@ -491,11 +524,13 @@ function PriceStepField({
   value: string;
   hint?: string;
   note?: string;
+  error?: string;
   onChange: (value: string) => void;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
   const noteId = note ? `${id}-note` : undefined;
-  const describedBy = [noteId, hintId].filter(Boolean).join(" ") || undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [noteId, errorId, hintId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -526,6 +561,7 @@ function PriceStepField({
             inputMode="decimal"
             autoComplete="off"
             value={value}
+            aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             onChange={(event) => onChange(event.target.value)}
             className="h-11 border-0 bg-transparent pr-16 shadow-none tabular-nums focus-visible:ring-0"
@@ -545,6 +581,11 @@ function PriceStepField({
           <PlusIcon className="size-4" />
         </Button>
       </div>
+      {error ? (
+        <p id={errorId} className="text-destructive text-xs" role="alert">
+          {error}
+        </p>
+      ) : null}
       {hint ? (
         <p id={hintId} className="text-muted-foreground text-xs leading-snug">
           {hint}
@@ -637,29 +678,47 @@ function formatClosePnl(
   return abs;
 }
 
-function EstimateRow({
-  label,
-  value,
-  signed = false,
+function CloseEstimate({
+  notionalLabel,
+  notional,
+  pnlLabel,
+  pnl,
+  unit,
 }: {
-  label: string;
-  value: string;
-  signed?: boolean;
+  notionalLabel: string;
+  notional: string;
+  pnlLabel: string;
+  pnl: string;
+  unit: string;
 }) {
-  const pending = value === "—";
-  const valueTone = pending
-    ? "text-muted-foreground"
-    : signed && value.startsWith("+")
-      ? "text-brand"
-      : signed && value.startsWith("-")
-        ? "text-brand-alt"
-        : "text-foreground";
   return (
-    <div className="border-input bg-background flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className={cn("text-sm font-medium tabular-nums", valueTone)}>{value}</span>
+    <div className="border-input bg-background overflow-hidden rounded-xl border">
+      <div className="grid grid-cols-2 divide-x divide-border/60">
+        <QuoteStat
+          label={notionalLabel}
+          value={withUnit(notional, unit)}
+          muted={notional === "—"}
+        />
+        <QuoteStat
+          label={pnlLabel}
+          value={withUnit(pnl, unit)}
+          muted={pnl === "—"}
+          valueClassName={pnlValueTone(pnl)}
+        />
+      </div>
     </div>
   );
+}
+
+function withUnit(value: string, unit: string): string {
+  if (value === "—") return value;
+  return `${value} ${unit}`;
+}
+
+function pnlValueTone(value: string): string | undefined {
+  if (value.startsWith("+")) return "text-brand";
+  if (value.startsWith("-")) return "text-brand-alt";
+  return undefined;
 }
 
 function CloseFooter({

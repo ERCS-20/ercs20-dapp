@@ -20,7 +20,7 @@ import {
   type ChartView,
 } from "@/lib/market/chart-interval";
 import { pairRspToPerpsPair } from "@/lib/perps/pair-api";
-import type { PerpsPair, PerpsSide } from "@/lib/perps/types";
+import type { PerpsPair } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/providers/i18n-provider";
 import { usePerpsTickerStats } from "@/services/perps/market/hooks";
@@ -88,7 +88,6 @@ export function PerpsView({
 
   /** SSR/hydration-safe default; restore from localStorage before paint. */
   const [chartView, setChartView] = useState<ChartView>(DEFAULT_CHART_VIEW);
-  const [side, setSide] = useState<PerpsSide>("buy");
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState("");
 
@@ -238,12 +237,10 @@ export function PerpsView({
             pair={pair}
             pairId={pairId}
             enginePriceDecimal={enginePriceDecimal}
-            side={side}
             price={price}
             quantity={quantity}
             lastPrice={marketStats.lastPrice}
             change24hPct={marketStats.change24hPct}
-            onSideChange={setSide}
             onPriceChange={setPrice}
             onQuantityChange={setQuantity}
             onLevelClick={handleLevelClick}
@@ -290,11 +287,9 @@ export function PerpsView({
         {mobilePanel === "trade" && (
           <PerpsOrderForm
             pair={pair}
-            side={side}
             price={price}
             quantity={quantity}
             lastPrice={marketStats.lastPrice}
-            onSideChange={setSide}
             onPriceChange={setPrice}
             onQuantityChange={setQuantity}
             onOrderPlaced={handleOrderPlaced}

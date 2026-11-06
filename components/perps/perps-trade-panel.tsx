@@ -3,19 +3,17 @@
 import { PerpsMarketTrades } from "@/components/perps/perps-market-trades";
 import { PerpsOrderBook } from "@/components/perps/perps-order-book";
 import { PerpsOrderForm } from "@/components/perps/perps-order-form";
-import type { PerpsPair, PerpsSide } from "@/lib/perps/types";
+import type { PerpsPair } from "@/lib/perps/types";
 import { cn } from "@/lib/utils";
 
 export function PerpsTradePanel({
   pair,
   pairId,
   enginePriceDecimal,
-  side,
   price,
   quantity,
   lastPrice,
   change24hPct,
-  onSideChange,
   onPriceChange,
   onQuantityChange,
   onLevelClick,
@@ -25,12 +23,10 @@ export function PerpsTradePanel({
   pair: PerpsPair;
   pairId: number | undefined;
   enginePriceDecimal: number | undefined;
-  side: PerpsSide;
   price: string;
   quantity: string;
   lastPrice: number;
   change24hPct: number;
-  onSideChange: (s: PerpsSide) => void;
   onPriceChange: (v: string) => void;
   onQuantityChange: (v: string) => void;
   onLevelClick: (price: number, size: number) => void;
@@ -59,11 +55,9 @@ export function PerpsTradePanel({
         </div>
         <PerpsOrderForm
           pair={pair}
-          side={side}
           price={price}
           quantity={quantity}
           lastPrice={lastPrice}
-          onSideChange={onSideChange}
           onPriceChange={onPriceChange}
           onQuantityChange={onQuantityChange}
           onOrderPlaced={onOrderPlaced}

@@ -28,6 +28,25 @@ export function formatEnginePrice(
   };
 }
 
+/** Worst fill versus the mark for a one-click close. Long sells lower, short buys higher. */
+export const FLASH_CLOSE_SLIPPAGE = 0.03;
+
+/**
+ * Limit price for a flash close. Long (buy position) sells at mark × 97%.
+ * Short buys at mark × 103%. The book still fills at a better price when one exists.
+ */
+export function flashCloseLimitPrice(
+  positionSide: "buy" | "sell",
+  markInput: string,
+  enginePriceDecimal: number | undefined
+): MarkPriceText | null {
+  const mark = Number(markInput);
+  if (!Number.isFinite(mark) || mark <= 0) return null;
+  const factor =
+    positionSide === "buy" ? 1 - FLASH_CLOSE_SLIPPAGE : 1 + FLASH_CLOSE_SLIPPAGE;
+  return formatEnginePrice(mark * factor, enginePriceDecimal);
+}
+
 /** `markX18 / 1e18`, formatted with the pair's engine price scale. */
 export function formatMarkPrice(
   mark: Pick<MarketMark, "markX18">,

@@ -8,13 +8,19 @@ import { MinusIcon, PlusIcon } from "lucide-react";
 
 import { parseUnits } from "viem";
 
-import { PerpsSideSwitch } from "@/components/perps/perps-side-switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import { getDefaultDecimals } from "@/lib/config/public-env";
 import { buildPlaceOrderFields, enginePriceToPriceX18 } from "@/lib/perps/build-place-order";
+import {
+  CONDITIONAL_ORDER_TRIGGER_LIMIT,
+  priceInputToX18,
+  TRIGGER_PRICE_LAST,
+  triggerDirectionAgainstPrice,
+} from "@/lib/perps/conditional-order";
+import { formatEnginePrice } from "@/lib/perps/mark-price";
 import {
   clampPerpsLeverage,
   leverageToStopIndex,
@@ -44,7 +50,12 @@ import { cn } from "@/lib/utils";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/i18n-provider";
-import { useOrderSalt, usePerpsOrdersUserBalance, usePlaceOrder } from "@/services/perps/orders/hooks";
+import {
+  useOrderSalt,
+  usePerpsOrdersUserBalance,
+  usePlaceConditionalOrder,
+  usePlaceOrder,
+} from "@/services/perps/orders/hooks";
 
 function sanitizeDecimal(raw: string): string {
   let x = raw.replace(/[^\d.]/g, "");
@@ -85,24 +96,207 @@ function resolveSubmitPriceString(priceInput: string, fallbackPrice: number): st
   return null;
 }
 
+type PerpsOrderMode = "limit" | "trigger";
+
+function currentPriceInput(lastPrice: number, enginePriceDecimal: number): string {
+  return formatEnginePrice(lastPrice, enginePriceDecimal)?.input ?? "";
+}
+
+function triggerPriceGuide(
+  t: (path: string) => string,
+  triggerRaw: string,
+  lastPrice: number,
+  enginePriceDecimal: number | null | undefined
+): { note?: string; error?: string } {
+  if (enginePriceDecimal == null || priceInputToX18(triggerRaw, enginePriceDecimal) == null) {
+    return {};
+  }
+  const current = currentPriceInput(lastPrice, enginePriceDecimal);
+  if (priceInputToX18(current, enginePriceDecimal) == null) {
+    return { error: t("perps.closeNoCurrent") };
+  }
+  const direction = triggerDirectionAgainstPrice(triggerRaw, current, enginePriceDecimal);
+  if (direction === 1) return { note: t("perps.triggerAbove") };
+  if (direction === 2) return { note: t("perps.triggerBelow") };
+  return { error: t("perps.triggerMustDiffer") };
+}
+
+function readTriggerLimit(
+  t: (path: string) => string,
+  triggerPrice: string,
+  lastPrice: number,
+  enginePriceDecimal: number
+): { triggerPriceX18: bigint; triggerDirection: 1 | 2 } | { error: string } {
+  if (priceFractionDigits(triggerPrice) > enginePriceDecimal) {
+    return {
+      error: t("perps.priceDecimalLimit").replace("{digits}", String(enginePriceDecimal)),
+    };
+  }
+  const current = currentPriceInput(lastPrice, enginePriceDecimal);
+  if (priceInputToX18(current, enginePriceDecimal) == null) {
+    return { error: t("perps.closeNoCurrent") };
+  }
+  const triggerPriceX18 = priceInputToX18(triggerPrice, enginePriceDecimal);
+  const triggerDirection = triggerDirectionAgainstPrice(
+    triggerPrice,
+    current,
+    enginePriceDecimal
+  );
+  if (triggerPriceX18 == null) return { error: t("perps.invalidPrice") };
+  if (triggerDirection == null) return { error: t("perps.triggerMustDiffer") };
+  return { triggerPriceX18, triggerDirection };
+}
+
+function readIsolatedMargin(
+  marginInput: string,
+  quoteAmount: bigint,
+  leverage: number
+): bigint | undefined {
+  const marginRaw = marginInput.trim();
+  if (marginRaw) {
+    try {
+      const parsed = parseUnits(marginRaw, getDefaultDecimals());
+      if (parsed > BigInt(0)) return parsed;
+    } catch {
+      // Invalid text falls through to leverage-derived margin.
+    }
+  }
+  return marginFromNotional(quoteAmount, leverage) ?? undefined;
+}
+
+/** Quantity sizing ignores side; preview both directions from one normalized size. */
+function previewFormLiqPrices(input: {
+  price: string;
+  lastPrice: number;
+  quantity: string;
+  leverage: number;
+  marginInput: string;
+  enginePriceDecimal: number | null | undefined;
+  minCollateralX18: bigint | null | undefined;
+}): { buy: number | null; sell: number | null } {
+  const none = { buy: null, sell: null };
+  const { minCollateralX18, enginePriceDecimal } = input;
+  if (minCollateralX18 == null || minCollateralX18 <= BigInt(0)) return none;
+  if (enginePriceDecimal == null) return none;
+
+  const submitPrice = resolveSubmitPriceString(input.price, input.lastPrice);
+  if (submitPrice == null) return none;
+
+  const normalized = normalizePlaceOrderAmounts({
+    side: "buy",
+    price: submitPrice,
+    enginePriceDecimal,
+    quantity: input.quantity,
+    product: "perps",
+  });
+  if (normalized == null) return none;
+
+  const isolatedMargin = readIsolatedMargin(
+    input.marginInput,
+    normalized.quoteAmount,
+    input.leverage
+  );
+  if (isolatedMargin == null) return none;
+
+  const shared = {
+    amount: normalized.baseAmount,
+    isolatedMargin,
+    priceX18: enginePriceToPriceX18(normalized.enginePrice, enginePriceDecimal),
+    minCollateralX18,
+  };
+  return {
+    buy: previewIsolatedLiqPrice({ ...shared, side: "buy" }),
+    sell: previewIsolatedLiqPrice({ ...shared, side: "sell" }),
+  };
+}
+
+function formatLiqPrice(value: number | null, digits: number): string {
+  if (value == null || !(value > 0)) return "—";
+  return formatSubscriptPrice(value, digits);
+}
+
+function OrderStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  const muted = value === "—";
+  return (
+    <div className="min-w-0 px-4 py-3">
+      <p className="text-muted-foreground truncate text-[11px] leading-none">{label}</p>
+      <p
+        className={cn(
+          "mt-1.5 truncate text-sm font-medium tabular-nums",
+          muted ? "text-muted-foreground" : (tone ?? "text-foreground")
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function OrderModeSwitch({
+  mode,
+  onModeChange,
+}: {
+  mode: PerpsOrderMode;
+  onModeChange: (mode: PerpsOrderMode) => void;
+}) {
+  const { t } = useI18n();
+  const options = [
+    { id: "limit" as const, label: t("perps.limit") },
+    { id: "trigger" as const, label: t("perps.conditional") },
+  ];
+  return (
+    <div
+      className="bg-muted grid h-9 grid-cols-2 rounded-lg p-0.5"
+      role="radiogroup"
+      aria-label={`${options[0].label} / ${options[1].label}`}
+    >
+      {options.map((option) => {
+        const selected = mode === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onModeChange(option.id)}
+            className={cn(
+              "rounded-md text-sm font-medium transition-colors duration-200",
+              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+              selected
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PerpsOrderForm({
   pair,
-  side,
   price,
   quantity,
   lastPrice,
-  onSideChange,
   onPriceChange,
   onQuantityChange,
   onOrderPlaced,
   className,
 }: {
   pair: PerpsPair;
-  side: PerpsSide;
   price: string;
   quantity: string;
   lastPrice: number;
-  onSideChange: (s: PerpsSide) => void;
   onPriceChange: (v: string) => void;
   onQuantityChange: (v: string) => void;
   onOrderPlaced?: () => void;
@@ -114,11 +308,16 @@ export function PerpsOrderForm({
   const { signTypedDataAsync, isPending: isSigning } = useSignTypedData();
   const { mutateAsync: fetchOrderSalt, isPending: isSaltPending } = useOrderSalt();
   const { mutateAsync: submitPlaceOrder, isPending: isSubmitPending } = usePlaceOrder();
+  const { mutateAsync: submitConditionalOrder, isPending: isConditionalPending } =
+    usePlaceConditionalOrder();
   const [sliderPct, setSliderPct] = useState(0);
   /** SSR/hydration-safe default; restore from localStorage before paint. */
   const [leverage, setLeverage] = useState(PERPS_LEVERAGE_DEFAULT);
   const [leverageInput, setLeverageInput] = useState(String(PERPS_LEVERAGE_DEFAULT));
   const [marginInput, setMarginInput] = useState("");
+  const [orderMode, setOrderMode] = useState<PerpsOrderMode>("limit");
+  const [triggerPrice, setTriggerPrice] = useState("");
+  const [pendingSide, setPendingSide] = useState<PerpsSide | null>(null);
 
   useLayoutEffect(() => {
     const cached = readCachedPerpsLeverage();
@@ -126,7 +325,7 @@ export function PerpsOrderForm({
     setLeverageInput(String(cached));
   }, []);
 
-  const busy = isSigning || isSaltPending || isSubmitPending;
+  const busy = isSigning || isSaltPending || isSubmitPending || isConditionalPending;
 
   const {
     data: usdcBalance,
@@ -169,57 +368,27 @@ export function PerpsOrderForm({
     return avail * leverage;
   }, [availableQuote, leverage]);
 
-  const liqPricePreview = useMemo(() => {
-    const minCollateralX18 = pair.minCollateralX18;
-    const enginePriceDecimal = pair.enginePriceDecimal;
-    if (minCollateralX18 == null || minCollateralX18 <= BigInt(0)) return null;
-    if (enginePriceDecimal == null) return null;
-
-    const submitPrice = resolveSubmitPriceString(price, lastPrice);
-    if (submitPrice == null) return null;
-
-    const normalized = normalizePlaceOrderAmounts({
-      side,
-      price: submitPrice,
-      enginePriceDecimal,
+  const liqPrices = useMemo(
+    () =>
+      previewFormLiqPrices({
+        price,
+        lastPrice,
+        quantity,
+        leverage,
+        marginInput,
+        enginePriceDecimal: pair.enginePriceDecimal,
+        minCollateralX18: pair.minCollateralX18,
+      }),
+    [
+      lastPrice,
+      leverage,
+      marginInput,
+      pair.enginePriceDecimal,
+      pair.minCollateralX18,
+      price,
       quantity,
-      product: "perps",
-    });
-    if (normalized == null) return null;
-
-    let isolatedMargin: bigint | undefined;
-    const marginRaw = marginInput.trim();
-    if (marginRaw) {
-      try {
-        const parsed = parseUnits(marginRaw, getDefaultDecimals());
-        if (parsed > BigInt(0)) isolatedMargin = parsed;
-      } catch {
-        isolatedMargin = undefined;
-      }
-    }
-    if (isolatedMargin == null) {
-      isolatedMargin =
-        marginFromNotional(normalized.quoteAmount, leverage) ?? undefined;
-    }
-    if (isolatedMargin == null) return null;
-
-    return previewIsolatedLiqPrice({
-      side,
-      amount: normalized.baseAmount,
-      isolatedMargin,
-      priceX18: enginePriceToPriceX18(normalized.enginePrice, enginePriceDecimal),
-      minCollateralX18,
-    });
-  }, [
-    lastPrice,
-    leverage,
-    marginInput,
-    pair.enginePriceDecimal,
-    pair.minCollateralX18,
-    price,
-    quantity,
-    side,
-  ]);
+    ]
+  );
 
   function applyMargin(raw: string, lev = leverage) {
     const sanitized = sanitizeDecimal(raw);
@@ -267,7 +436,7 @@ export function PerpsOrderForm({
     onQuantityChange(formatInputDecimal(amount));
   }
 
-  function handleSubmit() {
+  function handleSubmit(side: PerpsSide) {
     debugPlaceOrder("submit:start", {
       side,
       priceRaw: price,
@@ -351,6 +520,15 @@ export function PerpsOrderForm({
       enginePriceDecimal,
     });
 
+    const triggerLimit =
+      orderMode === "trigger"
+        ? readTriggerLimit(t, triggerPrice, lastPrice, enginePriceDecimal)
+        : null;
+    if (triggerLimit && "error" in triggerLimit) {
+      toast.error(triggerLimit.error);
+      return;
+    }
+
     const quoteAmount = orderQuoteAmountBaseUnits(
       quantity,
       submitPrice,
@@ -376,6 +554,7 @@ export function PerpsOrderForm({
     }
 
     void (async () => {
+      setPendingSide(side);
       try {
         const { salt } = await fetchOrderSalt();
         const fields = buildPlaceOrderFields({
@@ -396,6 +575,7 @@ export function PerpsOrderForm({
           priceX18: fields.priceX18.toString(),
           leverage: fields.leverage,
           side: fields.side,
+          reduceOnly: 0,
           expiry: fields.expiry.toString(),
           salt: fields.salt.toString(),
         });
@@ -422,7 +602,7 @@ export function PerpsOrderForm({
           )
         );
 
-        await submitPlaceOrder({
+        const order = {
           userBalanceId,
           pairId: fields.pairId,
           maker: fields.maker,
@@ -434,7 +614,19 @@ export function PerpsOrderForm({
           signature,
           priceX18: fields.priceX18,
           side: fields.side,
-        });
+          reduceOnly: 0 as const,
+        };
+        if (triggerLimit) {
+          await submitConditionalOrder({
+            ...order,
+            orderType: CONDITIONAL_ORDER_TRIGGER_LIMIT,
+            triggerPriceX18: triggerLimit.triggerPriceX18,
+            triggerDirection: triggerLimit.triggerDirection,
+            triggerPriceType: TRIGGER_PRICE_LAST,
+          });
+        } else {
+          await submitPlaceOrder(order);
+        }
 
         debugPlaceOrder("submit:success");
 
@@ -452,14 +644,23 @@ export function PerpsOrderForm({
         toast.error(
           getPerpsOrderErrorMessage(error, t, t("perps.orderFailed"))
         );
+      } finally {
+        setPendingSide(null);
       }
     })();
   }
 
-  const placeLabel =
-    side === "buy"
-      ? t("perps.placeBuy").replace("{symbol}", pair.baseSymbol)
-      : t("perps.placeSell").replace("{symbol}", pair.baseSymbol);
+  const buyLabel = t("perps.placeBuy").replace("{symbol}", pair.baseSymbol);
+  const sellLabel = t("perps.placeSell").replace("{symbol}", pair.baseSymbol);
+  const triggerGuide =
+    orderMode === "trigger"
+      ? triggerPriceGuide(t, triggerPrice, lastPrice, pair.enginePriceDecimal)
+      : {};
+  const liqDigits = pair.enginePriceDecimal ?? 8;
+  const maxOpenText = maxOpenNotional > 0 ? formatQuoteAmount(maxOpenNotional) : "—";
+  const totalText = total > 0 ? formatQuoteAmount(total) : "—";
+  const liqLongText = formatLiqPrice(liqPrices.buy, liqDigits);
+  const liqShortText = formatLiqPrice(liqPrices.sell, liqDigits);
   const enginePriceDecimal = pair.enginePriceDecimal;
   const typedPrice = price.trim();
   const priceDecimalError =
@@ -478,47 +679,30 @@ export function PerpsOrderForm({
       )}
       aria-label={t("perps.mobileTrade")}
     >
-      <PerpsSideSwitch
-        side={side}
-        onSideChange={(s) => {
-          onSideChange(s);
-          setSliderPct(0);
-          setMarginInput("");
-          onQuantityChange("");
-        }}
-        buyLabel={t("perps.buy")}
-        sellLabel={t("perps.sell")}
-      />
+      <OrderModeSwitch mode={orderMode} onModeChange={setOrderMode} />
 
-      <div className="border-input bg-background mt-3 grid grid-cols-3 gap-2 rounded-xl border px-3 py-2.5">
-        <div className="min-w-0 text-left">
-          <div className="text-muted-foreground text-[11px] leading-none">
-            {t("perps.maxOpen")} ({pair.quoteSymbol})
-          </div>
-          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
-            {maxOpenNotional > 0 ? formatQuoteAmount(maxOpenNotional) : "—"}
-          </div>
+      <div className="border-input bg-background mt-3 overflow-hidden rounded-xl border">
+        <div className="grid grid-cols-2 divide-x divide-border/60">
+          <OrderStat
+            label={`${t("perps.maxOpen")} (${pair.quoteSymbol})`}
+            value={maxOpenText}
+          />
+          <OrderStat
+            label={`${t("perps.liqPrice")}(${t("perps.long")})`}
+            value={liqLongText}
+            tone="text-brand"
+          />
         </div>
-        <div className="min-w-0 text-center">
-          <div className="text-muted-foreground text-[11px] leading-none">
-            {t("perps.liqPrice")}
-          </div>
-          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
-            {liqPricePreview != null && liqPricePreview > 0
-              ? formatSubscriptPrice(
-                  liqPricePreview,
-                  pair.enginePriceDecimal ?? 8
-                )
-              : "—"}
-          </div>
-        </div>
-        <div className="min-w-0 text-right">
-          <div className="text-muted-foreground text-[11px] leading-none">
-            {t("perps.totalLabel")} ({pair.quoteSymbol})
-          </div>
-          <div className="text-foreground mt-1 truncate text-xs font-medium tabular-nums">
-            {total > 0 ? formatQuoteAmount(total) : "—"}
-          </div>
+        <div className="grid grid-cols-2 divide-x divide-border/60 border-t border-border/60">
+          <OrderStat
+            label={`${t("perps.totalLabel")} (${pair.quoteSymbol})`}
+            value={totalText}
+          />
+          <OrderStat
+            label={`${t("perps.liqPrice")}(${t("perps.short")})`}
+            value={liqShortText}
+            tone="text-brand-alt"
+          />
         </div>
       </div>
 
@@ -586,7 +770,6 @@ export function PerpsOrderForm({
             max={PERPS_LEVERAGE_STOPS.length - 1}
             step={1}
             value={leverageToStopIndex(leverage)}
-            data-side={side}
             onChange={(e) => applyLeverage(stopIndexToLeverage(Number(e.target.value)))}
             className="size-slider w-full cursor-pointer"
             aria-label={t("perps.leverage")}
@@ -620,6 +803,36 @@ export function PerpsOrderForm({
       </div>
 
       <div className="mt-4 space-y-3">
+        {orderMode === "trigger" ? (
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="perps-trigger" className="text-muted-foreground text-xs">
+                {t("perps.triggerPrice")} ({pair.quoteSymbol})
+              </Label>
+              {triggerGuide.note ? (
+                <span className="text-foreground shrink-0 text-xs font-medium">
+                  {triggerGuide.note}
+                </span>
+              ) : null}
+            </div>
+            <Input
+              id="perps-trigger"
+              inputMode="decimal"
+              autoComplete="off"
+              value={triggerPrice}
+              aria-invalid={triggerGuide.error ? true : undefined}
+              aria-describedby={triggerGuide.error ? "perps-trigger-error" : undefined}
+              onChange={(e) => setTriggerPrice(sanitizeDecimal(e.target.value))}
+              placeholder={formatSubscriptPrice(lastPrice)}
+              className="mt-1.5 h-11 rounded-xl tabular-nums"
+            />
+            {triggerGuide.error ? (
+              <p id="perps-trigger-error" className="text-destructive mt-1.5 text-xs" role="alert">
+                {triggerGuide.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <div>
           <Label htmlFor="perps-price" className="text-muted-foreground text-xs">
             {t("perps.price")} ({pair.quoteSymbol})
@@ -661,7 +874,6 @@ export function PerpsOrderForm({
             max={100}
             step={1}
             value={sliderPct}
-            data-side={side}
             onChange={(e) => applyPct(Number(e.target.value))}
             className="size-slider w-full cursor-pointer"
             aria-label={t("perps.sizePct")}
@@ -703,26 +915,40 @@ export function PerpsOrderForm({
         </div>
       </div>
 
-      <Button
-        type="button"
-        className={cn(
-          "mt-4 h-11 w-full rounded-xl font-semibold",
-          side === "buy"
-            ? "bg-brand hover:bg-brand/90 text-brand-on"
-            : "bg-brand-alt hover:bg-brand-alt/90 text-brand-alt-on"
-        )}
-        onClick={() => {
-          debugPlaceOrder("button:click");
-          handleSubmit();
-        }}
-        disabled={busy}
-      >
-        {busy
-          ? t("perps.placingOrder")
-          : isConnected
-            ? placeLabel
-            : t("perps.connectToTrade")}
-      </Button>
+      {isConnected ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            className="bg-brand text-brand-on hover:bg-brand/90 h-11 rounded-xl px-2 text-sm font-semibold"
+            onClick={() => {
+              debugPlaceOrder("button:click", { side: "buy" });
+              handleSubmit("buy");
+            }}
+            disabled={busy || triggerGuide.error != null}
+          >
+            {busy && pendingSide === "buy" ? t("perps.placingOrder") : buyLabel}
+          </Button>
+          <Button
+            type="button"
+            className="bg-brand-alt text-brand-alt-on hover:bg-brand-alt/90 h-11 rounded-xl px-2 text-sm font-semibold"
+            onClick={() => {
+              debugPlaceOrder("button:click", { side: "sell" });
+              handleSubmit("sell");
+            }}
+            disabled={busy || triggerGuide.error != null}
+          >
+            {busy && pendingSide === "sell" ? t("perps.placingOrder") : sellLabel}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          className="mt-4 h-11 w-full rounded-xl font-semibold"
+          onClick={() => handleSubmit("buy")}
+        >
+          {t("perps.connectToTrade")}
+        </Button>
+      )}
     </section>
   );
 }

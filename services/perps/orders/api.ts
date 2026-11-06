@@ -30,6 +30,11 @@ import type {
   PerpsOrdersUserBalanceReq,
   PerpsOrdersUserBalanceRsp,
   PerpsWithdrawApplyReq,
+  CancelConditionalOrderReq,
+  ConditionalOrdersHistoryPaginationReq,
+  ConditionalOrdersHistoryPaginationRsp,
+  ConditionalOrdersRsp,
+  PlaceConditionalOrderReq,
   PlaceOrderReq,
   PositionCashLedgerListReq,
   PositionCashLedgerListRsp,
@@ -117,7 +122,50 @@ export function placeOrder(req: PlaceOrderReq) {
     signature: req.signature,
     priceX18: apiBigIntToString(req.priceX18),
     side: req.side,
+    reduceOnly: req.reduceOnly,
   });
+}
+
+/** POST /perps/orders/conditional-orders/place — `userId` from gateway JWT headers. */
+export function placeConditionalOrder(req: PlaceConditionalOrderReq) {
+  return request.post<void>(PerpsOrdersApi.conditionalOrdersPlace, {
+    userBalanceId: req.userBalanceId,
+    pairId: req.pairId,
+    maker: req.maker.toLowerCase(),
+    amount: apiBigIntToString(req.amount),
+    margin: apiBigIntToString(req.margin),
+    timeInForce: req.timeInForce,
+    expiry: apiBigIntToString(req.expiry),
+    salt: apiBigIntToString(req.salt),
+    signature: req.signature,
+    priceX18: apiBigIntToString(req.priceX18),
+    side: req.side,
+    reduceOnly: req.reduceOnly,
+    orderType: req.orderType,
+    triggerPriceX18: apiBigIntToString(req.triggerPriceX18),
+    triggerDirection: req.triggerDirection,
+    triggerPriceType: req.triggerPriceType,
+  });
+}
+
+/** POST /perps/orders/conditional-orders/cancel — `userId` from gateway JWT headers. */
+export function cancelConditionalOrder(req: CancelConditionalOrderReq) {
+  return request.post<void>(PerpsOrdersApi.conditionalOrdersCancel, {
+    id: apiBigIntToString(req.id),
+  });
+}
+
+/** POST /perps/orders/conditional-orders/list — `userId` from gateway JWT headers. */
+export function listConditionalOrders() {
+  return request.post<ConditionalOrdersRsp[]>(PerpsOrdersApi.conditionalOrdersList);
+}
+
+/** POST /perps/orders/conditional-orders-history/pagination — `userId` from gateway JWT headers. */
+export function paginationConditionalOrdersHistory(req: ConditionalOrdersHistoryPaginationReq) {
+  return request.post<ConditionalOrdersHistoryPaginationRsp>(
+    PerpsOrdersApi.conditionalOrdersHistoryPagination,
+    req
+  );
 }
 
 /** POST /perps/orders/orders/cancel — `userId` from gateway JWT headers. */
