@@ -73,9 +73,10 @@ export function ConditionalOrdersTable() {
   return (
     <OrdersTable>
       <OrdersHead>
-        <TextHead>{t("perps.conditionalType")}</TextHead>
         <TextHead>{t("perps.pair")}</TextHead>
         <TextHead>{t("perps.side")}</TextHead>
+        <TextHead>{t("perps.conditionalType")}</TextHead>
+        <TextHead>{t("perps.reduceOnly")}</TextHead>
         <TextHead>{t("perps.triggerCondition")}</TextHead>
         <NumericHead>{t("perps.limitPrice")}</NumericHead>
         <NumericHead>{t("perps.orderAmount")}</NumericHead>
@@ -86,7 +87,7 @@ export function ConditionalOrdersTable() {
       <TableBody>
         {emptyMessage ? (
           <MessageRow
-            colSpan={9}
+            colSpan={10}
             message={emptyMessage.message}
             showIcon={emptyMessage.showIcon}
           />
@@ -145,9 +146,10 @@ export function ConditionalOrdersHistoryTable() {
     <div>
       <OrdersTable>
         <OrdersHead>
-          <TextHead>{t("perps.conditionalType")}</TextHead>
           <TextHead>{t("perps.pair")}</TextHead>
           <TextHead>{t("perps.side")}</TextHead>
+          <TextHead>{t("perps.conditionalType")}</TextHead>
+          <TextHead>{t("perps.reduceOnly")}</TextHead>
           <TextHead>{t("perps.triggerCondition")}</TextHead>
           <NumericHead>{t("perps.limitPrice")}</NumericHead>
           <NumericHead>{t("perps.orderAmount")}</NumericHead>
@@ -159,7 +161,7 @@ export function ConditionalOrdersHistoryTable() {
         <TableBody>
           {emptyMessage ? (
             <MessageRow
-              colSpan={10}
+              colSpan={11}
               message={emptyMessage.message}
               showIcon={emptyMessage.showIcon}
             />
@@ -225,7 +227,6 @@ function SharedCells({
 }) {
   return (
     <>
-      <TableCell className={textCell}>{row.orderTypeLabel}</TableCell>
       <TableCell className={textCell}>{row.pairLabel}</TableCell>
       <TableCell
         className={cn(
@@ -238,12 +239,23 @@ function SharedCells({
       >
         {row.side === "buy" ? t("perps.buy") : row.side === "sell" ? t("perps.sell") : "—"}
       </TableCell>
+      <TableCell className={textCell}>{row.orderTypeLabel}</TableCell>
+      <TableCell className={textCell}>{reduceOnlyLabel(row.reduceOnly, t)}</TableCell>
       <TableCell className={textCell}>{row.triggerText}</TableCell>
       <TableCell className={numericCell}>{row.limitPrice}</TableCell>
       <TableCell className={numericCell}>{row.quantity}</TableCell>
       <TableCell className={numericCell}>{row.margin}</TableCell>
     </>
   );
+}
+
+function reduceOnlyLabel(
+  value: number | null | undefined,
+  t: (path: string) => string
+): string {
+  if (value === 1) return t("perps.reduceOnlyYes");
+  if (value === 0) return t("perps.reduceOnlyNo");
+  return "—";
 }
 
 function OrdersTable({ children }: { children: ReactNode }) {

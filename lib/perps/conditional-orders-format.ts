@@ -16,6 +16,7 @@ export type ConditionalOrderRow = {
   idLabel: string;
   pairLabel: string;
   side: "buy" | "sell" | null;
+  reduceOnly: number | null;
   orderTypeLabel: string;
   triggerText: string;
   limitPrice: string;
@@ -37,6 +38,7 @@ export function conditionalOrderToRow(
     idLabel: apiBigIntToString(order.id),
     pairLabel: pairLabelFromCode(order.pairCode),
     side: orderSideToLabel(order.side),
+    reduceOnly: order.reduceOnly,
     orderTypeLabel: orderTypeLabel(order.orderType, t),
     triggerText: triggerText(order, decimals, t),
     limitPrice: limitPrice(order.enginePrice, decimals),

@@ -116,6 +116,8 @@ export type OpenOrderRow = {
   placedAt: number;
   pairLabel: string;
   side: "buy" | "sell" | null;
+  /** Perps: 0 = no, 1 = yes. */
+  reduceOnly?: number | null;
   price: number;
   quantity: number;
   /** Quote notional: price × quantity. */
@@ -153,6 +155,8 @@ export type OrderHistoryRow = {
   pairId?: number;
   pairLabel: string;
   side: "buy" | "sell" | null;
+  /** Perps: 0 = no, 1 = yes. */
+  reduceOnly?: number | null;
   /** Limit / order engine price. */
   price: number;
   averagePrice: number | null;

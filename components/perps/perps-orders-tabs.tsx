@@ -59,6 +59,7 @@ import { getCancelOrderSignTypedData } from "@/lib/perps/cancel-order-eip712";
 import { isPerpsExchangeConfigured } from "@/lib/config/perps-exchange";
 import {
   formatPercentChange,
+  formatQuantity,
   formatQuoteAmount,
   formatSubscriptPrice,
 } from "@/lib/utils/price";
@@ -759,7 +760,7 @@ function OpenOrdersTable({
     }
   }
 
-  const colSpan = 9;
+  const colSpan = 11;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -777,7 +778,9 @@ function OpenOrdersTable({
         <TextHead>{t("perps.orderId")}</TextHead>
         <TextHead>{t("perps.pair")}</TextHead>
         <TextHead>{t("perps.side")}</TextHead>
+        <TextHead>{t("perps.reduceOnly")}</TextHead>
         <NumericHead>{t("perps.orderPrice")}</NumericHead>
+        <NumericHead>{t("perps.orderAmount")}</NumericHead>
         <NumericHead>{t("perps.orderTotal")}</NumericHead>
         <NumericHead>{t("perps.marginRequired")}</NumericHead>
         <NumericHead>{t("perps.filledPct")}</NumericHead>
@@ -823,9 +826,11 @@ function OpenOrdersTable({
                       ? t("perps.sell")
                       : "—"}
                 </TableCell>
+                <TableCell className={textCell}>{reduceOnlyLabel(row.reduceOnly, t)}</TableCell>
                 <TableCell className={numericCell}>
                   {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
                 </TableCell>
+                <TableCell className={numericCell}>{formatQuantity(row.quantity)}</TableCell>
                 <TableCell className={numericCell}>{formatQuoteAmount(row.total)}</TableCell>
                 <TableCell className={numericCell}>
                   {row.margin != null ? formatQuoteAmount(row.margin) : "—"}
@@ -895,7 +900,7 @@ function HistoryOrdersTable({
     [data?.pageItems]
   );
 
-  const colSpan = 13;
+  const colSpan = 14;
   const emptyMessage = resolveOrdersTableMessage({
     authReady,
     isAuthenticated,
@@ -913,6 +918,7 @@ function HistoryOrdersTable({
         <TextHead>{t("perps.orderId")}</TextHead>
         <TextHead>{t("perps.pair")}</TextHead>
         <TextHead>{t("perps.side")}</TextHead>
+        <TextHead>{t("perps.reduceOnly")}</TextHead>
         <NumericHead>{t("perps.orderPrice")}</NumericHead>
         <NumericHead>{t("perps.average")}</NumericHead>
         <NumericHead>{t("perps.orderTotal")}</NumericHead>
@@ -946,12 +952,13 @@ function HistoryOrdersTable({
                   row.side ? sideClass(row.side) : "text-muted-foreground"
                 )}
               >
-                {row.side === "buy"
-                  ? t("perps.buy")
-                  : row.side === "sell"
-                    ? t("perps.sell")
-                    : "—"}
+                  {row.side === "buy"
+                    ? t("perps.buy")
+                    : row.side === "sell"
+                      ? t("perps.sell")
+                      : "—"}
               </TableCell>
+              <TableCell className={textCell}>{reduceOnlyLabel(row.reduceOnly, t)}</TableCell>
               <TableCell className={numericCell}>
                 {formatSubscriptPrice(row.price, row.enginePriceDecimal)}
               </TableCell>
@@ -992,6 +999,15 @@ function HistoryOrdersTable({
       </TableBody>
     </OrdersTableFrame>
   );
+}
+
+function reduceOnlyLabel(
+  value: number | null | undefined,
+  t: (path: string) => string
+): string {
+  if (value === 1) return t("perps.reduceOnlyYes");
+  if (value === 0) return t("perps.reduceOnlyNo");
+  return "—";
 }
 
 function sideClass(side: "buy" | "sell") {

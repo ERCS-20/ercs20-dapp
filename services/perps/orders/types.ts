@@ -204,6 +204,8 @@ export type OrdersRsp = {
   enginePrice: ApiBigInt;
   enginePriceDecimal: number;
   side: number;
+  /** 0 = no, 1 = yes. */
+  reduceOnly: number | null;
   filledAmount: ApiBigInt;
   lockedMargin: ApiBigInt;
   fee: ApiBigInt;
