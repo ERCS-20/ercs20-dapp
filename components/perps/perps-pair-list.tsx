@@ -214,9 +214,12 @@ function PairListItems({
 export function PerpsPairList({
   activePair,
   className,
+  lists = "both",
 }: {
   activePair: PerpsPair;
   className?: string;
+  /** `all` hides the favorites tab and shows every pair. */
+  lists?: "both" | "all";
 }) {
   const { t } = useI18n();
   const { isAuthenticated, openLoginDialog } = useAuth();
@@ -235,8 +238,9 @@ export function PerpsPairList({
   // REST first screen, then global `pairs` WS (open/close patches).
   useMarketPairsWs({ enabled: isAllSuccess });
 
+  const showFavorites = lists === "both";
   const { data: userPairsData, isLoading: isUserPairsLoading } = useUserPairs({
-    enabled: isAuthenticated,
+    enabled: showFavorites && isAuthenticated,
     notifyError: false,
   });
 
@@ -249,7 +253,7 @@ export function PerpsPairList({
 
   const { data: favoriteMarketData, isLoading: isFavoriteMarketLoading } =
     useMarketUserPairs(favoritePairIds, {
-      enabled: isAuthenticated && favoritePairIds.length > 0,
+      enabled: showFavorites && isAuthenticated && favoritePairIds.length > 0,
       notifyError: false,
     });
 
@@ -265,7 +269,7 @@ export function PerpsPairList({
   const allPairIds = useMemo(() => allPairs.map((p) => p.pairId), [allPairs]);
   const allPairsById = usePairsByIds(allPairIds);
   const favoritePairsById = usePairsByIds(favoritePairIds, {
-    enabled: isAuthenticated && favoritePairIds.length > 0,
+    enabled: showFavorites && isAuthenticated && favoritePairIds.length > 0,
   });
   const allDecimals = useMemo(() => decimalMap(allPairsById), [allPairsById]);
   const favoriteDecimals = useMemo(
@@ -320,28 +324,35 @@ export function PerpsPairList({
               className="h-9 rounded-lg pl-8 text-sm"
             />
           </div>
-          <TabsList variant="line" className="h-8 w-full">
-            <TabsTrigger
-              value="favorites"
-              className="flex-1 text-xs sm:text-sm"
-              onClick={() => {
-                if (!isAuthenticated) openLoginDialog();
-              }}
-            >
-              {t("perps.favoritesTab")}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="flex-1 text-xs sm:text-sm">
-              {t("perps.allPairsTab")}
-            </TabsTrigger>
-          </TabsList>
+          {showFavorites ? (
+            <TabsList variant="line" className="h-8 w-full">
+              <TabsTrigger
+                value="favorites"
+                className="flex-1 text-xs sm:text-sm"
+                onClick={() => {
+                  if (!isAuthenticated) openLoginDialog();
+                }}
+              >
+                {t("perps.favoritesTab")}
+              </TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 text-xs sm:text-sm">
+                {t("perps.allPairsTab")}
+              </TabsTrigger>
+            </TabsList>
+          ) : null}
         </div>
 
-        {isAllLoading && !isAuthenticated ? (
+        {isAllLoading && !showFavorites ? (
+          <p className="text-muted-foreground px-3 py-6 text-center text-xs">
+            {t("swap.loading")}
+          </p>
+        ) : isAllLoading && !isAuthenticated ? (
           <p className="text-muted-foreground px-3 py-6 text-center text-xs">
             {t("swap.loading")}
           </p>
         ) : (
           <>
+            {showFavorites ? (
             <TabsContent
               value="favorites"
               className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
@@ -369,6 +380,7 @@ export function PerpsPairList({
                 />
               )}
             </TabsContent>
+            ) : null}
             <TabsContent
               value="all"
               className="scrollbar-none mt-0 min-h-0 flex-1 overflow-y-auto"
