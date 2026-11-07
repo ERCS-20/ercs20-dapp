@@ -85,22 +85,34 @@ function formatInputDecimal(value: number): string {
   );
 }
 
-/** Price for submit: typed input first, else last market price (same as effectivePrice). */
-function resolveSubmitPriceString(priceInput: string, fallbackPrice: number): string | null {
+/**
+ * Empty-input price. Same string for the placeholder and for submit,
+ * scaled to the pair's engine decimals (not a separate display rounding).
+ */
+function currentPriceInput(
+  lastPrice: number,
+  enginePriceDecimal: number | null | undefined
+): string {
+  if (enginePriceDecimal == null) return "";
+  return formatEnginePrice(lastPrice, enginePriceDecimal)?.input ?? "";
+}
+
+/** Price for submit: typed input first, else the same default the input shows. */
+function resolveSubmitPriceString(
+  priceInput: string,
+  lastPrice: number,
+  enginePriceDecimal: number | null | undefined
+): string | null {
   const trimmed = sanitizeDecimal(priceInput);
   const p = Number(trimmed);
   if (Number.isFinite(p) && p > 0) return trimmed;
-  if (Number.isFinite(fallbackPrice) && fallbackPrice > 0) {
-    return formatInputDecimal(fallbackPrice) || null;
-  }
+  const fallback = currentPriceInput(lastPrice, enginePriceDecimal);
+  const fallbackPrice = Number(fallback);
+  if (Number.isFinite(fallbackPrice) && fallbackPrice > 0) return fallback;
   return null;
 }
 
 type PerpsOrderMode = "limit" | "trigger";
-
-function currentPriceInput(lastPrice: number, enginePriceDecimal: number): string {
-  return formatEnginePrice(lastPrice, enginePriceDecimal)?.input ?? "";
-}
 
 function triggerPriceGuide(
   t: (path: string) => string,
@@ -179,7 +191,11 @@ function previewFormLiqPrices(input: {
   if (minCollateralX18 == null || minCollateralX18 <= BigInt(0)) return none;
   if (enginePriceDecimal == null) return none;
 
-  const submitPrice = resolveSubmitPriceString(input.price, input.lastPrice);
+  const submitPrice = resolveSubmitPriceString(
+    input.price,
+    input.lastPrice,
+    input.enginePriceDecimal
+  );
   if (submitPrice == null) return none;
 
   const normalized = normalizePlaceOrderAmounts({
@@ -347,9 +363,10 @@ export function PerpsOrderForm({
   }, [balancesPending, isAuthenticated, usdcBalance]);
 
   const effectivePrice = useMemo(() => {
-    const p = Number(price);
-    return Number.isFinite(p) && p > 0 ? p : lastPrice;
-  }, [price, lastPrice]);
+    const raw = resolveSubmitPriceString(price, lastPrice, pair.enginePriceDecimal);
+    const p = raw != null ? Number(raw) : NaN;
+    return Number.isFinite(p) && p > 0 ? p : 0;
+  }, [price, lastPrice, pair.enginePriceDecimal]);
 
   const total = useMemo(() => {
     const q = Number(quantity);
@@ -481,7 +498,11 @@ export function PerpsOrderForm({
     }
 
     const q = Number(quantity);
-    const submitPrice = resolveSubmitPriceString(price, lastPrice);
+    const submitPrice = resolveSubmitPriceString(
+      price,
+      lastPrice,
+      pair.enginePriceDecimal
+    );
     const p = submitPrice != null ? Number(submitPrice) : NaN;
     if (!Number.isFinite(q) || q <= 0) {
       debugPlaceOrder("submit:reject", { reason: "invalidAmount", quantity, q });
@@ -823,7 +844,7 @@ export function PerpsOrderForm({
               aria-invalid={triggerGuide.error ? true : undefined}
               aria-describedby={triggerGuide.error ? "perps-trigger-error" : undefined}
               onChange={(e) => setTriggerPrice(sanitizeDecimal(e.target.value))}
-              placeholder={formatSubscriptPrice(lastPrice)}
+              placeholder={currentPriceInput(lastPrice, pair.enginePriceDecimal)}
               className="mt-1.5 h-11 rounded-xl tabular-nums"
             />
             {triggerGuide.error ? (
@@ -853,7 +874,7 @@ export function PerpsOrderForm({
                 applyMargin(marginInput);
               }
             }}
-            placeholder={formatSubscriptPrice(lastPrice)}
+            placeholder={currentPriceInput(lastPrice, pair.enginePriceDecimal)}
             className="mt-1.5 h-11 rounded-xl tabular-nums"
           />
           {priceDecimalError ? (

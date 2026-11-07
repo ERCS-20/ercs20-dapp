@@ -242,7 +242,7 @@ function CancelsPane({ orderId }: { orderId: string }) {
               <TextHead>{t("perps.time")}</TextHead>
               <NumericHead>{t("perps.amount")}</NumericHead>
               <NumericHead>{t("perps.lockedMargin")}</NumericHead>
-              <TextHead>{t("perps.ledgerType")}</TextHead>
+              <TextHead>{t("perps.cancelReason")}</TextHead>
               <TextHead>{t("perps.status")}</TextHead>
             </TableRow>
           </TableHeader>

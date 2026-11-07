@@ -27,6 +27,8 @@ export function cancelReasonLabel(code: string, t: (key: string) => string): str
   if (code === "SystemOrderCapacityExceeded") return t("perps.cancelReasonOrderCap");
   if (code === "SystemBucketCapacityExceeded") return t("perps.cancelReasonBucketCap");
   if (code === "SystemFokNotFillable") return t("perps.cancelReasonFok");
+  if (code === "SystemReduceOnlyRejected") return t("perps.cancelReasonReduceOnlyRejected");
+  if (code === "SystemReduceOnlyCancel") return t("perps.cancelReasonReduceOnlyCancel");
   if (code === "RefundMaker") return t("perps.cancelReasonRefund");
   return code || "—";
 }
