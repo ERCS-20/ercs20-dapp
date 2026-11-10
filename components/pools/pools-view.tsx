@@ -8,13 +8,15 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PerpsPairList } from "@/components/perps/perps-pair-list";
 import { PoolCard } from "@/components/pools/pool-card";
 import {
-  poolSummary,
+  poolSummaries,
   previewPools,
   STAKE_SYMBOL,
   SUMMARY_REWARD_SYMBOL,
+  type PoolMarket,
   type PreviewPool,
 } from "@/components/pools/preview-pools";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PerpsPair } from "@/lib/perps/types";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -82,7 +84,13 @@ function FilterToggle({
   );
 }
 
-function matchesPool(pool: PreviewPool, activeOnly: boolean, stakedOnly: boolean): boolean {
+function matchesPool(
+  pool: PreviewPool,
+  market: PoolMarket,
+  activeOnly: boolean,
+  stakedOnly: boolean
+): boolean {
+  if (pool.market !== market) return false;
   if (activeOnly && !pool.open) return false;
   if (stakedOnly && !pool.stakedByMe) return false;
   return true;
@@ -90,12 +98,14 @@ function matchesPool(pool: PreviewPool, activeOnly: boolean, stakedOnly: boolean
 
 export function PoolsView() {
   const { t } = useI18n();
+  const [market, setMarket] = useState<PoolMarket>("spot");
   const [activeOnly, setActiveOnly] = useState(false);
   const [stakedOnly, setStakedOnly] = useState(false);
+  const summary = poolSummaries[market];
 
   const pools = useMemo(
-    () => previewPools.filter((pool) => matchesPool(pool, activeOnly, stakedOnly)),
-    [activeOnly, stakedOnly]
+    () => previewPools.filter((pool) => matchesPool(pool, market, activeOnly, stakedOnly)),
+    [market, activeOnly, stakedOnly]
   );
 
   return (
@@ -107,34 +117,20 @@ export function PoolsView() {
           className="h-72 w-full shrink-0 rounded-none lg:h-auto lg:w-56"
         />
         <div className="border-border/60 bg-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border">
-          <div className="border-border/60 grid shrink-0 grid-cols-2 border-b lg:grid-cols-4">
-            <StatCard
-              icon={WalletIcon}
-              label={t("poolsPage.myStaked")}
-              value={poolSummary.myStaked}
-              symbol={STAKE_SYMBOL}
-            />
-            <StatCard
-              icon={PickaxeIcon}
-              label={t("poolsPage.totalStaked")}
-              value={poolSummary.totalStaked}
-              symbol={STAKE_SYMBOL}
-            />
-            <StatCard
-              icon={CoinsIcon}
-              label={t("poolsPage.myRewards")}
-              value={poolSummary.myRewards}
-              symbol={SUMMARY_REWARD_SYMBOL}
-            />
-            <StatCard
-              icon={GiftIcon}
-              label={t("poolsPage.totalRewards")}
-              value={poolSummary.totalRewards}
-              symbol={SUMMARY_REWARD_SYMBOL}
-            />
-          </div>
           <div className="border-border/60 flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2">
-            <h1 className="text-sm font-semibold tracking-tight">{t("poolsPage.title")}</h1>
+            <Tabs
+              value={market}
+              onValueChange={(value) => setMarket(value as PoolMarket)}
+            >
+              <TabsList className="h-9">
+                <TabsTrigger value="spot" className="px-3 text-xs sm:text-sm">
+                  {t("nav.spot")}
+                </TabsTrigger>
+                <TabsTrigger value="perps" className="px-3 text-xs sm:text-sm">
+                  {t("nav.perps")}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <div className="flex items-center gap-4">
               <FilterToggle
                 icon={LockOpenIcon}
@@ -149,6 +145,32 @@ export function PoolsView() {
                 onCheckedChange={setStakedOnly}
               />
             </div>
+          </div>
+          <div className="border-border/60 grid shrink-0 grid-cols-2 border-b lg:grid-cols-4">
+            <StatCard
+              icon={WalletIcon}
+              label={t("poolsPage.myStaked")}
+              value={summary.myStaked}
+              symbol={STAKE_SYMBOL}
+            />
+            <StatCard
+              icon={PickaxeIcon}
+              label={t("poolsPage.totalStaked")}
+              value={summary.totalStaked}
+              symbol={STAKE_SYMBOL}
+            />
+            <StatCard
+              icon={CoinsIcon}
+              label={t("poolsPage.myRewards")}
+              value={summary.myRewards}
+              symbol={SUMMARY_REWARD_SYMBOL}
+            />
+            <StatCard
+              icon={GiftIcon}
+              label={t("poolsPage.totalRewards")}
+              value={summary.totalRewards}
+              symbol={SUMMARY_REWARD_SYMBOL}
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
             {pools.length === 0 ? (
