@@ -332,6 +332,7 @@ async function buildSignedFields(
     maker: ctx.address,
     salt: BigInt(salt),
     leverage: ctx.leverage,
+    margin: input.reduceOnly === 1 ? BigInt(0) : undefined,
   });
   const balance = await getPerpsOrdersUserBalance();
   const available = parseApiBigInt(balance.balance);

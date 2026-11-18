@@ -46,7 +46,8 @@ export function enginePriceToPriceX18(
 
 /**
  * Build place-order payload.
- * Isolated: `margin = floor(quoteNotional / leverage)` (default leverage 5×).
+ * Opening orders: `margin = floor(quoteNotional / leverage)` (default leverage 5×).
+ * Reduce-only orders pass `margin = 0` and skip that calculation.
  * EIP-712 `nonce` = `salt`; `isBuy` = side === buy.
  */
 export function buildPlaceOrderFields(params: {
@@ -84,8 +85,10 @@ export function buildPlaceOrderFields(params: {
   let margin = params.margin;
   if (margin == null) {
     margin = marginFromNotional(quoteAmount, leverage) ?? undefined;
-  }
-  if (margin == null || margin <= BigInt(0)) {
+    if (margin == null || margin <= BigInt(0)) {
+      throw new Error("Invalid margin");
+    }
+  } else if (margin < BigInt(0)) {
     throw new Error("Invalid margin");
   }
 
