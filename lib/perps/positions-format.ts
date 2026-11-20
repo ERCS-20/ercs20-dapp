@@ -143,8 +143,15 @@ export function positionBreakEvenPrice(position: bigint, notional: bigint): numb
   return priceX18ToNumber((notional * WAD) / absPosition);
 }
 
-/** Backend `PositionsService.calcLiqPrice`. Returns × 1e18, or null when collateral is missing. */
-function calcLiqPriceX18(margin: bigint, position: bigint, minCollateralX18: ApiBigInt | null | undefined): bigint | null {
+/**
+ * Local liq price (API no longer returns it). Same as backend / `持仓列表计算-前端.md`.
+ * Returns × 1e18, or null when `minCollateralX18` is missing.
+ */
+function calcLiqPriceX18(
+  margin: bigint,
+  position: bigint,
+  minCollateralX18: ApiBigInt | null | undefined
+): bigint | null {
   const minCollateral = parseApiBigInt(minCollateralX18);
   if (minCollateral == null || minCollateral <= BigInt(0)) return null;
   if (position === BigInt(0)) return BigInt(0);
@@ -179,10 +186,11 @@ export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuot
   const unsettled = unsettledFunding(pos, quote?.fundingIndex);
   const marginBi = positionDisplayMargin(pos) + unsettled;
   const balanceWithUnsettled = apiInt(pos.balanceMargin) + unsettled;
-  const chainLiq = priceX18ToNumber(pos.liqPrice);
-  const recalc = fundingIndexIsNewer(pos, quote?.fundingIndex)
-    ? calcLiqPriceX18(balanceWithUnsettled, position, quote?.minCollateralX18)
-    : null;
+  const liqX18 = calcLiqPriceX18(
+    balanceWithUnsettled,
+    position,
+    quote?.minCollateralX18
+  );
   const pnl = positionPnl(pos, balanceWithUnsettled, quote?.markX18);
   return {
     id: String(pos.id),
@@ -204,7 +212,7 @@ export function positionsRspToRow(pos: PositionsRsp, quote?: PositionFundingQuot
         balanceWithUnsettled
       )
     ),
-    liqPrice: recalc == null ? chainLiq : priceX18ToNumber(recalc),
+    liqPrice: liqX18 == null ? 0 : priceX18ToNumber(liqX18),
     leverage: leverageOf(openNotional(position, marginBi, balanceWithUnsettled), marginBi),
     pnl: pnl?.pnl ?? null,
     roiPct: pnl?.roiPct ?? null,

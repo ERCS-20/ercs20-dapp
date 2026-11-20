@@ -224,7 +224,6 @@ export type PositionsRsp = {
   pairCode: string;
   balanceMargin: ApiBigInt;
   balancePosition: ApiBigInt;
-  liqPrice: ApiBigInt;
   fundingTimestamp?: number;
   fundingValue?: ApiBigInt;
   totalTradeMargin: ApiBigInt;
